@@ -1,6 +1,6 @@
 # SPEC 03 — Esquema de base de datos
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 02
 > **Fecha:** 2026-10-22
 > **Objetivo:** Crear con migraciones Knex en TypeScript las 14 tablas del modelo de datos de la sección 6 del documento de definición, con la bitácora protegida contra cambios y un seed de los 6 roles.
