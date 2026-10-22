@@ -1,0 +1,54 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project state
+
+This repository has no application code yet. It contains:
+
+- `Sistema de Gestión de Quejas Municipales — Definición de la Solución.md`: the product definition for **VozMuni**, a municipal complaint/ticketing system. It covers roles, the permission matrix, the ticket lifecycle, requirements RF-01–RF-42 and RNF-01–RNF-23, the architecture, the data model and the endpoints. Treat it as the source of truth. When a spec or the code disagrees with it, flag the conflict instead of picking one silently.
+- `.agents/skills/spec` and `.agents/skills/spec-impl`: the spec-driven workflow skills. `skills-lock.json` pins them from `Klerith/fernando-skills`.
+
+There are no build, lint or test commands yet. Do not invent them. Once the backend and frontend exist, add their real commands here.
+
+## Workflow: spec-driven development
+
+Work goes through numbered specs in `specs/NN-slug.md`, which follow `.agents/skills/spec/template.md`:
+
+1. `/spec <one-sentence feature>` asks clarifying questions, then writes `specs/NN-slug.md` with state Draft. It never writes code.
+2. A human changes the state to Approved. The agent never does this.
+3. `/spec-impl NN-slug` refuses unless the state means Approved. It creates branch `spec-NN-slug` (controlled by `AutoCreateBranch` in `specs/.spec-config.yml`) and implements the plan one step at a time, pausing for diff review after each step. It never commits on its own and never adds anything outside the spec's scope.
+
+The definition document is in Spanish. Write specs in one language and keep their state labels consistent (for example Borrador / Aprobado / Implementado) across all specs.
+
+Implementing specs requires a git repository; the folder is not one yet.
+
+## Planned architecture
+
+These points are spread across the definition document. Follow them when writing specs and code:
+
+- **Generic core, municipal configuration.** The core is a generic ticket manager. Municipal concepts are configuration data, not code. Examples: Queja = Ticket, Vecino = Solicitante, Dependencia = Equipo. Categories, departments, SLAs, extra fields (`jsonb`) and notification templates are all admin-editable. Never hardcode a municipal category, department or SLA value.
+- **Stack.** Both sides use TypeScript. The backend runs Node.js + Express with Zod validation, Knex + node-postgres and PostgreSQL. Tests use Jest + Supertest. The frontend is a React + Vite SPA with React Router, TanStack Query, React Hook Form and MUI. Everything runs in Docker / docker-compose behind Nginx.
+- **Layered backend (`backend/src/`).** The layers are `presentation → application → domain ← infrastructure`.
+  - `domain/` must not import Express, Knex or any database code. It defines repository interfaces that `infrastructure/repositories/` implements.
+  - The interfaces and services are wired together in `container.ts`.
+  - Controllers only translate between HTTP and DTOs and contain no business logic.
+  - CI is expected to enforce these dependency rules (RNF-17).
+- **Frontend layout.** The frontend is split into `features/{auth,tickets,reportes,admin}` plus `shared/`. `shared/` holds the HTTP client and the role-based route guards.
+- **One home for business rules.** The node-cron jobs (80 % SLA alert, escalation, auto-close) live in `infrastructure/jobs/`. They call the same application services as the API and must not duplicate rules.
+- **Ticket lifecycle** (section 3 of the definition document):
+  - There are 8 states. Only `Cerrada` and `Rechazada` are final. The domain layer rejects any transition not in the table.
+  - "Escalada" is a flag, not a state.
+  - Time spent in `En espera` does not count toward the resolution SLA.
+  - Reopening is allowed only from `Resuelta`, inside the confirmation window.
+  - An approved transfer sends the ticket back to `En revisión`.
+  - Every transition writes a `ticket_historial` row.
+- **Authorization.** Permissions depend on role and are limited to the user's own department. Use the permission matrix in section 2 of the definition document.
+- **Cross-cutting conventions:**
+  - API routes start with `/api/v1` and are documented in OpenAPI 3.
+  - Ticket numbers use the format `Q-AAAA-NNNNNN`.
+  - Times are stored as `timestamptz` in UTC and displayed in `America/Guatemala`.
+  - SLAs are measured in business hours against `calendario_laboral`.
+  - `bitacora` is insert-only.
+  - Logs are JSON from Pino with a correlation id, and the service exposes `/health`.
+  - UI text lives in translation files, with Spanish as the default language.
