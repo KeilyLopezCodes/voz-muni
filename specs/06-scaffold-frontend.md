@@ -1,6 +1,6 @@
 # SPEC 06 — Scaffold del frontend
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** SPEC 01
 > **Fecha:** 2026-10-22
 > **Objetivo:** Crear la SPA `frontend/` en React + Vite organizada por funcionalidad, con cliente HTTP compartido, guardas de ruta por rol, layout MUI, textos en archivos de traducción y fronteras entre features verificadas con dependency-cruiser.
@@ -178,21 +178,21 @@ CLAUDE.md
 
 ## Criterios de aceptación
 
-- [ ] Desde `frontend/`, `npm install`, `npm run build`, `npm test` y `npm run lint:deps` terminan con código 0.
-- [ ] `npm run dev` sirve la app en `http://localhost:5173`.
-- [ ] En el navegador, sin sesión, `/tickets`, `/tickets/nueva`, `/reportes`, `/admin` y `/` redirigen a `/login`.
-- [ ] `/login` y `/consulta` cargan sin sesión. Una ruta inexistente muestra la página 404.
-- [ ] Con el backend corriendo, `/login` muestra el texto "Servidor disponible". Con el backend detenido, muestra "Servidor no disponible".
-- [ ] La prueba del router confirma, para los 6 roles y las 4 rutas protegidas, que se muestra la página si el rol está en la tabla de rutas y se redirige a `/403` si no.
-- [ ] `/` redirige a `/admin` con el rol `administrador` y a `/tickets` con cualquier otro rol.
-- [ ] El menú de cada rol muestra exactamente las rutas de la tabla con `enMenu = true` permitidas para ese rol.
-- [ ] El cliente HTTP antepone `/api/v1` en `apiClient`, envía `X-Request-Id` en cada petición y envía `Authorization` solo cuando `setTokenProvider` devuelve un token.
-- [ ] Una respuesta `500` lanza `ApiError` con `status = 500`, y un error de red lanza `ApiError` con `status = 0` y `codigo = 'RED_NO_DISPONIBLE'`.
-- [ ] `ROLES` coincide con los nombres del seed `01_roles` de SPEC 03.
-- [ ] Ningún archivo `.tsx` de `src/` contiene texto visible en español fijo: todo pasa por `t()` y existe en `locales/es/`.
-- [ ] A 360 px de ancho, `AppLayout` no produce scroll horizontal.
-- [ ] Un import de `features/admin` dentro de `features/tickets` hace fallar `npm run lint:deps` con `feature-no-otra-feature`. Un import de `features/` dentro de `shared/` falla con `shared-no-features`.
-- [ ] `CLAUDE.md` lista los comandos del frontend.
+- [x] Desde `frontend/`, `npm install`, `npm run build`, `npm test` y `npm run lint:deps` terminan con código 0.
+- [x] `npm run dev` sirve la app en `http://localhost:5173`.
+- [x] En el navegador, sin sesión, `/tickets`, `/tickets/nueva`, `/reportes`, `/admin` y `/` redirigen a `/login`.
+- [x] `/login` y `/consulta` cargan sin sesión. Una ruta inexistente muestra la página 404.
+- [x] Con el backend corriendo, `/login` muestra el texto "Servidor disponible". Con el backend detenido, muestra "Servidor no disponible".
+- [x] La prueba del router confirma, para los 6 roles y las 4 rutas protegidas, que se muestra la página si el rol está en la tabla de rutas y se redirige a `/403` si no.
+- [x] `/` redirige a `/admin` con el rol `administrador` y a `/tickets` con cualquier otro rol.
+- [x] El menú de cada rol muestra exactamente las rutas de la tabla con `enMenu = true` permitidas para ese rol.
+- [x] El cliente HTTP antepone `/api/v1` en `apiClient`, envía `X-Request-Id` en cada petición y envía `Authorization` solo cuando `setTokenProvider` devuelve un token.
+- [x] Una respuesta `500` lanza `ApiError` con `status = 500`, y un error de red lanza `ApiError` con `status = 0` y `codigo = 'RED_NO_DISPONIBLE'`.
+- [x] `ROLES` coincide con los nombres del seed `01_roles` de SPEC 03.
+- [x] Ningún archivo `.tsx` de `src/` contiene texto visible en español fijo: todo pasa por `t()` y existe en `locales/es/`.
+- [x] A 360 px de ancho, `AppLayout` no produce scroll horizontal.
+- [x] Un import de `features/admin` dentro de `features/tickets` hace fallar `npm run lint:deps` con `feature-no-otra-feature`. Un import de `features/` dentro de `shared/` falla con `shared-no-features`.
+- [x] `CLAUDE.md` lista los comandos del frontend.
 
 ## Decisiones
 

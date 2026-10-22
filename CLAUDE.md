@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-This repository contains the backend skeleton (SPEC 01: layered `backend/` with `GET /health` and the layer dependency rules). There is no frontend and no business logic yet. It also contains:
+This repository contains the project foundations. There is no business logic yet.
+
+- `backend/`: the layered backend skeleton with `GET /health` and the layer dependency rules (SPEC 01), plus PostgreSQL 17 in docker-compose, Knex wiring, config validated with Zod, and `/health` reporting the database state (SPEC 02). There are no tables yet.
+- `frontend/`: the React + Vite SPA scaffold (SPEC 06), with the shared HTTP client, the role-based route guards, the MUI layout, the Spanish translation files and the feature-boundary rules. The pages are placeholders, and there is no login yet, so the browser session is always `null`.
+
+It also contains:
 
 - `Sistema de Gestión de Quejas Municipales — Definición de la Solución.md`: the product definition for **VozMuni**, a municipal complaint/ticketing system. It covers roles, the permission matrix, the ticket lifecycle, requirements RF-01–RF-42 and RNF-01–RNF-23, the architecture, the data model and the endpoints. Treat it as the source of truth. When a spec or the code disagrees with it, flag the conflict instead of picking one silently.
 - `.agents/skills/spec` and `.agents/skills/spec-impl`: the spec-driven workflow skills. `skills-lock.json` pins them from `Klerith/fernando-skills`.
