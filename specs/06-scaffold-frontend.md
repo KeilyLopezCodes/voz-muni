@@ -1,6 +1,6 @@
 # SPEC 06 — Scaffold del frontend
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 01
 > **Fecha:** 2026-10-22
 > **Objetivo:** Crear la SPA `frontend/` en React + Vite organizada por funcionalidad, con cliente HTTP compartido, guardas de ruta por rol, layout MUI, textos en archivos de traducción y fronteras entre features verificadas con dependency-cruiser.
