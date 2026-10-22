@@ -1,6 +1,6 @@
 # SPEC 01 — Estructura del backend en capas
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** —
 > **Fecha:** 2026-10-22
 > **Objetivo:** Crear el proyecto `backend/` en TypeScript con las cuatro capas (presentation, application, domain, infrastructure), un `GET /health` que las atraviesa y la regla de dependencias entre capas verificada con dependency-cruiser.
