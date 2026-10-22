@@ -1,17 +1,13 @@
 import knex, { type Knex } from 'knex';
 import { buildKnexConfig } from '../../src/infrastructure/database/knex-config';
 import { KnexDatabaseHealthCheck } from '../../src/infrastructure/database/knex-database-health-check';
-
-const databaseUrlTest = process.env.DATABASE_URL_TEST;
-if (!databaseUrlTest) {
-  throw new Error('DATABASE_URL_TEST no está definida; copia .env.example a .env');
-}
+import { createTestKnex } from './knex-test';
 
 describe('Base de datos', () => {
   let db: Knex;
 
   beforeAll(() => {
-    db = knex(buildKnexConfig(databaseUrlTest));
+    db = createTestKnex();
   });
 
   afterAll(async () => {

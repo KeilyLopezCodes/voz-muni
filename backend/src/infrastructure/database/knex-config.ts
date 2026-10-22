@@ -22,5 +22,9 @@ export function buildKnexConfig(url: string): Knex.Config {
       loadExtensions: ['.js'],
       tableName: 'knex_migrations',
     },
+    seeds: {
+      directory: path.join(__dirname, 'seeds'),
+      loadExtensions: ['.js'],
+    },
   };
 }

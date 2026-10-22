@@ -1,6 +1,6 @@
 # SPEC 03 — Esquema de base de datos
 
-> **Estado:** Aprobado
+> **Estado:**  Implementado
 > **Depende de:** SPEC 02
 > **Fecha:** 2026-10-22
 > **Objetivo:** Crear con migraciones Knex en TypeScript las 14 tablas del modelo de datos de la sección 6 del documento de definición, con la bitácora protegida contra cambios y un seed de los 6 roles.
@@ -248,21 +248,21 @@ CLAUDE.md                                          # seed:run y convención de m
 
 ## Criterios de aceptación
 
-- [ ] `npm run build && npm run migrate:latest` sobre `vozmuni` vacía termina con código 0 y deja las 14 tablas de la sección 6.
-- [ ] `npm run migrate:rollback` ejecutado hasta vaciar deja la base sin ninguna de las 14 tablas, sin `estado_ticket` y sin `bitacora_solo_insercion`.
-- [ ] Ejecutar `npm run migrate:latest` otra vez después del rollback termina con código 0.
-- [ ] `npm run seed:run` ejecutado dos veces deja exactamente 6 filas en `roles`, con los nombres `vecino`, `receptor`, `tecnico`, `coordinador`, `supervisor` y `administrador`.
-- [ ] Toda clave primaria es `bigint` de identidad, salvo `calendario_laboral.fecha`.
-- [ ] Toda clave foránea tiene `ON DELETE RESTRICT` (verificado en `information_schema.referential_constraints`).
-- [ ] El enum `estado_ticket` tiene exactamente `nueva, en_revision, rechazada, asignada, en_proceso, en_espera, resuelta, cerrada`, en ese orden.
-- [ ] `tickets.numero` rechaza valores que no cumplen `Q-AAAA-NNNNNN`.
-- [ ] `tickets.prioridad`, `tickets.canal`, `politicas_sla.prioridad` y `zonas.tipo` rechazan valores fuera de su lista.
-- [ ] `UPDATE`, `DELETE` y `TRUNCATE` sobre `bitacora` fallan con `bitacora es solo de inserción`.
-- [ ] Existen los índices `tickets (estado, dependencia_id)`, `tickets (asignado_a, estado)` y `tickets (vence_resolucion)`.
-- [ ] Las columnas con hora son `timestamp with time zone`.
-- [ ] `npm run test:db` pasa con Postgres arriba.
-- [ ] `npm test`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta `seed:run` y la convención de migraciones.
+- [x] `npm run build && npm run migrate:latest` sobre `vozmuni` vacía termina con código 0 y deja las 14 tablas de la sección 6.
+- [x] `npm run migrate:rollback` ejecutado hasta vaciar deja la base sin ninguna de las 14 tablas, sin `estado_ticket` y sin `bitacora_solo_insercion`.
+- [x] Ejecutar `npm run migrate:latest` otra vez después del rollback termina con código 0.
+- [x] `npm run seed:run` ejecutado dos veces deja exactamente 6 filas en `roles`, con los nombres `vecino`, `receptor`, `tecnico`, `coordinador`, `supervisor` y `administrador`.
+- [x] Toda clave primaria es `bigint` de identidad, salvo `calendario_laboral.fecha`.
+- [x] Toda clave foránea tiene `ON DELETE RESTRICT` (verificado en `information_schema.referential_constraints`).
+- [x] El enum `estado_ticket` tiene exactamente `nueva, en_revision, rechazada, asignada, en_proceso, en_espera, resuelta, cerrada`, en ese orden.
+- [x] `tickets.numero` rechaza valores que no cumplen `Q-AAAA-NNNNNN`.
+- [x] `tickets.prioridad`, `tickets.canal`, `politicas_sla.prioridad` y `zonas.tipo` rechazan valores fuera de su lista.
+- [x] `UPDATE`, `DELETE` y `TRUNCATE` sobre `bitacora` fallan con `bitacora es solo de inserción`.
+- [x] Existen los índices `tickets (estado, dependencia_id)`, `tickets (asignado_a, estado)` y `tickets (vence_resolucion)`.
+- [x] Las columnas con hora son `timestamp with time zone`.
+- [x] `npm run test:db` pasa con Postgres arriba.
+- [x] `npm test`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta `seed:run` y la convención de migraciones.
 
 ## Decisiones
 
