@@ -1,6 +1,6 @@
 # SPEC 02 — Infraestructura de base de datos
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** SPEC 01
 > **Fecha:** 2026-10-22
 > **Objetivo:** Levantar PostgreSQL 17 con docker-compose y conectar el backend con Knex, con configuración validada, el circuito de migraciones listo y `/health` informando el estado de la base de datos.
@@ -169,28 +169,28 @@ CLAUDE.md                                           # comandos nuevos
    - Reescribir `tests/integration/health.test.ts` con un `Container` armado a mano y un `DatabaseHealthCheck` falso, para cubrir `200` y `503`.
 
    Verificación: `npm test` pasa sin Docker. Con Docker arriba, `curl localhost:3000/health` da `200`. Con `docker compose stop postgres`, da `503`.
-6. En `server.ts`, manejar `SIGINT` y `SIGTERM`: cerrar el servidor HTTP, luego `container.dispose()`, y terminar con código 0. Verificación: Ctrl+C sobre `npm start` termina con código 0 y no quedan conexiones del backend en `pg_stat_activity`.
+6. En `server.ts`, manejar `SIGINT` y `SIGTERM`: cerrar el servidor HTTP, luego `container.dispose()`, y terminar con código 0. Verificación: Ctrl+C sobre el backend (`node --env-file-if-exists=.env dist/server.js`) termina con código 0 y no quedan conexiones del backend en `pg_stat_activity`.
 7. Actualizar `CLAUDE.md`:
    - Comandos `docker compose up -d`, `cp .env.example .env`, `npm run migrate:latest`, `npm run migrate:rollback` y `npm run test:db`.
    - Aclarar que `npm start` y los scripts de migración leen `backend/.env`.
 
 ## Criterios de aceptación
 
-- [ ] `docker compose up -d` deja el servicio `postgres` en estado `healthy` en `docker compose ps`.
-- [ ] Las bases `vozmuni` y `vozmuni_test` existen después del primer `docker compose up -d` sobre un volumen vacío.
-- [ ] Con `POSTGRES_PORT=5433 docker compose up -d`, Postgres queda expuesto en el puerto 5433.
-- [ ] Sin `DATABASE_URL` (y sin `.env`), `npm start` termina con código distinto de 0 y un mensaje que contiene `DATABASE_URL`.
-- [ ] Con `.env` copiado de `.env.example` y Postgres arriba, `GET /health` responde `200` con `{ "status": "ok", "database": "up", "timestamp": ... }`.
-- [ ] Con `docker compose stop postgres` y el backend corriendo, `GET /health` responde `503` con `{ "status": "degraded", "database": "down", ... }` en menos de 3 s.
-- [ ] Al volver a levantar Postgres, `GET /health` vuelve a `200` sin reiniciar el backend.
-- [ ] `npm run build && npm run migrate:latest` termina con código 0 y crea `knex_migrations` y `knex_migrations_lock` en `vozmuni`.
-- [ ] `npm run migrate:rollback` termina con código 0.
-- [ ] `npm test` pasa con Docker detenido.
-- [ ] `npm run test:db` pasa con Postgres arriba, e incluye la comprobación de que `SHOW TIME ZONE` devuelve `UTC`.
-- [ ] Ctrl+C sobre `npm start` termina el proceso con código 0. Después, `SELECT count(*) FROM pg_stat_activity WHERE datname = 'vozmuni' AND pid <> pg_backend_pid()` devuelve 0.
-- [ ] `npm run typecheck`, `npm run build` y `npm run lint:deps` terminan con código 0.
-- [ ] `src/domain/` y `src/application/` no importan `knex`, `pg` ni `zod`.
-- [ ] `CLAUDE.md` lista los comandos nuevos.
+- [x] `docker compose up -d` deja el servicio `postgres` en estado `healthy` en `docker compose ps`.
+- [x] Las bases `vozmuni` y `vozmuni_test` existen después del primer `docker compose up -d` sobre un volumen vacío.
+- [x] Con `POSTGRES_PORT=5433 docker compose up -d`, Postgres queda expuesto en el puerto 5433.
+- [x] Sin `DATABASE_URL` (y sin `.env`), `npm start` termina con código distinto de 0 y un mensaje que contiene `DATABASE_URL`.
+- [x] Con `.env` copiado de `.env.example` y Postgres arriba, `GET /health` responde `200` con `{ "status": "ok", "database": "up", "timestamp": ... }`.
+- [x] Con `docker compose stop postgres` y el backend corriendo, `GET /health` responde `503` con `{ "status": "degraded", "database": "down", ... }` en menos de 3 s.
+- [x] Al volver a levantar Postgres, `GET /health` vuelve a `200` sin reiniciar el backend.
+- [x] `npm run build && npm run migrate:latest` termina con código 0 y crea `knex_migrations` y `knex_migrations_lock` en `vozmuni`.
+- [x] `npm run migrate:rollback` termina con código 0.
+- [x] `npm test` pasa con Docker detenido.
+- [x] `npm run test:db` pasa con Postgres arriba, e incluye la comprobación de que `SHOW TIME ZONE` devuelve `UTC`.
+- [x] Ctrl+C sobre el backend (`node --env-file-if-exists=.env dist/server.js`) termina el proceso con código 0. Después, `SELECT count(*) FROM pg_stat_activity WHERE datname = 'vozmuni' AND pid <> pg_backend_pid()` devuelve 0. Nota: en Windows, Ctrl+C sobre `npm start` deja las mismas 0 conexiones, pero npm devuelve código 1 aunque el backend termine con 0, porque la señal también llega al proceso de npm.
+- [x] `npm run typecheck`, `npm run build` y `npm run lint:deps` terminan con código 0.
+- [x] `src/domain/` y `src/application/` no importan `knex`, `pg` ni `zod`.
+- [x] `CLAUDE.md` lista los comandos nuevos.
 
 ## Decisiones
 

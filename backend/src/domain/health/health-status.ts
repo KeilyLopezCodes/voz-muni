@@ -1,4 +1,5 @@
 export interface HealthStatus {
-  status: 'ok';
+  status: 'ok' | 'degraded';
+  database: 'up' | 'down';
   timestamp: Date; // UTC
 }

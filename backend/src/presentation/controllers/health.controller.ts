@@ -4,7 +4,8 @@ import type { HealthService } from '../../application/services/health.service';
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
-  check = (_req: Request, res: Response): void => {
-    res.status(200).json(this.healthService.check());
+  check = async (_req: Request, res: Response): Promise<void> => {
+    const health = await this.healthService.check();
+    res.status(health.database === 'up' ? 200 : 503).json(health);
   };
 }

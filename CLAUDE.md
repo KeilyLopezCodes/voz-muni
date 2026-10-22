@@ -11,13 +11,21 @@ This repository contains the backend skeleton (SPEC 01: layered `backend/` with 
 
 ## Commands
 
+Database (run from the repository root):
+
+- `docker compose up -d`: start PostgreSQL 17 with the `vozmuni` and `vozmuni_test` databases. Set `POSTGRES_PORT` to publish a port other than 5432.
+- `docker compose down -v`: remove the container and its volume. The init script that creates `vozmuni_test` only runs on an empty volume, so use this to recreate it.
+
 Backend (run from `backend/`):
 
 - `npm install`: install dependencies.
+- `cp .env.example .env`: create the local configuration. `npm start`, `migrate:latest`, `migrate:rollback` and `test:db` read `backend/.env` through `--env-file-if-exists`; without it they use the process environment. `DATABASE_URL` is required and validated at startup.
 - `npm run typecheck`: type-check `src/` and `tests/` without emitting.
 - `npm run build`: compile `src/` to `dist/`.
 - `npm start`: run `dist/server.js` (port from `PORT`, default 3000). Requires `npm run build` first.
-- `npm test`: run all Jest tests in `tests/`. Use `npx jest tests/unit/health.service.test.ts` for a single file.
+- `npm run migrate:latest` / `npm run migrate:rollback`: run the Knex CLI against the compiled migrations in `dist/`. Requires `npm run build` first.
+- `npm test`: run the Jest tests in `tests/` except `tests/db/`. Does not need Docker. Use `npx jest tests/unit/health.service.test.ts` for a single file.
+- `npm run test:db`: run `tests/db/` against real PostgreSQL using `DATABASE_URL_TEST`. Requires `docker compose up -d`.
 - `npm run lint:deps`: check the layer dependency rules in `.dependency-cruiser.cjs` (RNF-17).
 
 The frontend does not exist yet and has no commands. Do not invent them; add them here once it exists.
