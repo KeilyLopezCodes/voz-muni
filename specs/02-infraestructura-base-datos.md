@@ -1,6 +1,6 @@
 # SPEC 02 — Infraestructura de base de datos
 
-> **Estado:** Aprogado
+> **Estado:** Aprobado
 > **Depende de:** SPEC 01
 > **Fecha:** 2026-10-22
 > **Objetivo:** Levantar PostgreSQL 17 con docker-compose y conectar el backend con Knex, con configuración validada, el circuito de migraciones listo y `/health` informando el estado de la base de datos.
