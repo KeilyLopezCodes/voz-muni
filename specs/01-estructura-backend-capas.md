@@ -178,6 +178,7 @@ Todas las reglas tienen severidad `error`. `src/container.ts` es el único archi
 - **Sí:** `/health` fuera de `/api/v1`. RNF-21 nombra el endpoint como `/health`, y el prefijo `/api/v1` queda para otra spec.
 - **Sí:** pruebas en `backend/tests/` separadas de `src/`. Así dependency-cruiser analiza solo código de producción y `dist/` no lleva pruebas.
 - **Sí:** npm, Node 22 LTS, TypeScript `strict` y Jest con ts-jest, sin ESLint ni Prettier por ahora.
+- **Sí:** TypeScript fijado en `~5.9`. TypeScript 7 no expone la API de compilador en JavaScript y ts-jest 29 exige `typescript <7`. Migrar a TS 7 va en otra spec.
 - **Sí:** puerto por defecto 3000, configurable con la variable de entorno `PORT`.
 - **Sí:** `git init` como prerrequisito y no como paso del plan. `/spec-impl` necesita un repositorio para crear la rama antes del paso 1.
 - **No:** CI en esta spec. Los scripts quedan listos para que una spec posterior los ejecute en un pipeline.
