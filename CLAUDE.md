@@ -4,12 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-This repository has no application code yet. It contains:
+This repository contains the backend skeleton (SPEC 01: layered `backend/` with `GET /health` and the layer dependency rules). There is no frontend and no business logic yet. It also contains:
 
 - `Sistema de Gestión de Quejas Municipales — Definición de la Solución.md`: the product definition for **VozMuni**, a municipal complaint/ticketing system. It covers roles, the permission matrix, the ticket lifecycle, requirements RF-01–RF-42 and RNF-01–RNF-23, the architecture, the data model and the endpoints. Treat it as the source of truth. When a spec or the code disagrees with it, flag the conflict instead of picking one silently.
 - `.agents/skills/spec` and `.agents/skills/spec-impl`: the spec-driven workflow skills. `skills-lock.json` pins them from `Klerith/fernando-skills`.
 
-There are no build, lint or test commands yet. Do not invent them. Once the backend and frontend exist, add their real commands here.
+## Commands
+
+Backend (run from `backend/`):
+
+- `npm install`: install dependencies.
+- `npm run typecheck`: type-check `src/` and `tests/` without emitting.
+- `npm run build`: compile `src/` to `dist/`.
+- `npm start`: run `dist/server.js` (port from `PORT`, default 3000). Requires `npm run build` first.
+- `npm test`: run all Jest tests in `tests/`. Use `npx jest tests/unit/health.service.test.ts` for a single file.
+- `npm run lint:deps`: check the layer dependency rules in `.dependency-cruiser.cjs` (RNF-17).
+
+The frontend does not exist yet and has no commands. Do not invent them; add them here once it exists.
 
 ## Workflow: spec-driven development
 
@@ -21,7 +32,7 @@ Work goes through numbered specs in `specs/NN-slug.md`, which follow `.agents/sk
 
 The definition document is in Spanish. Write specs in one language and keep their state labels consistent (for example Borrador / Aprobado / Implementado) across all specs.
 
-Implementing specs requires a git repository; the folder is not one yet.
+The project is a git repository with `main` as the base branch. `/spec-impl` needs a clean working tree before it creates the spec branch, so commit or stash pending changes first.
 
 ## Planned architecture
 

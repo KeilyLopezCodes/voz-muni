@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "test": "jest",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "lint:deps": "depcruise src --config .dependency-cruiser.cjs"
   },
   "dependencies": {
     "express": "^5.3.0"
@@ -21,6 +22,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^22.20.5",
     "@types/supertest": "^7.2.1",
+    "dependency-cruiser": "^18.7.0",
     "jest": "^30.5.2",
     "supertest": "^7.3.1",
     "ts-jest": "^29.4.15",

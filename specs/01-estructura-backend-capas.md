@@ -125,6 +125,7 @@ backend/
 | --- | --- |
 | `domain-no-capas-externas` | `src/domain` → `src/application`, `src/presentation`, `src/infrastructure`, `src/container.ts`, `src/app.ts`, `src/server.ts` |
 | `domain-no-frameworks` | `src/domain` → paquetes `express`, `knex`, `pg` |
+| `domain-no-npm` | `src/domain` → cualquier paquete de `node_modules` |
 | `application-no-capas-externas` | `src/application` → `src/presentation`, `src/infrastructure` |
 | `application-no-frameworks` | `src/application` → paquetes `express`, `knex`, `pg` |
 | `presentation-no-infrastructure` | `src/presentation` → `src/infrastructure` |
@@ -175,6 +176,7 @@ Todas las reglas tienen severidad `error`. `src/container.ts` es el único archi
 - **Sí:** crear todo el árbol de la sección 6 desde ahora, con `.gitkeep`. Fija la estructura acordada antes de que las specs siguientes la llenen.
 - **Sí:** se agregan `domain/health/` e `infrastructure/clock/`, que no están en el árbol del documento de definición. Son la casa del ejemplo `/health`.
 - **Sí:** `infrastructure/jobs/` puede importar de `application`. CLAUDE.md exige que los jobs llamen a los mismos servicios de aplicación que la API. El resto de `infrastructure` no puede.
+- **Sí:** regla `domain-no-npm`, agregada durante la implementación. Hace cumplir el criterio "`src/domain/` no importa paquetes de `node_modules`", que `domain-no-frameworks` solo cubría para express, knex y pg. Se mantiene `domain-no-frameworks` porque da un mensaje más específico.
 - **Sí:** `/health` fuera de `/api/v1`. RNF-21 nombra el endpoint como `/health`, y el prefijo `/api/v1` queda para otra spec.
 - **Sí:** pruebas en `backend/tests/` separadas de `src/`. Así dependency-cruiser analiza solo código de producción y `dist/` no lleva pruebas.
 - **Sí:** npm, Node 22 LTS, TypeScript `strict` y Jest con ts-jest, sin ESLint ni Prettier por ahora.
