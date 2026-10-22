@@ -1,6 +1,6 @@
 # SPEC 01 — Estructura del backend en capas
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** —
 > **Fecha:** 2026-10-22
 > **Objetivo:** Crear el proyecto `backend/` en TypeScript con las cuatro capas (presentation, application, domain, infrastructure), un `GET /health` que las atraviesa y la regla de dependencias entre capas verificada con dependency-cruiser.
@@ -149,20 +149,20 @@ Todas las reglas tienen severidad `error`. `src/container.ts` es el único archi
 
 ## Criterios de aceptación
 
-- [ ] Desde `backend/`, `npm install` termina sin errores.
-- [ ] `npm run typecheck` termina con código 0.
-- [ ] `npm run build` genera `dist/server.js` y no incluye archivos de `tests/` en `dist/`.
-- [ ] Con `npm start` corriendo, `GET http://localhost:3000/health` responde `200` con `status` igual a `"ok"` y `timestamp` en formato ISO 8601 terminado en `Z`.
-- [ ] Con `PORT=4000 npm start`, el servidor escucha en el puerto 4000.
-- [ ] `npm test` ejecuta exactamente 2 archivos de prueba (unitaria e integración) y ambos pasan.
-- [ ] La prueba unitaria de `HealthService` no importa nada de `src/infrastructure` ni de `express`.
-- [ ] `npm run lint:deps` termina con código 0 sobre el código entregado.
-- [ ] Si se agrega temporalmente `import express from 'express';` en `src/domain/health/clock.ts`, `npm run lint:deps` termina con código distinto de 0 y menciona `domain-no-frameworks`.
-- [ ] Si se agrega temporalmente un import de `src/infrastructure/clock/system-clock` en `src/application/services/health.service.ts`, `npm run lint:deps` falla y menciona `application-no-capas-externas`.
-- [ ] Si se agrega temporalmente un import de `src/infrastructure/clock/system-clock` en `src/presentation/controllers/health.controller.ts`, `npm run lint:deps` falla y menciona `presentation-no-infrastructure`.
-- [ ] Existen todas las carpetas de la sección 6 del documento de definición: `middlewares/`, `validators/`, `ticket/`, `sla/`, `repositories/` (en domain e infrastructure), `errors/`, `database/migrations/`, `database/seeds/`, `mail/`, `storage/` y `jobs/`.
-- [ ] `src/domain/` no contiene ningún import de un paquete de `node_modules`.
-- [ ] `CLAUDE.md` lista los comandos reales del backend.
+- [x] Desde `backend/`, `npm install` termina sin errores.
+- [x] `npm run typecheck` termina con código 0.
+- [x] `npm run build` genera `dist/server.js` y no incluye archivos de `tests/` en `dist/`.
+- [x] Con `npm start` corriendo, `GET http://localhost:3000/health` responde `200` con `status` igual a `"ok"` y `timestamp` en formato ISO 8601 terminado en `Z`.
+- [x] Con `PORT=4000 npm start`, el servidor escucha en el puerto 4000.
+- [x] `npm test` ejecuta exactamente 2 archivos de prueba (unitaria e integración) y ambos pasan.
+- [x] La prueba unitaria de `HealthService` no importa nada de `src/infrastructure` ni de `express`.
+- [x] `npm run lint:deps` termina con código 0 sobre el código entregado.
+- [x] Si se agrega temporalmente `import express from 'express';` en `src/domain/health/clock.ts`, `npm run lint:deps` termina con código distinto de 0 y menciona `domain-no-frameworks`.
+- [x] Si se agrega temporalmente un import de `src/infrastructure/clock/system-clock` en `src/application/services/health.service.ts`, `npm run lint:deps` falla y menciona `application-no-capas-externas`.
+- [x] Si se agrega temporalmente un import de `src/infrastructure/clock/system-clock` en `src/presentation/controllers/health.controller.ts`, `npm run lint:deps` falla y menciona `presentation-no-infrastructure`.
+- [x] Existen todas las carpetas de la sección 6 del documento de definición: `middlewares/`, `validators/`, `ticket/`, `sla/`, `repositories/` (en domain e infrastructure), `errors/`, `database/migrations/`, `database/seeds/`, `mail/`, `storage/` y `jobs/`.
+- [x] `src/domain/` no contiene ningún import de un paquete de `node_modules`.
+- [x] `CLAUDE.md` lista los comandos reales del backend.
 
 ## Decisiones
 
