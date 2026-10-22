@@ -1,0 +1,27 @@
+{
+  "app": {
+    "titulo": "VozMuni"
+  },
+  "menu": {
+    "principal": "Menú principal",
+    "abrir": "Abrir menú",
+    "tickets": "Quejas",
+    "nuevoTicket": "Nueva queja",
+    "reportes": "Reportes",
+    "admin": "Administración"
+  },
+  "errores": {
+    "noAutorizado": {
+      "titulo": "Acceso no autorizado",
+      "descripcion": "Tu rol no tiene permiso para ver esta página."
+    },
+    "noEncontrado": {
+      "titulo": "Página no encontrada",
+      "descripcion": "La dirección que buscas no existe."
+    },
+    "volverAlInicio": "Volver al inicio"
+  },
+  "placeholder": {
+    "proximamente": "Esta pantalla estará disponible próximamente."
+  }
+}

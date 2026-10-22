@@ -28,7 +28,13 @@ Backend (run from `backend/`):
 - `npm run test:db`: run `tests/db/` against real PostgreSQL using `DATABASE_URL_TEST`. Requires `docker compose up -d`.
 - `npm run lint:deps`: check the layer dependency rules in `.dependency-cruiser.cjs` (RNF-17).
 
-The frontend does not exist yet and has no commands. Do not invent them; add them here once it exists.
+Frontend (run from `frontend/`):
+
+- `npm install`: install dependencies.
+- `npm run dev`: start the Vite dev server on `http://localhost:5173`. It proxies `/api` and `/health` to `http://localhost:3000`, so the backend must be running there (`npm start` in `backend/`) for API calls to work.
+- `npm run build`: type-check `src/` and `tests/` and build to `dist/`.
+- `npm test`: run the Vitest tests in `tests/`. Use `npx vitest run tests/shared/http-client.test.ts` for a single file.
+- `npm run lint:deps`: check the feature boundaries in `.dependency-cruiser.cjs`.
 
 ## Workflow: spec-driven development
 
@@ -54,6 +60,7 @@ These points are spread across the definition document. Follow them when writing
   - Controllers only translate between HTTP and DTOs and contain no business logic.
   - CI is expected to enforce these dependency rules (RNF-17).
 - **Frontend layout.** The frontend is split into `features/{auth,tickets,reportes,admin}` plus `shared/`. `shared/` holds the HTTP client and the role-based route guards.
+  - The route guards (`RequireRole`) are not security. They only avoid showing screens a role cannot use. Real authorization lives in the backend (RF-05), and every endpoint must enforce it on its own.
 - **One home for business rules.** The node-cron jobs (80 % SLA alert, escalation, auto-close) live in `infrastructure/jobs/`. They call the same application services as the API and must not duplicate rules.
 - **Ticket lifecycle** (section 3 of the definition document):
   - There are 8 states. Only `Cerrada` and `Rechazada` are final. The domain layer rejects any transition not in the table.

@@ -1,0 +1,11 @@
+{
+  "listado": {
+    "titulo": "Quejas"
+  },
+  "nuevo": {
+    "titulo": "Nueva queja"
+  },
+  "consulta": {
+    "titulo": "Consultar el estado de una queja"
+  }
+}
