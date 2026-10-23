@@ -1,6 +1,6 @@
 # SPEC 16 — Registro de vecino con verificación de correo
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** SPEC 06, SPEC 08, SPEC 09, SPEC 10, SPEC 13
 > **Fecha:** 2026-10-22
 > **Objetivo:** Permitir que un vecino cree su cuenta en el portal con nombre, DPI, correo, teléfono opcional y contraseña, y la active con un enlace de verificación de 24 h enviado a su correo, sin revelar qué correos o DPI ya están registrados, con las pantallas `/registro` y `/verificar`.
@@ -292,25 +292,25 @@ frontend/
 
 ## Criterios de aceptación
 
-- [ ] La sección 6 del documento de definición incluye `correo_verificado_en`, el tipo `verificacion` y los endpoints `POST /api/v1/auth/registro` y `POST /api/v1/auth/verificar`, y el vacío de RF-01 figura como resuelto.
-- [ ] Después de `migrate:latest`, los usuarios que ya tenían contraseña quedan con `correo_verificado_en` lleno, existen las 3 plantillas, y `restablecimientos.tipo` acepta `verificacion`.
-- [ ] `POST /api/v1/auth/registro` con datos válidos responde `202` con el mismo cuerpo en los 5 casos de la tabla, y cada caso envía el correo que le corresponde (o ninguno, en el caso 5).
-- [ ] Un registro nuevo crea un vecino activo, con contraseña hasheada y `correo_verificado_en = null`, y envía `verificacion_correo` con un enlace que vence a las 24 h.
-- [ ] El registro rechaza con `400` un DPI que no tiene 13 dígitos, un correo inválido, un teléfono que no tiene 8 dígitos, una contraseña que no cumple RNF-08 y cualquier campo desconocido.
-- [ ] Registrar de nuevo un correo pendiente de verificación reemplaza sus datos y su contraseña, y solo el enlace nuevo sirve.
-- [ ] Un vecino de ventanilla, una cuenta verificada o un usuario interno con el mismo correo no se modifican, y su correo recibe `cuenta_existente`.
-- [ ] Un DPI que ya pertenece a otro usuario no crea ni modifica nada, y el correo ingresado recibe `registro_no_completado`.
-- [ ] Con la contraseña correcta y el correo sin verificar, el login responde `403 CORREO_NO_VERIFICADO` sin tokens. Con la contraseña incorrecta responde `401 CREDENCIALES_INVALIDAS`, como siempre.
-- [ ] `POST /api/v1/auth/verificar` con un token vigente responde `200` y marca el correo como verificado, y el login funciona después. Un token usado, vencido o de otro tipo responde `400 TOKEN_VERIFICACION_INVALIDO`.
-- [ ] Usar un enlace de recuperación o de invitación en `/auth/restablecer` marca el correo como verificado, y un token `verificacion` no sirve allí.
-- [ ] Los usuarios de `seed:dev` inician sesión sin verificar nada.
-- [ ] En el frontend, `/registro` y `/verificar` cargan sin sesión. `/login` tiene el enlace "Crear cuenta".
-- [ ] El formulario de `/registro` valida en el navegador cada regla del backend y la confirmación de la contraseña, con textos traducidos. Al registrarse muestra "Revisa tu correo".
-- [ ] `/verificar?token=…` llama una sola vez a la API y muestra el éxito con un enlace a `/login`, o el error con un enlace a `/registro`.
-- [ ] Ningún texto visible de las páginas nuevas está fijo en un componente: todos están en `locales/es/auth.json`.
-- [ ] A 360 px de ancho, `/registro` no produce scroll horizontal.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta el registro, la verificación, la regla del login y los tipos de enlace.
+- [x] La sección 6 del documento de definición incluye `correo_verificado_en`, el tipo `verificacion` y los endpoints `POST /api/v1/auth/registro` y `POST /api/v1/auth/verificar`, y el vacío de RF-01 figura como resuelto.
+- [x] Después de `migrate:latest`, los usuarios que ya tenían contraseña quedan con `correo_verificado_en` lleno, existen las 3 plantillas, y `restablecimientos.tipo` acepta `verificacion`.
+- [x] `POST /api/v1/auth/registro` con datos válidos responde `202` con el mismo cuerpo en los 5 casos de la tabla, y cada caso envía el correo que le corresponde (o ninguno, en el caso 5).
+- [x] Un registro nuevo crea un vecino activo, con contraseña hasheada y `correo_verificado_en = null`, y envía `verificacion_correo` con un enlace que vence a las 24 h.
+- [x] El registro rechaza con `400` un DPI que no tiene 13 dígitos, un correo inválido, un teléfono que no tiene 8 dígitos, una contraseña que no cumple RNF-08 y cualquier campo desconocido.
+- [x] Registrar de nuevo un correo pendiente de verificación reemplaza sus datos y su contraseña, y solo el enlace nuevo sirve.
+- [x] Un vecino de ventanilla, una cuenta verificada o un usuario interno con el mismo correo no se modifican, y su correo recibe `cuenta_existente`.
+- [x] Un DPI que ya pertenece a otro usuario no crea ni modifica nada, y el correo ingresado recibe `registro_no_completado`.
+- [x] Con la contraseña correcta y el correo sin verificar, el login responde `403 CORREO_NO_VERIFICADO` sin tokens. Con la contraseña incorrecta responde `401 CREDENCIALES_INVALIDAS`, como siempre.
+- [x] `POST /api/v1/auth/verificar` con un token vigente responde `200` y marca el correo como verificado, y el login funciona después. Un token usado, vencido o de otro tipo responde `400 TOKEN_VERIFICACION_INVALIDO`.
+- [x] Usar un enlace de recuperación o de invitación en `/auth/restablecer` marca el correo como verificado, y un token `verificacion` no sirve allí.
+- [x] Los usuarios de `seed:dev` inician sesión sin verificar nada.
+- [x] En el frontend, `/registro` y `/verificar` cargan sin sesión. `/login` tiene el enlace "Crear cuenta".
+- [x] El formulario de `/registro` valida en el navegador cada regla del backend y la confirmación de la contraseña, con textos traducidos. Al registrarse muestra "Revisa tu correo".
+- [x] `/verificar?token=…` llama una sola vez a la API y muestra el éxito con un enlace a `/login`, o el error con un enlace a `/registro`.
+- [x] Ningún texto visible de las páginas nuevas está fijo en un componente: todos están en `locales/es/auth.json`.
+- [x] A 360 px de ancho, `/registro` no produce scroll horizontal.
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta el registro, la verificación, la regla del login y los tipos de enlace.
 
 ## Decisiones
 

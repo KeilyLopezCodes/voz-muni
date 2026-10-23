@@ -1,7 +1,9 @@
 import Alert from '@mui/material/Alert'
+import Button from '@mui/material/Button'
 import Container from '@mui/material/Container'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { useEstadoServidor, type EstadoServidor } from '../../../shared/api/health'
 
 const SEVERIDAD = {
@@ -31,6 +33,9 @@ export function LoginPage() {
       <Alert severity={SEVERIDAD[estado]} role="status">
         {t(CLAVE[estado])}
       </Alert>
+      <Button component={Link} to="/registro" sx={{ mt: 2 }}>
+        {t('auth:login.crearCuenta')}
+      </Button>
     </Container>
   )
 }
