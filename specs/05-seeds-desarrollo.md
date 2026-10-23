@@ -1,6 +1,6 @@
 # SPEC 05 — Seeds de desarrollo con configuración municipal de ejemplo
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 03
 > **Fecha:** 2026-10-22
 > **Objetivo:** Cargar con `npm run seed:dev` dependencias, categorías, zonas, políticas SLA y el calendario laboral 2026–2027 de ejemplo, solo en entornos que no son de producción, para tener un entorno de desarrollo funcional.
