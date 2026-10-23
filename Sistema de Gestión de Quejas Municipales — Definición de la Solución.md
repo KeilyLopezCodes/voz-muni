@@ -286,14 +286,14 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | categorias | id, nombre, dependencia\_id, campos\_extra (jsonb), activa |
 | politicas\_sla | id, categoria\_id, prioridad, horas\_respuesta, horas\_resolucion |
 | zonas | id, nombre, tipo (zona, colonia, aldea) |
-| tickets | id, numero (único), solicitante\_id, categoria\_id, dependencia\_id, asignado\_a, estado, prioridad, canal, zona\_id, direccion, lat, lng, datos\_extra (jsonb), vence\_respuesta, vence\_resolucion, escalado, creado\_en, resuelto\_en, cerrado\_en |
+| tickets | id, numero (único), solicitante\_id, categoria\_id, dependencia\_id, asignado\_a, estado, prioridad, canal, zona\_id, direccion, lat, lng, datos\_extra (jsonb), vence\_respuesta, vence\_resolucion, escalado, creado\_en, resuelto\_en, cerrado\_en, registrado\_por (usuario que la registró: el propio vecino o el receptor de ventanilla) |
 | ticket\_historial | id, ticket\_id, estado\_anterior, estado\_nuevo, usuario\_id, motivo, creado\_en |
 | comentarios | id, ticket\_id, autor\_id, cuerpo, es\_interno, creado\_en |
 | adjuntos | id, ticket\_id, comentario\_id, nombre, ruta, tipo\_mime, tamano\_bytes |
 | encuestas | id, ticket\_id, calificacion, comentario, creado\_en |
 | notificaciones | id, usuario\_id, ticket\_id, tipo, leida, creado\_en |
 | calendario\_laboral | fecha, es\_habil, descripcion |
-| bitacora | id, usuario\_id, accion, entidad, entidad\_id, detalle (jsonb), ip, creado\_en |
+| bitacora | id, usuario\_id, accion, entidad, entidad\_id, detalle (jsonb), ip, creado\_en, dependencia\_id (para la bitácora por dependencia; nulo en acciones sin dependencia) |
 | plantillas\_notificacion | id, clave (única), asunto, cuerpo\_texto, cuerpo\_html, actualizado\_en |
 | restablecimientos | id, usuario\_id, token\_hash (SHA-256 del token, único), tipo (recuperacion, invitacion), expira\_en, usado\_en, invalidado\_en, creado\_en |
 

@@ -34,8 +34,19 @@ export function envDePrueba(cambios: Partial<Env> = {}): Env {
 // Deja la base sin esquema. Antes borra sesiones y usuarios, porque el down de 0006_roles
 // falla a propósito si algún usuario tiene uno de los 6 roles (ON DELETE RESTRICT).
 export async function reiniciarEsquema(db: Knex): Promise<void> {
-  // Primero las tablas que apuntan a usuarios.
-  for (const tabla of ['sesiones', 'restablecimientos', 'usuarios']) {
+  // Primero las tablas que apuntan a usuarios. La bitácora no se puede vaciar: el rollback la elimina.
+  const tablas = [
+    'ticket_historial',
+    'comentarios',
+    'adjuntos',
+    'encuestas',
+    'notificaciones',
+    'tickets',
+    'sesiones',
+    'restablecimientos',
+    'usuarios',
+  ];
+  for (const tabla of tablas) {
     if (await db.schema.hasTable(tabla)) {
       await db(tabla).delete();
     }

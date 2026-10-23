@@ -81,6 +81,7 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['creado_en', 'timestamp with time zone'],
     ['resuelto_en', 'timestamp with time zone'],
     ['cerrado_en', 'timestamp with time zone'],
+    ['registrado_por', 'bigint'],
   ],
   ticket_historial: [
     ['id', 'bigint'],
@@ -132,6 +133,7 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['detalle', 'jsonb'],
     ['ip', 'inet'],
     ['creado_en', 'timestamp with time zone'],
+    ['dependencia_id', 'bigint'],
   ],
   plantillas_notificacion: [
     ['id', 'bigint'],
@@ -427,6 +429,18 @@ describe('Esquema de base de datos', () => {
       }));
   });
 
+  describe('índices de alcance (0011)', () => {
+    it.each([
+      ['tickets_solicitante_idx', 'tickets', '(solicitante_id)'],
+      ['tickets_registrado_por_idx', 'tickets', '(registrado_por)'],
+      ['bitacora_dependencia_creado_en_idx', 'bitacora', '(dependencia_id, creado_en)'],
+    ])('existe %s', async (nombre, tabla, columnas) => {
+      const indice = await db('pg_indexes').where({ schemaname: 'public', indexname: nombre }).first('tablename', 'indexdef');
+      expect(indice.tablename).toBe(tabla);
+      expect(indice.indexdef).toContain(columnas);
+    });
+  });
+
   describe('bitacora', () => {
     const SOLO_INSERCION = 'bitacora es solo de inserción';
 
@@ -453,6 +467,18 @@ describe('Esquema de base de datos', () => {
       withRollback(async (trx) => {
         const id = await insertBitacora(trx);
         await expect(trx('bitacora').where({ id }).delete()).rejects.toThrow(SOLO_INSERCION);
+      }));
+
+    it('acepta una fila con dependencia_id y el trigger sigue bloqueando UPDATE', () =>
+      withRollback(async (trx) => {
+        const [dependencia] = await trx('dependencias').insert({ nombre: 'Dependencia prueba' }).returning('id');
+        const [fila] = await trx('bitacora')
+          .insert({ accion: 'crear', entidad: 'ticket', entidad_id: '1', dependencia_id: dependencia.id })
+          .returning(['id', 'dependencia_id']);
+        expect(fila.dependencia_id).toBe(dependencia.id);
+        await expect(trx('bitacora').where({ id: fila.id }).update({ dependencia_id: null })).rejects.toThrow(
+          SOLO_INSERCION,
+        );
       }));
 
     it('rechaza TRUNCATE', () =>

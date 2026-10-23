@@ -1,11 +1,14 @@
 import knex from 'knex';
 import { AuthService } from './application/services/auth.service';
 import { AutorizacionService } from './application/services/autorizacion.service';
+import { ConsultaTicketsService } from './application/services/consulta-tickets.service';
 import { EnvioCorreo } from './application/services/envio-correo';
 import { HealthService } from './application/services/health.service';
 import { RecuperacionService } from './application/services/recuperacion.service';
 import { UsuariosService } from './application/services/usuarios.service';
 import type { EnviadorCorreo } from './domain/notificaciones/enviador-correo';
+import type { BitacoraLecturaRepository } from './domain/repositories/bitacora-lectura-repository';
+import type { ReporteLecturaRepository } from './domain/repositories/reporte-lectura-repository';
 import { BcryptPasswordHasher } from './infrastructure/auth/bcrypt-password-hasher';
 import { JwtTokenService } from './infrastructure/auth/jwt-token-service';
 import { SystemClock } from './infrastructure/clock/system-clock';
@@ -13,9 +16,12 @@ import { type Env, loadEnv } from './infrastructure/config/env';
 import { buildKnexConfig } from './infrastructure/database/knex-config';
 import { KnexDatabaseHealthCheck } from './infrastructure/database/knex-database-health-check';
 import { NodemailerEnviadorCorreo } from './infrastructure/mail/nodemailer-enviador-correo';
+import { KnexBitacoraLecturaRepository } from './infrastructure/repositories/knex-bitacora-lectura-repository';
 import { KnexPlantillaRepository } from './infrastructure/repositories/knex-plantilla-repository';
+import { KnexReporteLecturaRepository } from './infrastructure/repositories/knex-reporte-lectura-repository';
 import { KnexRestablecimientoRepository } from './infrastructure/repositories/knex-restablecimiento-repository';
 import { KnexSesionRepository } from './infrastructure/repositories/knex-sesion-repository';
+import { KnexTicketLecturaRepository } from './infrastructure/repositories/knex-ticket-lectura-repository';
 import { KnexTransaccion } from './infrastructure/repositories/knex-transaccion';
 import { KnexUsuarioAdminRepository } from './infrastructure/repositories/knex-usuario-admin-repository';
 import { KnexUsuarioRepository } from './infrastructure/repositories/knex-usuario-repository';
@@ -29,6 +35,10 @@ export interface Container {
   autorizacionService: AutorizacionService;
   recuperacionService: RecuperacionService;
   usuariosService: UsuariosService;
+  // Lectura con alcance (SPEC 11). Los endpoints de tickets, reportes y bitácora llegan con sus specs.
+  consultaTicketsService: ConsultaTicketsService;
+  reportesLectura: ReporteLecturaRepository;
+  bitacoraLectura: BitacoraLecturaRepository;
   dispose(): Promise<void>;
 }
 
@@ -75,6 +85,9 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
       env.APP_URL,
     ),
     usuariosService: new UsuariosService(new KnexUsuarioAdminRepository(db), transaccion, correo, tokens, clock, env.APP_URL),
+    consultaTicketsService: new ConsultaTicketsService(new KnexTicketLecturaRepository(db)),
+    reportesLectura: new KnexReporteLecturaRepository(db),
+    bitacoraLectura: new KnexBitacoraLecturaRepository(db),
     dispose: () => db.destroy(),
   };
 }

@@ -1,6 +1,6 @@
 # SPEC 11 — Alcance por recurso: tickets, reportes y bitácora
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 08, SPEC 10
 > **Fecha:** 2026-10-22
 > **Objetivo:** Traducir en el dominio el alcance de cada permiso (`propia`, `registradas`, `asignadas`, `dependencia`, `todas`) a filtros sobre tickets, reportes y bitácora, y aplicarlos en repositorios de solo lectura, de modo que ningún usuario lea o actúe sobre registros fuera de su alcance.
@@ -301,21 +301,21 @@ backend/
 
 ## Criterios de aceptación
 
-- [ ] La sección 6 del documento de definición incluye `tickets.registrado_por` y `bitacora.dependencia_id`.
-- [ ] `npm run migrate:latest` crea las 2 columnas y los 3 índices, y el trigger de solo inserción de `bitacora` sigue bloqueando `UPDATE`, `DELETE` y `TRUNCATE`.
-- [ ] `filtroTicketsPorAlcance` traduce `propia`, `registradas`, `asignadas`, `dependencia` y `todas` según la tabla de esta spec, y `dependencia` sin dependencia devuelve `null`.
-- [ ] Para cualquier acción distinta de `tickets.ver`, el filtro es la intersección con el de `tickets.ver`, y un coordinador no puede clasificar ni asignar un ticket de otra dependencia.
-- [ ] Un rol sin la acción o sin `tickets.ver` obtiene un filtro `null` y no accede a ningún ticket.
-- [ ] Con el fixture de esta spec, `listar` devuelve para cada uno de los 8 usuarios exactamente los tickets de la tabla "Ve", con el `total` correcto.
-- [ ] `obtener` y `obtenerParaAccion` sobre un ticket fuera de alcance se comportan igual que sobre un ticket inexistente: `null` en el repositorio y `NO_ENCONTRADO` en el servicio.
-- [ ] Un ticket con `dependencia_id = null` no lo ven ni el técnico ni el coordinador, y sí el supervisor, el administrador, su solicitante y quien lo registró.
-- [ ] Un filtro `null` no ejecuta ninguna consulta a la base.
-- [ ] `contarPorEstado` devuelve los 8 estados y cuenta solo los tickets del alcance de `reportes.ver`: los asignados para el técnico y su dependencia para el coordinador.
-- [ ] La bitácora del coordinador devuelve solo las filas de su dependencia. Las filas con `dependencia_id = null` solo las ven el supervisor y el administrador.
-- [ ] Ningún nombre de columna en `knex-filtro.ts` sale de la entrada: todos vienen de un mapa fijo.
-- [ ] Ningún archivo de `src/domain/autorizacion/` importa algo fuera de `src/domain/`.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta que toda consulta de negocio usa los filtros de alcance y que un registro fuera de alcance responde `404`.
+- [x] La sección 6 del documento de definición incluye `tickets.registrado_por` y `bitacora.dependencia_id`.
+- [x] `npm run migrate:latest` crea las 2 columnas y los 3 índices, y el trigger de solo inserción de `bitacora` sigue bloqueando `UPDATE`, `DELETE` y `TRUNCATE`.
+- [x] `filtroTicketsPorAlcance` traduce `propia`, `registradas`, `asignadas`, `dependencia` y `todas` según la tabla de esta spec, y `dependencia` sin dependencia devuelve `null`.
+- [x] Para cualquier acción distinta de `tickets.ver`, el filtro es la intersección con el de `tickets.ver`, y un coordinador no puede clasificar ni asignar un ticket de otra dependencia.
+- [x] Un rol sin la acción o sin `tickets.ver` obtiene un filtro `null` y no accede a ningún ticket.
+- [x] Con el fixture de esta spec, `listar` devuelve para cada uno de los 8 usuarios exactamente los tickets de la tabla "Ve", con el `total` correcto.
+- [x] `obtener` y `obtenerParaAccion` sobre un ticket fuera de alcance se comportan igual que sobre un ticket inexistente: `null` en el repositorio y `NO_ENCONTRADO` en el servicio.
+- [x] Un ticket con `dependencia_id = null` no lo ven ni el técnico ni el coordinador, y sí el supervisor, el administrador, su solicitante y quien lo registró.
+- [x] Un filtro `null` no ejecuta ninguna consulta a la base.
+- [x] `contarPorEstado` devuelve los 8 estados y cuenta solo los tickets del alcance de `reportes.ver`: los asignados para el técnico y su dependencia para el coordinador.
+- [x] La bitácora del coordinador devuelve solo las filas de su dependencia. Las filas con `dependencia_id = null` solo las ven el supervisor y el administrador.
+- [x] Ningún nombre de columna en `knex-filtro.ts` sale de la entrada: todos vienen de un mapa fijo.
+- [x] Ningún archivo de `src/domain/autorizacion/` importa algo fuera de `src/domain/`.
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta que toda consulta de negocio usa los filtros de alcance y que un registro fuera de alcance responde `404`.
 
 ## Decisiones
 

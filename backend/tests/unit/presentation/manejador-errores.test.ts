@@ -6,6 +6,9 @@ import type { AuthService } from '../../../src/application/services/auth.service
 import type { AutorizacionService } from '../../../src/application/services/autorizacion.service';
 import type { RecuperacionService } from '../../../src/application/services/recuperacion.service';
 import type { UsuariosService } from '../../../src/application/services/usuarios.service';
+import type { ConsultaTicketsService } from '../../../src/application/services/consulta-tickets.service';
+import type { BitacoraLecturaRepository } from '../../../src/domain/repositories/bitacora-lectura-repository';
+import type { ReporteLecturaRepository } from '../../../src/domain/repositories/reporte-lectura-repository';
 import { HealthService } from '../../../src/application/services/health.service';
 import type { Container } from '../../../src/container';
 import { manejadorErrores } from '../../../src/presentation/middlewares/manejador-errores';
@@ -22,6 +25,9 @@ function buildTestContainer(): Container {
     autorizacionService: {} as AutorizacionService,
     recuperacionService: {} as RecuperacionService,
     usuariosService: {} as UsuariosService,
+    consultaTicketsService: {} as ConsultaTicketsService,
+    reportesLectura: {} as ReporteLecturaRepository,
+    bitacoraLectura: {} as BitacoraLecturaRepository,
     dispose: async () => {},
   };
 }
