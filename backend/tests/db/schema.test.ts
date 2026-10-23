@@ -82,6 +82,8 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['resuelto_en', 'timestamp with time zone'],
     ['cerrado_en', 'timestamp with time zone'],
     ['registrado_por', 'bigint'],
+    ['titulo', 'text'],
+    ['descripcion', 'text'],
   ],
   ticket_historial: [
     ['id', 'bigint'],
@@ -134,6 +136,10 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['ip', 'inet'],
     ['creado_en', 'timestamp with time zone'],
     ['dependencia_id', 'bigint'],
+  ],
+  correlativos: [
+    ['anio', 'smallint'],
+    ['ultimo', 'integer'],
   ],
   plantillas_notificacion: [
     ['id', 'bigint'],
@@ -206,6 +212,8 @@ describe('Esquema de base de datos', () => {
         canal: 'portal',
         zona_id: zona.id,
         direccion: 'Calle principal',
+        titulo: 'Bache en la calle',
+        descripcion: 'Hay un bache profundo frente a la escuela',
         ...overrides,
       })
       .returning('id');
@@ -291,6 +299,29 @@ describe('Esquema de base de datos', () => {
       }));
   });
 
+  describe('correlativos', () => {
+    it('rechaza ultimo = 1000000', () =>
+      withRollback(async (trx) => {
+        await expect(trx('correlativos').insert({ anio: 2026, ultimo: 1_000_000 })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }));
+
+    it('acepta ultimo = 999999 y un solo registro por año', () =>
+      withRollback(async (trx) => {
+        await trx('correlativos').insert({ anio: 2026, ultimo: 999_999 });
+        await expect(trx('correlativos').insert({ anio: 2026, ultimo: 1 })).rejects.toMatchObject({
+          code: UNIQUE_VIOLATION,
+        });
+      }));
+
+    it('existe la plantilla queja_registrada', async () => {
+      expect(await db('plantillas_notificacion').where({ clave: 'queja_registrada' }).first('asunto')).toEqual({
+        asunto: 'VozMuni: recibimos tu queja {{numero}}',
+      });
+    });
+  });
+
   describe('restablecimientos', () => {
     it('dos filas no pueden tener el mismo token_hash', () =>
       withRollback(async (trx) => {
@@ -332,7 +363,7 @@ describe('Esquema de base de datos', () => {
       } finally {
         await db.migrate.latest();
       }
-      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '4' }]);
+      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '5' }]);
     });
   });
 
@@ -392,6 +423,23 @@ describe('Esquema de base de datos', () => {
     it('rechaza una prioridad fuera de la lista', () =>
       withRollback(async (trx) => {
         await expect(insertTicket(trx, { prioridad: 'critica' })).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+
+    it('rechaza un titulo de 4 caracteres', () =>
+      withRollback(async (trx) => {
+        await expect(insertTicket(trx, { titulo: 'Hoyo' })).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+
+    it('rechaza una descripcion de 4001 caracteres', () =>
+      withRollback(async (trx) => {
+        await expect(insertTicket(trx, { descripcion: 'x'.repeat(4001) })).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+
+    it('acepta título y descripción en sus límites (150 y 4000)', () =>
+      withRollback(async (trx) => {
+        await expect(
+          insertTicket(trx, { titulo: 't'.repeat(150), descripcion: 'd'.repeat(4000) }),
+        ).resolves.toEqual(expect.any(String));
       }));
 
     it('rechaza un canal fuera de la lista', () =>
@@ -619,7 +667,7 @@ describe('Esquema de base de datos', () => {
         .where({ table_schema: 'public' })
         .whereIn('table_name', Object.keys(expectedColumns));
       expect(tables).toEqual([]);
-      expect(Object.keys(expectedColumns)).toHaveLength(17);
+      expect(Object.keys(expectedColumns)).toHaveLength(18);
 
       const tipos = await db('pg_type').select('typname').where({ typname: 'estado_ticket' });
       expect(tipos).toEqual([]);

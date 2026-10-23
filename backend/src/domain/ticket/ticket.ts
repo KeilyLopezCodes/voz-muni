@@ -1,5 +1,6 @@
 import { InvalidTransitionError } from '../errors/invalid-transition-error';
 import { ReglaDeNegocioError } from '../errors/regla-de-negocio-error';
+import { CANALES, type Canal } from './canal';
 import type { ContextoTransicion } from './contexto-transicion';
 import { esFinal, type EstadoTicket } from './estado-ticket';
 import { esPrioridad, type Prioridad } from './prioridad';
@@ -23,6 +24,24 @@ export interface ResultadoTransicion {
   historial: RegistroHistorial;
 }
 
+// Datos de una queja nueva (RF-06). El número y el id los asigna la persistencia.
+export interface DatosRegistro {
+  solicitanteId: number;
+  registradoPor: number;
+  categoriaId: number;
+  zonaId: number;
+  canal: Canal;
+  titulo: string;
+  descripcion: string;
+  direccion: string;
+}
+
+export interface TicketRegistrado {
+  datos: DatosRegistro; // con titulo, descripcion y direccion ya recortados
+  estado: 'nueva';
+  historial: Omit<RegistroHistorial, 'ticketId'>; // estadoAnterior null, estadoNuevo 'nueva'
+}
+
 interface CambiosTransicion {
   cambios?: Partial<TicketProps>;
   motivo?: string | null;
@@ -35,6 +54,46 @@ export class Ticket {
   private constructor(props: TicketProps) {
     this.props = Object.freeze({ ...props });
     Object.freeze(this);
+  }
+
+  // Toda queja nace en `nueva` con su historial de creación, a nombre de quien la registra.
+  static registrar(datos: DatosRegistro, ctx: ContextoTransicion): TicketRegistrado {
+    for (const id of [datos.solicitanteId, datos.registradoPor, datos.categoriaId, datos.zonaId]) {
+      if (!esIdValido(id)) {
+        throw new ReglaDeNegocioError('DATO_INVALIDO', 'Los ids deben ser enteros mayores que 0');
+      }
+    }
+    if (!(CANALES as readonly string[]).includes(datos.canal)) {
+      throw new ReglaDeNegocioError('DATO_INVALIDO', `El canal ${String(datos.canal)} no es válido`);
+    }
+    return {
+      datos: {
+        ...datos,
+        titulo: textoEnRango(datos.titulo, 5, 150, 'TITULO_INVALIDO', 'El título debe tener de 5 a 150 caracteres'),
+        descripcion: textoEnRango(
+          datos.descripcion,
+          10,
+          4000,
+          'DESCRIPCION_INVALIDA',
+          'La descripción debe tener de 10 a 4000 caracteres',
+        ),
+        direccion: textoEnRango(
+          datos.direccion,
+          5,
+          300,
+          'DIRECCION_INVALIDA',
+          'La dirección debe tener de 5 a 300 caracteres',
+        ),
+      },
+      estado: 'nueva',
+      historial: {
+        estadoAnterior: null,
+        estadoNuevo: 'nueva',
+        usuarioId: ctx.actorId,
+        motivo: null,
+        creadoEn: ctx.ahora,
+      },
+    };
   }
 
   // Sin validar: los datos vienen de la persistencia, que ya los escribió el dominio.
@@ -223,6 +282,16 @@ export class Ticket {
 function textoRequerido(valor: string, codigo: string, mensaje: string): string {
   const recortado = typeof valor === 'string' ? valor.trim() : '';
   if (recortado === '') {
+    throw new ReglaDeNegocioError(codigo, mensaje);
+  }
+  return recortado;
+}
+
+// Recorta y exige una longitud en caracteres; se guarda recortado.
+function textoEnRango(valor: string, minimo: number, maximo: number, codigo: string, mensaje: string): string {
+  const recortado = typeof valor === 'string' ? valor.trim() : '';
+  const longitud = [...recortado].length;
+  if (longitud < minimo || longitud > maximo) {
     throw new ReglaDeNegocioError(codigo, mensaje);
   }
   return recortado;
