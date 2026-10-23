@@ -10,7 +10,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
-    "postbuild": "node -e \"require('node:fs').mkdirSync('dist/infrastructure/database/migrations', { recursive: true })\"",
+    "postbuild": "node -e \"for (const dir of ['migrations', 'seeds']) require('node:fs').mkdirSync('dist/infrastructure/database/' + dir, { recursive: true })\"",
     "test": "jest",
     "test:db": "npm run build && node --env-file-if-exists=.env node_modules/jest/bin/jest.js --config jest.db.config.js --runInBand",
     "start": "node --env-file-if-exists=.env dist/server.js",
@@ -21,7 +21,10 @@
     "lint:deps": "depcruise src --config .dependency-cruiser.cjs"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "jsonwebtoken": "^9.0.3",
     "knex": "^3.3.0",
     "pg": "^8.23.1",
     "zod": "^4.6.7"
@@ -29,6 +32,7 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.20.5",
     "@types/supertest": "^7.2.1",
     "dependency-cruiser": "^18.7.0",

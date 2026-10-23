@@ -1,4 +1,4 @@
-// Mismos nombres que el seed 01_roles de SPEC 03.
+// Mismos nombres que la migración 0006_roles del backend (SPEC 08) y backend/src/domain/auth/roles.ts.
 export const ROLES = [
   'vecino',
   'receptor',

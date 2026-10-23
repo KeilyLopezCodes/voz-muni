@@ -1,6 +1,6 @@
 # SPEC 08 — Inicio de sesión, tokens y autorización por rol
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** SPEC 03, SPEC 05
 > **Fecha:** 2026-10-22
 > **Objetivo:** Exponer en el backend login, renovación y cierre de sesión con un token de acceso JWT y un token de renovación rotativo, con bloqueo por intentos fallidos, y proteger los endpoints con middlewares que verifican la sesión y los permisos del rol guardados en `roles.permisos`.
@@ -364,27 +364,27 @@ backend/
 
 ## Criterios de aceptación
 
-- [ ] La sección 6 del documento de definición incluye `usuarios.intentos_fallidos`, `usuarios.bloqueado_hasta`, la tabla `sesiones` y los endpoints `logout` y `sesion`.
-- [ ] `npm run migrate:latest` sobre una base vacía crea `sesiones`, las dos columnas nuevas y los 6 roles, y cada `roles.permisos` coincide exactamente con la matriz de esta spec.
-- [ ] En una base donde los roles ya existían con `permisos = '{}'`, `0006_roles` les carga la matriz sin duplicarlos.
-- [ ] Un rollback completo, sin usuarios, no deja ninguna de las 15 tablas, y el `down` de `0006_roles` falla si existe un usuario con uno de esos roles.
-- [ ] `seeds/01_roles.ts` ya no existe, y `npm run build && npm run seed:run` termina con código 0.
-- [ ] `POST /api/v1/auth/login` con credenciales correctas responde `200` con `accessToken` (vence en 15 min), `refreshToken` (vence en 7 días), sus fechas de vencimiento y `usuario`.
-- [ ] La tabla `sesiones` guarda el SHA-256 del token de renovación, nunca el token en claro.
-- [ ] Una contraseña incorrecta, un correo inexistente, un usuario inactivo y un usuario sin `password_hash` responden `401 CREDENCIALES_INVALIDAS` con el mismo cuerpo.
-- [ ] El 5.º intento fallido seguido responde `423 CUENTA_BLOQUEADA`. Durante los 15 min siguientes, incluso la contraseña correcta responde `423`. Pasado el bloqueo, la contraseña correcta inicia sesión y deja `intentos_fallidos = 0`.
-- [ ] Con `LOGIN_LIMITE_POR_VENTANA=2`, la 3.ª petición a `/auth/login` desde la misma IP responde `429 DEMASIADAS_PETICIONES`.
-- [ ] `POST /auth/refresh` con un `refreshToken` vigente devuelve tokens nuevos, y el anterior deja de servir.
-- [ ] Reusar un `refreshToken` ya rotado responde `401 SESION_INVALIDA` y revoca todas las sesiones activas del usuario.
-- [ ] `POST /auth/logout` responde `204` con un token vigente, revocado o inexistente, y después `refresh` con ese token responde `401`.
-- [ ] `GET /auth/sesion` sin token responde `401 NO_AUTENTICADO`, con un token vencido o mal firmado responde `401 TOKEN_INVALIDO`, y con un token válido devuelve el usuario y sus permisos.
-- [ ] Un token de acceso válido de un usuario desactivado después de emitirlo responde `401`.
-- [ ] `requierePermiso('admin.catalogos')` responde `403 PERMISO_DENEGADO` al vecino y deja pasar al administrador con `alcance = 'si'`.
-- [ ] Toda respuesta de error de `/api/v1` tiene la forma `{ codigo, mensaje }`, y un error inesperado responde `500 ERROR_INTERNO` sin traza.
-- [ ] El backend no arranca sin `JWT_SECRET` o con un `JWT_SECRET` de menos de 32 caracteres.
-- [ ] `seed:dev` crea los 6 usuarios de desarrollo, cada uno inicia sesión con `Desarrollo2026`, y ejecutarlo dos veces no los duplica.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta las variables nuevas, el origen de los roles, el orden de los seeds, los usuarios de desarrollo y la regla de usar `autenticar` y `requierePermiso` en los endpoints de negocio.
+- [x] La sección 6 del documento de definición incluye `usuarios.intentos_fallidos`, `usuarios.bloqueado_hasta`, la tabla `sesiones` y los endpoints `logout` y `sesion`.
+- [x] `npm run migrate:latest` sobre una base vacía crea `sesiones`, las dos columnas nuevas y los 6 roles, y cada `roles.permisos` coincide exactamente con la matriz de esta spec.
+- [x] En una base donde los roles ya existían con `permisos = '{}'`, `0006_roles` les carga la matriz sin duplicarlos.
+- [x] Un rollback completo, sin usuarios, no deja ninguna de las 15 tablas, y el `down` de `0006_roles` falla si existe un usuario con uno de esos roles.
+- [x] `seeds/01_roles.ts` ya no existe, y `npm run build && npm run seed:run` termina con código 0.
+- [x] `POST /api/v1/auth/login` con credenciales correctas responde `200` con `accessToken` (vence en 15 min), `refreshToken` (vence en 7 días), sus fechas de vencimiento y `usuario`.
+- [x] La tabla `sesiones` guarda el SHA-256 del token de renovación, nunca el token en claro.
+- [x] Una contraseña incorrecta, un correo inexistente, un usuario inactivo y un usuario sin `password_hash` responden `401 CREDENCIALES_INVALIDAS` con el mismo cuerpo.
+- [x] El 5.º intento fallido seguido responde `423 CUENTA_BLOQUEADA`. Durante los 15 min siguientes, incluso la contraseña correcta responde `423`. Pasado el bloqueo, la contraseña correcta inicia sesión y deja `intentos_fallidos = 0`.
+- [x] Con `LOGIN_LIMITE_POR_VENTANA=2`, la 3.ª petición a `/auth/login` desde la misma IP responde `429 DEMASIADAS_PETICIONES`.
+- [x] `POST /auth/refresh` con un `refreshToken` vigente devuelve tokens nuevos, y el anterior deja de servir.
+- [x] Reusar un `refreshToken` ya rotado responde `401 SESION_INVALIDA` y revoca todas las sesiones activas del usuario.
+- [x] `POST /auth/logout` responde `204` con un token vigente, revocado o inexistente, y después `refresh` con ese token responde `401`.
+- [x] `GET /auth/sesion` sin token responde `401 NO_AUTENTICADO`, con un token vencido o mal firmado responde `401 TOKEN_INVALIDO`, y con un token válido devuelve el usuario y sus permisos.
+- [x] Un token de acceso válido de un usuario desactivado después de emitirlo responde `401`.
+- [x] `requierePermiso('admin.catalogos')` responde `403 PERMISO_DENEGADO` al vecino y deja pasar al administrador con `alcance = 'si'`.
+- [x] Toda respuesta de error de `/api/v1` tiene la forma `{ codigo, mensaje }`, y un error inesperado responde `500 ERROR_INTERNO` sin traza.
+- [x] El backend no arranca sin `JWT_SECRET` o con un `JWT_SECRET` de menos de 32 caracteres.
+- [x] `seed:dev` crea los 6 usuarios de desarrollo, cada uno inicia sesión con `Desarrollo2026`, y ejecutarlo dos veces no los duplica.
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta las variables nuevas, el origen de los roles, el orden de los seeds, los usuarios de desarrollo y la regla de usar `autenticar` y `requierePermiso` en los endpoints de negocio.
 
 ## Decisiones
 
