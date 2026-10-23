@@ -133,6 +133,23 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['ip', 'inet'],
     ['creado_en', 'timestamp with time zone'],
   ],
+  plantillas_notificacion: [
+    ['id', 'bigint'],
+    ['clave', 'text'],
+    ['asunto', 'text'],
+    ['cuerpo_texto', 'text'],
+    ['cuerpo_html', 'text'],
+    ['actualizado_en', 'timestamp with time zone'],
+  ],
+  restablecimientos: [
+    ['id', 'bigint'],
+    ['usuario_id', 'bigint'],
+    ['token_hash', 'text'],
+    ['expira_en', 'timestamp with time zone'],
+    ['usado_en', 'timestamp with time zone'],
+    ['invalidado_en', 'timestamp with time zone'],
+    ['creado_en', 'timestamp with time zone'],
+  ],
 };
 
 // Códigos SQLSTATE de Postgres.
@@ -226,6 +243,46 @@ describe('Esquema de base de datos', () => {
         await expect(trx('dependencias').where({ id: dependencia.id }).delete()).rejects.toMatchObject({
           code: FOREIGN_KEY_VIOLATION,
         });
+      }));
+  });
+
+  describe('plantillas_notificacion', () => {
+    const plantilla = { asunto: 'Asunto', cuerpo_texto: 'Texto', cuerpo_html: '<p>Html</p>' };
+
+    it('la migración carga recuperacion_password y password_cambiado', async () => {
+      const filas: { clave: string; asunto: string }[] = await db('plantillas_notificacion')
+        .select('clave', 'asunto')
+        .orderBy('id');
+
+      expect(filas).toEqual([
+        { clave: 'recuperacion_password', asunto: 'VozMuni: restablece tu contraseña' },
+        { clave: 'password_cambiado', asunto: 'VozMuni: tu contraseña fue cambiada' },
+      ]);
+    });
+
+    it('rechaza una clave con mayúsculas', () =>
+      withRollback(async (trx) => {
+        await expect(trx('plantillas_notificacion').insert({ clave: 'Bienvenida', ...plantilla })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }));
+
+    it('una clave repetida viola UNIQUE', () =>
+      withRollback(async (trx) => {
+        await expect(
+          trx('plantillas_notificacion').insert({ clave: 'recuperacion_password', ...plantilla }),
+        ).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
+      }));
+  });
+
+  describe('restablecimientos', () => {
+    it('dos filas no pueden tener el mismo token_hash', () =>
+      withRollback(async (trx) => {
+        const rolId = await insertRol(trx);
+        const [usuario] = await trx('usuarios').insert({ nombre: 'Ana', email: 'ana@x.gt', rol_id: rolId }).returning('id');
+        const fila = { usuario_id: usuario.id, token_hash: 'b'.repeat(64), expira_en: '2026-10-23T00:30:00Z' };
+        await trx('restablecimientos').insert(fila);
+        await expect(trx('restablecimientos').insert(fila)).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
       }));
   });
 
@@ -430,7 +487,7 @@ describe('Esquema de base de datos', () => {
     });
 
     it('carga la matriz en roles que ya existían con permisos vacíos, sin duplicarlos', async () => {
-      await db.migrate.down();
+      await db.migrate.down({ name: '0006_roles.js' });
       await db('roles').insert(Object.keys(MATRIZ).map((nombre) => ({ nombre, permisos: {} })));
       await db.migrate.latest();
 
@@ -441,7 +498,7 @@ describe('Esquema de base de datos', () => {
       const { id: rolId } = await db('roles').where({ nombre: 'vecino' }).first('id');
       const [usuario] = await db('usuarios').insert({ nombre: 'Vecino', telefono: '55550000', rol_id: rolId }).returning('id');
       try {
-        await expect(db.migrate.down()).rejects.toMatchObject({ code: FOREIGN_KEY_VIOLATION });
+        await expect(db.migrate.down({ name: '0006_roles.js' })).rejects.toMatchObject({ code: FOREIGN_KEY_VIOLATION });
         expect(await permisosPorRol()).toEqual(MATRIZ);
       } finally {
         await db('usuarios').where({ id: usuario.id }).delete();
@@ -463,7 +520,7 @@ describe('Esquema de base de datos', () => {
         .where({ table_schema: 'public' })
         .whereIn('table_name', Object.keys(expectedColumns));
       expect(tables).toEqual([]);
-      expect(Object.keys(expectedColumns)).toHaveLength(15);
+      expect(Object.keys(expectedColumns)).toHaveLength(17);
 
       const tipos = await db('pg_type').select('typname').where({ typname: 'estado_ticket' });
       expect(tipos).toEqual([]);

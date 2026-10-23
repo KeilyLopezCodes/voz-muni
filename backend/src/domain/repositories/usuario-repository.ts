@@ -26,6 +26,10 @@ export interface UsuarioRepository {
   // El email se compara sin distinguir mayúsculas.
   buscarPorEmail(email: string): Promise<UsuarioConCredenciales | null>;
   guardarBloqueo(usuarioId: number, estado: EstadoBloqueo): Promise<void>;
+  // Guarda el hash nuevo y limpia intentos fallidos y bloqueo.
+  cambiarPassword(usuarioId: number, passwordHash: string): Promise<void>;
   // null si no existe o está inactivo.
   buscarActivo(usuarioId: number): Promise<UsuarioActivo | null>;
+  // null si no existe o no tiene correo.
+  emailDe(usuarioId: number): Promise<string | null>;
 }

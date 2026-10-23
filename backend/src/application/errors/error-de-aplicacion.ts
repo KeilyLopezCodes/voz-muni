@@ -1,6 +1,8 @@
 // Códigos de error de la API. presentation/ los traduce a status HTTP.
 export type CodigoError =
   | 'VALIDACION'
+  | 'POLITICA_PASSWORD'
+  | 'TOKEN_RECUPERACION_INVALIDO'
   | 'NO_AUTENTICADO'
   | 'TOKEN_INVALIDO'
   | 'CREDENCIALES_INVALIDAS'

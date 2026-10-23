@@ -4,6 +4,7 @@ import { createApp } from '../../../src/app';
 import { ErrorDeAplicacion } from '../../../src/application/errors/error-de-aplicacion';
 import type { AuthService } from '../../../src/application/services/auth.service';
 import type { AutorizacionService } from '../../../src/application/services/autorizacion.service';
+import type { RecuperacionService } from '../../../src/application/services/recuperacion.service';
 import { HealthService } from '../../../src/application/services/health.service';
 import type { Container } from '../../../src/container';
 import { manejadorErrores } from '../../../src/presentation/middlewares/manejador-errores';
@@ -13,10 +14,12 @@ function buildTestContainer(): Container {
   return {
     port: 0,
     loginLimitePorVentana: 10,
+    recuperacionLimitePorVentana: 5,
     healthService: new HealthService({ now: () => new Date() }, { isUp: async () => true }),
     // Estas pruebas fallan antes de llegar a los servicios de auth.
     authService: {} as AuthService,
     autorizacionService: {} as AutorizacionService,
+    recuperacionService: {} as RecuperacionService,
     dispose: async () => {},
   };
 }

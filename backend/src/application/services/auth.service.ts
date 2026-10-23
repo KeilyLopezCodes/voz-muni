@@ -6,6 +6,7 @@ import type { SesionRepository } from '../../domain/repositories/sesion-reposito
 import type { UsuarioRepository } from '../../domain/repositories/usuario-repository';
 import type { RespuestaSesion, UsuarioSesion } from '../dto/auth.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import { abrirSesion, respuestaSesion } from './emision-sesion';
 
 const CREDENCIALES_INVALIDAS = 'Correo o contraseña incorrectos';
 const CUENTA_BLOQUEADA = 'Cuenta bloqueada temporalmente por intentos fallidos';
@@ -57,14 +58,7 @@ export class AuthService {
       rol: usuario.rol,
       dependenciaId: usuario.dependenciaId,
     };
-    const refreshToken = this.tokens.generarRenovacion();
-    const refreshExpiraEn = new Date(ahora.getTime() + DURACION_RENOVACION_MS);
-    await this.sesiones.crear({
-      usuarioId: usuario.id,
-      tokenHash: this.tokens.hashRenovacion(refreshToken),
-      expiraEn: refreshExpiraEn,
-    });
-    return this.respuesta(datos, refreshToken, refreshExpiraEn, ahora);
+    return abrirSesion(this.tokens, this.sesiones, datos, ahora);
   }
 
   async renovar(refreshToken: string): Promise<RespuestaSesion> {
@@ -106,7 +100,7 @@ export class AuthService {
       rol: usuario.rol,
       dependenciaId: usuario.dependenciaId,
     };
-    return this.respuesta(datos, nuevoToken, nuevaExpiraEn, ahora);
+    return respuestaSesion(this.tokens, datos, nuevoToken, nuevaExpiraEn, ahora);
   }
 
   // Idempotente: no revela si el token existía.
@@ -116,20 +110,6 @@ export class AuthService {
     if (sesion && sesion.revocadaEn === null && sesion.expiraEn.getTime() > ahora.getTime()) {
       await this.sesiones.revocar(sesion.id, ahora);
     }
-  }
-
-  private respuesta(usuario: UsuarioSesion, refreshToken: string, refreshExpiraEn: Date, ahora: Date): RespuestaSesion {
-    const acceso = this.tokens.emitirAcceso(
-      { sub: String(usuario.id), rol: usuario.rol, dep: usuario.dependenciaId },
-      ahora,
-    );
-    return {
-      accessToken: acceso.token,
-      accessExpiraEn: acceso.expiraEn.toISOString(),
-      refreshToken,
-      refreshExpiraEn: refreshExpiraEn.toISOString(),
-      usuario,
-    };
   }
 
   // Se calcula una vez con el mismo hasher, para que tenga el mismo costo que los hashes reales.

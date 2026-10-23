@@ -4,7 +4,7 @@ import type { Knex } from 'knex';
 import request from 'supertest';
 import { createApp } from '../../src/app';
 import { buildContainer, type Container } from '../../src/container';
-import { createTestKnex, reiniciarEsquema } from './knex-test';
+import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
 
 const PASSWORD = 'Clave-de-prueba-1';
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
@@ -12,13 +12,7 @@ const MINUTO = 60 * 1000;
 
 // App real (Knex, bcrypt, JWT) contra la base de pruebas.
 function crearContainer(loginLimitePorVentana: number): Container {
-  return buildContainer({
-    PORT: 0,
-    DATABASE_URL: process.env.DATABASE_URL_TEST!,
-    JWT_SECRET: 'secreto-de-pruebas-de-al-menos-32-caracteres',
-    NODE_ENV: 'test',
-    LOGIN_LIMITE_POR_VENTANA: loginLimitePorVentana,
-  });
+  return buildContainer(envDePrueba({ LOGIN_LIMITE_POR_VENTANA: loginLimitePorVentana }));
 }
 
 describe('API de autenticación /api/v1/auth', () => {
