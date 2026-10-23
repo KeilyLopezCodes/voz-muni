@@ -1,6 +1,6 @@
 # SPEC 08 — Inicio de sesión, tokens y autorización por rol
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 03, SPEC 05
 > **Fecha:** 2026-10-22
 > **Objetivo:** Exponer en el backend login, renovación y cierre de sesión con un token de acceso JWT y un token de renovación rotativo, con bloqueo por intentos fallidos, y proteger los endpoints con middlewares que verifican la sesión y los permisos del rol guardados en `roles.permisos`.
