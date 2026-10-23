@@ -1,6 +1,6 @@
 # SPEC 04 — Dominio del ticket: estados y transiciones
 
-> **Estado:**  Aprobado
+> **Estado:**  Implementado
 > **Depende de:** SPEC 01
 > **Fecha:** 2026-10-22
 > **Objetivo:** Modelar en `domain/ticket` una entidad `Ticket` inmutable que aplica la máquina de estados de la sección 3 del documento de definición, con sus reglas de datos obligatorios, sin depender de Express ni de la base de datos.
@@ -194,24 +194,24 @@ class ReglaDeNegocioError extends DomainError {}    // codigo variable
 
 ## Criterios de aceptación
 
-- [ ] `puedeTransicionar` devuelve `true` exactamente para las 11 transiciones de la tabla y `false` para los otros 53 pares.
-- [ ] `ESTADOS_TICKET` y `PRIORIDADES` tienen los mismos valores, en el mismo orden, que el enum y el `CHECK` de la SPEC 03.
-- [ ] Llamar cualquier método que cambia de estado desde un estado fuera de su columna "Desde" lanza `InvalidTransitionError` con `desde` y `hacia` correctos.
-- [ ] `reanudar` sobre un ticket `resuelta` lanza `InvalidTransitionError`, aunque `resuelta → en_proceso` esté en la tabla.
-- [ ] `rechazar`, `ponerEnEspera`, `reabrir` y `trasladar` con motivo `''` o `'   '` lanzan `ReglaDeNegocioError` con código `MOTIVO_REQUERIDO`.
-- [ ] `resolver` sin descripción lanza `DESCRIPCION_REQUERIDA`. Con descripción, el historial lleva la descripción recortada como `motivo` y el ticket tiene `resueltoEn = ctx.ahora`.
-- [ ] `asignar` con prioridad `'critica'` lanza `PRIORIDAD_INVALIDA`, y con `dependenciaId = 0` lanza `DEPENDENCIA_INVALIDA`.
-- [ ] `iniciar` sin técnico asignado lanza `TECNICO_REQUERIDO`.
-- [ ] Con `ahora = confirmacionVenceEn`, `confirmarSolucion` y `reabrir` funcionan, y `cerrarPorVencimiento` lanza `PLAZO_CONFIRMACION_VIGENTE`.
-- [ ] Un milisegundo después de `confirmacionVenceEn`, `confirmarSolucion` y `reabrir` lanzan `PLAZO_CONFIRMACION_VENCIDO`, y `cerrarPorVencimiento` con `actorId = null` funciona.
-- [ ] `cerrarPorVencimiento` con `actorId ≠ null` lanza `SOLO_SISTEMA`, y `confirmarSolucion` con `actorId = null` lanza `ACTOR_REQUERIDO`.
-- [ ] `trasladar` deja `dependenciaId` y `asignadoA` en `null`. `reabrir` conserva `asignadoA` y deja `resueltoEn = null` y `escalado = false`.
-- [ ] `marcarEscalado` es idempotente en estados no finales y lanza `OPERACION_NO_PERMITIDA` en `rechazada` y `cerrada`.
-- [ ] Después de llamar a cualquier método, el ticket original conserva todos sus valores, y `Object.isFrozen(ticket)` es `true`.
-- [ ] Cada `RegistroHistorial` tiene `ticketId`, `estadoAnterior`, `estadoNuevo`, `usuarioId = ctx.actorId` y `creadoEn = ctx.ahora`.
-- [ ] `npx jest tests/unit/ticket --coverage --collectCoverageFrom='src/domain/**/*.ts'` reporta al menos 90 % de líneas cubiertas en `src/domain/ticket/` y `src/domain/errors/`.
-- [ ] `npm test`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
-- [ ] Ningún archivo de `src/domain/ticket/` ni de `src/domain/errors/` importa algo fuera de `src/domain/`.
+- [x] `puedeTransicionar` devuelve `true` exactamente para las 11 transiciones de la tabla y `false` para los otros 53 pares.
+- [x] `ESTADOS_TICKET` y `PRIORIDADES` tienen los mismos valores, en el mismo orden, que el enum y el `CHECK` de la SPEC 03.
+- [x] Llamar cualquier método que cambia de estado desde un estado fuera de su columna "Desde" lanza `InvalidTransitionError` con `desde` y `hacia` correctos.
+- [x] `reanudar` sobre un ticket `resuelta` lanza `InvalidTransitionError`, aunque `resuelta → en_proceso` esté en la tabla.
+- [x] `rechazar`, `ponerEnEspera`, `reabrir` y `trasladar` con motivo `''` o `'   '` lanzan `ReglaDeNegocioError` con código `MOTIVO_REQUERIDO`.
+- [x] `resolver` sin descripción lanza `DESCRIPCION_REQUERIDA`. Con descripción, el historial lleva la descripción recortada como `motivo` y el ticket tiene `resueltoEn = ctx.ahora`.
+- [x] `asignar` con prioridad `'critica'` lanza `PRIORIDAD_INVALIDA`, y con `dependenciaId = 0` lanza `DEPENDENCIA_INVALIDA`.
+- [x] `iniciar` sin técnico asignado lanza `TECNICO_REQUERIDO`.
+- [x] Con `ahora = confirmacionVenceEn`, `confirmarSolucion` y `reabrir` funcionan, y `cerrarPorVencimiento` lanza `PLAZO_CONFIRMACION_VIGENTE`.
+- [x] Un milisegundo después de `confirmacionVenceEn`, `confirmarSolucion` y `reabrir` lanzan `PLAZO_CONFIRMACION_VENCIDO`, y `cerrarPorVencimiento` con `actorId = null` funciona.
+- [x] `cerrarPorVencimiento` con `actorId ≠ null` lanza `SOLO_SISTEMA`, y `confirmarSolucion` con `actorId = null` lanza `ACTOR_REQUERIDO`.
+- [x] `trasladar` deja `dependenciaId` y `asignadoA` en `null`. `reabrir` conserva `asignadoA` y deja `resueltoEn = null` y `escalado = false`.
+- [x] `marcarEscalado` es idempotente en estados no finales y lanza `OPERACION_NO_PERMITIDA` en `rechazada` y `cerrada`.
+- [x] Después de llamar a cualquier método, el ticket original conserva todos sus valores, y `Object.isFrozen(ticket)` es `true`.
+- [x] Cada `RegistroHistorial` tiene `ticketId`, `estadoAnterior`, `estadoNuevo`, `usuarioId = ctx.actorId` y `creadoEn = ctx.ahora`.
+- [x] `npx jest tests/unit/ticket --coverage --collectCoverageFrom='src/domain/**/*.ts'` reporta al menos 90 % de líneas cubiertas en `src/domain/ticket/` y `src/domain/errors/`.
+- [x] `npm test`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
+- [x] Ningún archivo de `src/domain/ticket/` ni de `src/domain/errors/` importa algo fuera de `src/domain/`.
 
 ## Decisiones
 

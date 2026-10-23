@@ -1,0 +1,11 @@
+import type { EstadoTicket } from './estado-ticket';
+
+// Se corresponde con una fila de ticket_historial.
+export interface RegistroHistorial {
+  ticketId: number;
+  estadoAnterior: EstadoTicket;
+  estadoNuevo: EstadoTicket;
+  usuarioId: number | null;
+  motivo: string | null;
+  creadoEn: Date;
+}
