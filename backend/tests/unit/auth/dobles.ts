@@ -16,7 +16,9 @@ import type {
   UsuarioAdminRepository,
   UsuarioInterno,
 } from '../../../src/domain/repositories/usuario-admin-repository';
+import type { CriterioVecino, Vecino, VecinoRepository } from '../../../src/domain/repositories/vecino-repository';
 import type { RolInterno } from '../../../src/domain/usuarios/usuario-interno';
+import type { DatosVecinoNuevo } from '../../../src/domain/usuarios/vecino';
 import type { PasswordHasher } from '../../../src/domain/auth/password-hasher';
 import type { Permisos } from '../../../src/domain/auth/permisos';
 import type { Rol } from '../../../src/domain/auth/roles';
@@ -197,6 +199,55 @@ const PERMISOS_POR_ROL: Record<string, Permisos> = {
   tecnico: { 'tickets.ver': 'asignadas' },
 };
 
+// Vecinos sobre las mismas filas de UsuariosEnMemoria; crear detecta correo y DPI duplicados de cualquier usuario.
+export class VecinosEnMemoria implements VecinoRepository {
+  constructor(private readonly usuarios: UsuariosEnMemoria) {}
+
+  private aVecino(u: UsuarioFalso): Vecino {
+    return { id: u.id, nombre: u.nombre, email: u.email, telefono: u.telefono };
+  }
+
+  private activos(): UsuarioFalso[] {
+    return this.usuarios.filas.filter((u) => u.rol === 'vecino' && u.activo);
+  }
+
+  async obtenerActivo(id: number): Promise<Vecino | null> {
+    const u = this.activos().find((fila) => fila.id === id);
+    return u ? this.aVecino(u) : null;
+  }
+
+  async buscarActivos(criterio: CriterioVecino, limite: number): Promise<Vecino[]> {
+    const cumple = (u: UsuarioFalso) =>
+      'email' in criterio
+        ? u.email?.toLowerCase() === criterio.email.toLowerCase()
+        : 'telefono' in criterio
+          ? u.telefono === criterio.telefono
+          : u.dpi === criterio.dpi;
+    return this.activos().filter(cumple).slice(0, limite).map((u) => this.aVecino(u));
+  }
+
+  async crear(datos: DatosVecinoNuevo): Promise<{ id: number }> {
+    if (datos.email && this.usuarios.filas.some((u) => u.email?.toLowerCase() === datos.email!.toLowerCase())) {
+      throw new ReglaDeNegocioError('EMAIL_DUPLICADO', 'correo repetido');
+    }
+    if (this.usuarios.filas.some((u) => u.dpi === datos.dpi)) {
+      throw new ReglaDeNegocioError('DPI_DUPLICADO', 'DPI repetido');
+    }
+    const id = Math.max(0, ...this.usuarios.filas.map((u) => u.id)) + 1;
+    this.usuarios.filas.push({
+      ...datos,
+      id,
+      rol: 'vecino',
+      dependenciaId: null,
+      activo: true,
+      passwordHash: null,
+      bloqueo: { intentosFallidos: 0, bloqueadoHasta: null },
+      permisos: { 'tickets.crear': 'propia', 'tickets.ver': 'propia' },
+    });
+    return { id };
+  }
+}
+
 // Comparte las filas con UsuariosEnMemoria, como en la base comparten la tabla usuarios.
 export class UsuariosAdminEnMemoria implements UsuarioAdminRepository {
   readonly dependenciasActivas = new Set<number>([4]);
@@ -320,6 +371,7 @@ export class PlantillasEnMemoria implements PlantillaRepository {
       ['password_cambiado', 'Cambiada', '{{nombre}}', '<p>{{nombre}}</p>'],
       ['invitacion_usuario', 'Invitación', '{{nombre}} ({{rol}}): {{enlace}}', '<a href="{{enlace}}">{{nombre}}</a>'],
       ['cuenta_desactivada', 'Desactivada', '{{nombre}}', '<p>{{nombre}}</p>'],
+      ['invitacion_vecino', 'Portal', '{{nombre}}: {{enlace}}', '<a href="{{enlace}}">{{nombre}}</a>'],
     ].map(([clave, asunto, cuerpoTexto, cuerpoHtml]) => [clave, { clave, asunto, cuerpoTexto, cuerpoHtml }]),
   );
 

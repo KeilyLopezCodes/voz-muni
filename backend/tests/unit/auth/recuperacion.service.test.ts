@@ -15,6 +15,7 @@ import {
   UsuariosAdminEnMemoria,
   UsuariosEnMemoria,
   usuario,
+  VecinosEnMemoria,
 } from './dobles';
 
 const NUEVA = 'Nueva-clave-2026';
@@ -29,7 +30,13 @@ function crearEscenario(filas: UsuarioFalso[] = [usuario()]) {
   const servicio = new RecuperacionService(
     usuarios,
     restablecimientos,
-    new TransaccionEnMemoria({ usuarios, usuariosAdmin: new UsuariosAdminEnMemoria(usuarios), sesiones, restablecimientos }),
+    new TransaccionEnMemoria({
+      usuarios,
+      usuariosAdmin: new UsuariosAdminEnMemoria(usuarios),
+      sesiones,
+      restablecimientos,
+      vecinos: new VecinosEnMemoria(usuarios),
+    }),
     new EnvioCorreo(new PlantillasEnMemoria(), enviador, (mensaje) => errores.push(mensaje)),
     new HasherFalso(),
     new TokensFalsos(),
@@ -83,7 +90,6 @@ describe('RecuperacionService.solicitar', () => {
   it.each([
     ['inexistente', [usuario()], 'nadie@vozmuni.test'],
     ['inactivo', [usuario({ activo: false })], 'ana@vozmuni.test'],
-    ['de un vecino sin password_hash', [usuario({ passwordHash: null, rol: 'vecino', dependenciaId: null })], 'ana@vozmuni.test'],
   ])('un correo %s termina igual y no envía nada', async (_caso, filas, email) => {
     const e = crearEscenario(filas);
 
@@ -196,8 +202,29 @@ describe('Ampliaciones de SPEC 10', () => {
     expect(e.enviador.enviados).toEqual([expect.objectContaining({ para: 'ana@vozmuni.test', asunto: 'Recupera' })]);
   });
 
-  it('un vecino sin contraseña no recibe nada', async () => {
+  it('un vecino activo sin contraseña y con correo recibe el enlace (SPEC 13)', async () => {
     const e = crearEscenario([usuario({ passwordHash: null, rol: 'vecino', dependenciaId: null })]);
+
+    await e.servicio.solicitar('ana@vozmuni.test');
+    await correosPendientes();
+
+    expect(e.restablecimientos.filas).toEqual([expect.objectContaining({ usuarioId: 1, tipo: 'recuperacion' })]);
+    expect(e.enviador.enviados).toEqual([expect.objectContaining({ para: 'ana@vozmuni.test', asunto: 'Recupera' })]);
+  });
+
+  it('un usuario inactivo no recibe nada, tenga o no contraseña', async () => {
+    for (const passwordHash of [null, 'hash:x']) {
+      const e = crearEscenario([usuario({ passwordHash, rol: 'vecino', dependenciaId: null, activo: false })]);
+
+      await e.servicio.solicitar('ana@vozmuni.test');
+      await correosPendientes();
+
+      expect(e.enviador.enviados).toEqual([]);
+    }
+  });
+
+  it('un vecino sin correo no puede pedir el enlace: no hay correo con el cual buscarlo', async () => {
+    const e = crearEscenario([usuario({ email: null, telefono: '55550000', rol: 'vecino', dependenciaId: null })]);
 
     await e.servicio.solicitar('ana@vozmuni.test');
     await correosPendientes();

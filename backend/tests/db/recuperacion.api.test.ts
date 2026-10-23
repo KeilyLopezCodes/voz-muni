@@ -88,7 +88,7 @@ describe('API de recuperación /api/v1/auth/recuperar y /restablecer', () => {
   }
 
   describe('POST /recuperar', () => {
-    it('responde 202 con el mismo cuerpo para un correo registrado, inexistente, inactivo o sin contraseña', async () => {
+    it('responde 202 con el mismo cuerpo en todos los casos y solo envía a usuarios activos (SPEC 13)', async () => {
       await crearUsuario('ana@vozmuni.test');
       await crearUsuario('inactivo@vozmuni.test', { activo: false });
       await crearUsuario('sinclave@vozmuni.test', { password_hash: null });
@@ -101,7 +101,9 @@ describe('API de recuperación /api/v1/auth/recuperar y /restablecer', () => {
 
       await esperarCorreos(enviador, 1);
       await new Promise((resolver) => setTimeout(resolver, 100));
-      expect(enviador.enviados.map((correo) => correo.para)).toEqual(['ana@vozmuni.test']);
+      // Desde SPEC 13 el vecino sin contraseña también recibe el enlace; el inactivo y el inexistente no.
+      await esperarCorreos(enviador, 2);
+      expect(enviador.enviados.map((correo) => correo.para).sort()).toEqual(['ana@vozmuni.test', 'sinclave@vozmuni.test']);
     });
 
     it('envía la plantilla de la base con el nombre y el enlace, y guarda solo el hash del token', async () => {

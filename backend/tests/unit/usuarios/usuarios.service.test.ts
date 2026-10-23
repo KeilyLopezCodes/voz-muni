@@ -13,6 +13,7 @@ import {
   UsuariosAdminEnMemoria,
   UsuariosEnMemoria,
   usuario,
+  VecinosEnMemoria,
 } from '../auth/dobles';
 
 const ADMIN_ID = 1;
@@ -39,7 +40,7 @@ function crearEscenario(filas: UsuarioFalso[] = [admin()]) {
   const reloj = new RelojFalso(new Date('2026-10-22T15:00:00.000Z'));
   const servicio = new UsuariosService(
     usuariosAdmin,
-    new TransaccionEnMemoria({ usuarios, usuariosAdmin, sesiones, restablecimientos }),
+    new TransaccionEnMemoria({ usuarios, usuariosAdmin, sesiones, restablecimientos, vecinos: new VecinosEnMemoria(usuarios) }),
     new EnvioCorreo(new PlantillasEnMemoria(), enviador, (mensaje) => errores.push(mensaje)),
     new TokensFalsos(),
     reloj,

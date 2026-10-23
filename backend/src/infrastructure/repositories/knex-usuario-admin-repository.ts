@@ -1,5 +1,4 @@
 import type { Knex } from 'knex';
-import { ReglaDeNegocioError } from '../../domain/errors/regla-de-negocio-error';
 import type {
   CambiosUsuarioInterno,
   FiltroUsuarios,
@@ -8,8 +7,7 @@ import type {
   UsuarioInterno,
 } from '../../domain/repositories/usuario-admin-repository';
 import type { RolInterno } from '../../domain/usuarios/usuario-interno';
-
-const UNIQUE_VIOLATION = '23505';
+import { traducirDuplicadoUsuario } from './duplicados-usuario';
 
 // pg devuelve los bigint como string.
 interface FilaUsuario {
@@ -43,17 +41,6 @@ function aUsuario(fila: FilaUsuario): UsuarioInterno {
 // %, _ y \ son comodines de LIKE: se buscan como texto.
 function patronIlike(busqueda: string): string {
   return `%${busqueda.replace(/[\\%_]/g, (caracter) => `\\${caracter}`)}%`;
-}
-
-function traducirDuplicado(error: unknown): never {
-  const { code, constraint } = (error ?? {}) as { code?: string; constraint?: string };
-  if (code === UNIQUE_VIOLATION && constraint === 'usuarios_email_lower_unique') {
-    throw new ReglaDeNegocioError('EMAIL_DUPLICADO', 'Ya existe un usuario con ese correo');
-  }
-  if (code === UNIQUE_VIOLATION && constraint === 'usuarios_dpi_key') {
-    throw new ReglaDeNegocioError('DPI_DUPLICADO', 'Ya existe un usuario con ese DPI');
-  }
-  throw error;
 }
 
 export class KnexUsuarioAdminRepository implements UsuarioAdminRepository {
@@ -125,7 +112,7 @@ export class KnexUsuarioAdminRepository implements UsuarioAdminRepository {
         .returning('id');
       id = fila.id;
     } catch (error) {
-      traducirDuplicado(error);
+      traducirDuplicadoUsuario(error);
     }
     return (await this.obtenerInterno(Number(id)))!;
   }

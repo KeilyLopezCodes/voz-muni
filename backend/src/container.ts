@@ -104,7 +104,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
       clock,
       env.APP_URL,
     ),
-    vecinosService: new VecinosService(vecinos),
+    vecinosService: new VecinosService(vecinos, transaccion, correo, tokens, clock, env.APP_URL),
     dispose: () => db.destroy(),
   };
 }
