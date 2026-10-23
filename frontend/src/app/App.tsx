@@ -7,8 +7,9 @@ import i18n from '../shared/i18n/i18n'
 import { theme } from '../shared/theme/theme'
 import { rutasApp } from './router'
 
-const queryClient = new QueryClient()
-const router = createBrowserRouter(rutasApp)
+// main.tsx los entrega a AuthProvider: limpia la caché al cerrar sesión y navega a /login.
+export const queryClient = new QueryClient()
+export const router = createBrowserRouter(rutasApp)
 
 export default function App() {
   return (

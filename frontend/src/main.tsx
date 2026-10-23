@@ -1,13 +1,13 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './app/App.tsx'
-import { SessionProvider } from './shared/auth/SessionProvider.tsx'
+import App, { queryClient, router } from './app/App.tsx'
+import { AuthProvider } from './features/auth/AuthProvider.tsx'
 
-// Sin autenticación todavía: la sesión es siempre null en el navegador.
+// AuthProvider recupera y mantiene la sesión real (SPEC 17) y la entrega a SessionProvider.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <SessionProvider session={null}>
+    <AuthProvider queryClient={queryClient} irALogin={() => void router.navigate('/login')}>
       <App />
-    </SessionProvider>
+    </AuthProvider>
   </StrictMode>,
 )

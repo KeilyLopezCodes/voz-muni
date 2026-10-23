@@ -4,7 +4,7 @@ import type { Knex } from 'knex';
 import request from 'supertest';
 import { createApp } from '../../src/app';
 import { buildContainer, type Container } from '../../src/container';
-import { createTestKnex, reiniciarEsquema } from './knex-test';
+import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
 
 const PASSWORD = 'Clave-de-prueba-1';
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
@@ -12,13 +12,7 @@ const MINUTO = 60 * 1000;
 
 // App real (Knex, bcrypt, JWT) contra la base de pruebas.
 function crearContainer(loginLimitePorVentana: number): Container {
-  return buildContainer({
-    PORT: 0,
-    DATABASE_URL: process.env.DATABASE_URL_TEST!,
-    JWT_SECRET: 'secreto-de-pruebas-de-al-menos-32-caracteres',
-    NODE_ENV: 'test',
-    LOGIN_LIMITE_POR_VENTANA: loginLimitePorVentana,
-  });
+  return buildContainer(envDePrueba({ LOGIN_LIMITE_POR_VENTANA: loginLimitePorVentana }));
 }
 
 describe('API de autenticación /api/v1/auth', () => {
@@ -56,7 +50,7 @@ describe('API de autenticación /api/v1/auth', () => {
   async function crearUsuario(email: string, cambios: Record<string, unknown> = {}): Promise<number> {
     const { id: rolId } = await db('roles').where({ nombre: 'coordinador' }).first('id');
     const [fila] = await db('usuarios')
-      .insert({ nombre: 'Ana Coordinadora', email, rol_id: rolId, password_hash: passwordHash, ...cambios })
+      .insert({ nombre: 'Ana Coordinadora', email, rol_id: rolId, password_hash: passwordHash, correo_verificado_en: new Date(), ...cambios })
       .returning('id');
     return Number(fila.id);
   }
@@ -83,7 +77,8 @@ describe('API de autenticación /api/v1/auth', () => {
       const acceso = Date.parse(res.body.accessExpiraEn) - antes;
       const renovacion = Date.parse(res.body.refreshExpiraEn) - antes;
       expect(acceso).toBeGreaterThan(14 * MINUTO);
-      expect(acceso).toBeLessThanOrEqual(15 * MINUTO);
+      // Margen por lo que tarda la petición: el servidor emite el token después de medir `antes`.
+      expect(acceso).toBeLessThanOrEqual(15 * MINUTO + 5000);
       expect(renovacion).toBeGreaterThan(7 * 24 * 60 * MINUTO - MINUTO);
       expect(renovacion).toBeLessThanOrEqual(7 * 24 * 60 * MINUTO + MINUTO);
     });

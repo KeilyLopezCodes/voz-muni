@@ -1,6 +1,6 @@
 # SPEC 15 — Coordenadas de la queja y límites del municipio
 
-> **Estado:** Borrador
+> **Estado:** Implementado.
 > **Depende de:** SPEC 08, SPEC 12
 > **Fecha:** 2026-10-22
 > **Objetivo:** Permitir que el registro de una queja incluya latitud y longitud opcionales, validadas contra la caja geográfica del municipio que configura el administrador en una tabla genérica de parámetros, y exponer esa caja al formulario.
@@ -181,20 +181,20 @@ backend/
 
 ## Criterios de aceptación
 
-- [ ] La sección 6 del documento de definición incluye la tabla `parametros`, la regla de `lat` y `lng` juntas y los 2 endpoints, y la tabla de vacíos refleja lo resuelto.
-- [ ] `npm run migrate:latest` crea `parametros` y el `CHECK` `tickets_ubicacion_completa`, sin insertar `limites_municipio`, y un rollback completo no deja ninguna de las 19 tablas.
-- [ ] El administrador guarda los límites con `PUT /api/v1/admin/parametros/limites-municipio`, y cualquier otro rol recibe `403`.
-- [ ] Una caja con `latMin ≥ latMax`, `lngMin ≥ lngMax`, valores fuera de los rangos del planeta o propiedades faltantes responde `400 LIMITES_INVALIDOS`.
-- [ ] `GET /api/v1/parametros/limites-municipio` devuelve `{ limites: null }` sin configuración y la caja guardada después del `PUT`. Exige sesión y `tickets.crear`.
-- [ ] Sin `limites_municipio` configurado, una queja con coordenadas responde `400 UBICACION_NO_CONFIGURADA`, y una queja sin coordenadas se registra.
-- [ ] Con límites configurados, un punto dentro de la caja (incluidos los bordes) se guarda redondeado a 6 decimales, y un punto fuera responde `400 UBICACION_FUERA_DEL_MUNICIPIO`.
-- [ ] Solo `lat` o solo `lng` responde `400 UBICACION_INCOMPLETA`, y la base rechaza un ticket con una sola coordenada.
-- [ ] Coordenadas en string, `NaN` o fuera de -90..90 / -180..180 son rechazadas.
-- [ ] El vecino, el receptor y el supervisor pueden enviar coordenadas al registrar.
-- [ ] Cambiar los límites no modifica las coordenadas de los tickets ya registrados.
-- [ ] Ningún valor geográfico del municipio está escrito en `src/`, en las migraciones ni en los seeds.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta la tabla `parametros`, la clave `limites_municipio` y la regla sin configuración.
+- [x] La sección 6 del documento de definición incluye la tabla `parametros`, la regla de `lat` y `lng` juntas y los 2 endpoints, y la tabla de vacíos refleja lo resuelto.
+- [x] `npm run migrate:latest` crea `parametros` y el `CHECK` `tickets_ubicacion_completa`, sin insertar `limites_municipio`, y un rollback completo no deja ninguna de las 19 tablas.
+- [x] El administrador guarda los límites con `PUT /api/v1/admin/parametros/limites-municipio`, y cualquier otro rol recibe `403`.
+- [x] Una caja con `latMin ≥ latMax`, `lngMin ≥ lngMax`, valores fuera de los rangos del planeta o propiedades faltantes responde `400 LIMITES_INVALIDOS`.
+- [x] `GET /api/v1/parametros/limites-municipio` devuelve `{ limites: null }` sin configuración y la caja guardada después del `PUT`. Exige sesión y `tickets.crear`.
+- [x] Sin `limites_municipio` configurado, una queja con coordenadas responde `400 UBICACION_NO_CONFIGURADA`, y una queja sin coordenadas se registra.
+- [x] Con límites configurados, un punto dentro de la caja (incluidos los bordes) se guarda redondeado a 6 decimales, y un punto fuera responde `400 UBICACION_FUERA_DEL_MUNICIPIO`.
+- [x] Solo `lat` o solo `lng` responde `400 UBICACION_INCOMPLETA`, y la base rechaza un ticket con una sola coordenada.
+- [x] Coordenadas en string, `NaN` o fuera de -90..90 / -180..180 son rechazadas.
+- [x] El vecino, el receptor y el supervisor pueden enviar coordenadas al registrar.
+- [x] Cambiar los límites no modifica las coordenadas de los tickets ya registrados.
+- [x] Ningún valor geográfico del municipio está escrito en `src/`, en las migraciones ni en los seeds.
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta la tabla `parametros`, la clave `limites_municipio` y la regla sin configuración.
 
 ## Decisiones
 

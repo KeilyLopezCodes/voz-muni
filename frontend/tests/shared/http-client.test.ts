@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../src/shared/api/api-error'
-import { apiClient, rootClient, setTokenProvider } from '../../src/shared/api/http-client'
+import { apiClient, rootClient, setTokenProvider, setUnauthorizedHandler } from '../../src/shared/api/http-client'
 
 const fetchMock = vi.fn<typeof fetch>()
 
@@ -29,6 +29,7 @@ beforeEach(() => {
   fetchMock.mockReset()
   vi.stubGlobal('fetch', fetchMock)
   setTokenProvider(() => null)
+  setUnauthorizedHandler(async () => false)
 })
 
 afterEach(() => {
@@ -136,5 +137,96 @@ describe('http-client', () => {
     const error = await promesa
     expect(error.status).toBe(0)
     expect(error.codigo).toBe('TIEMPO_AGOTADO')
+  })
+
+  describe('renovación ante un 401 (SPEC 17)', () => {
+    const noAutorizado = () => jsonResponse(401, { codigo: 'TOKEN_INVALIDO', mensaje: 'x' })
+
+    it('llama al handler una vez y, con true, repite la petición una vez con el token nuevo', async () => {
+      let token = 'viejo'
+      setTokenProvider(() => token)
+      const handler = vi.fn(async () => {
+        token = 'nuevo'
+        return true
+      })
+      setUnauthorizedHandler(handler)
+      fetchMock.mockResolvedValueOnce(noAutorizado()).mockResolvedValueOnce(jsonResponse(200, { id: 7 }))
+
+      await expect(apiClient.get('/tickets/7')).resolves.toEqual({ id: 7 })
+
+      expect(handler).toHaveBeenCalledTimes(1)
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(headersDeLlamada(0).get('Authorization')).toBe('Bearer viejo')
+      expect(headersDeLlamada(1).get('Authorization')).toBe('Bearer nuevo')
+    })
+
+    it('el reintento conserva método y cuerpo', async () => {
+      setUnauthorizedHandler(async () => true)
+      fetchMock.mockResolvedValueOnce(noAutorizado()).mockResolvedValueOnce(jsonResponse(201, { id: 1 }))
+
+      await apiClient.post('/tickets', { titulo: 'x' })
+
+      expect(fetchMock.mock.calls[1][1]?.method).toBe('POST')
+      expect(fetchMock.mock.calls[1][1]?.body).toBe('{"titulo":"x"}')
+    })
+
+    it('con false lanza el error original sin repetir', async () => {
+      const handler = vi.fn(async () => false)
+      setUnauthorizedHandler(handler)
+      fetchMock.mockResolvedValue(noAutorizado())
+
+      const error = await capturarError(apiClient.get('/tickets'))
+
+      expect(error).toMatchObject({ status: 401, codigo: 'TOKEN_INVALIDO' })
+      expect(handler).toHaveBeenCalledTimes(1)
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('un segundo 401 en el reintento lanza el error original y no vuelve a llamar al handler', async () => {
+      const handler = vi.fn(async () => true)
+      setUnauthorizedHandler(handler)
+      fetchMock
+        .mockResolvedValueOnce(noAutorizado())
+        .mockResolvedValueOnce(jsonResponse(401, { codigo: 'OTRO_401', mensaje: 'x' }))
+
+      const error = await capturarError(apiClient.get('/tickets'))
+
+      expect(error.codigo).toBe('TOKEN_INVALIDO')
+      expect(handler).toHaveBeenCalledTimes(1)
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('un error distinto de 401 en el reintento se lanza tal cual', async () => {
+      setUnauthorizedHandler(async () => true)
+      fetchMock.mockResolvedValueOnce(noAutorizado()).mockResolvedValueOnce(jsonResponse(403, { codigo: 'PERMISO_DENEGADO' }))
+
+      const error = await capturarError(apiClient.get('/tickets'))
+
+      expect(error).toMatchObject({ status: 403, codigo: 'PERMISO_DENEGADO' })
+    })
+
+    it.each(['/auth/login', '/auth/refresh', '/auth/logout', '/auth/restablecer'])('%s no llama al handler', async (ruta) => {
+      const handler = vi.fn(async () => true)
+      setUnauthorizedHandler(handler)
+      fetchMock.mockResolvedValue(jsonResponse(401, { codigo: 'CREDENCIALES_INVALIDAS' }))
+
+      const error = await capturarError(apiClient.post(ruta, {}))
+
+      expect(error.codigo).toBe('CREDENCIALES_INVALIDAS')
+      expect(handler).not.toHaveBeenCalled()
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('otros errores (403, red) no llaman al handler', async () => {
+      const handler = vi.fn(async () => true)
+      setUnauthorizedHandler(handler)
+      fetchMock.mockResolvedValueOnce(jsonResponse(403, { codigo: 'PERMISO_DENEGADO' }))
+      fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+      await capturarError(apiClient.get('/tickets'))
+      await capturarError(apiClient.get('/tickets'))
+
+      expect(handler).not.toHaveBeenCalled()
+    })
   })
 })

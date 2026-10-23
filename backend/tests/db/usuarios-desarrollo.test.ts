@@ -3,7 +3,7 @@ import type { Knex } from 'knex';
 import request from 'supertest';
 import { createApp } from '../../src/app';
 import { buildContainer, type Container } from '../../src/container';
-import { createTestKnex, reiniciarEsquema } from './knex-test';
+import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
 
 // Seeds de desarrollo compilados, como los ejecuta `npm run seed:dev`.
 const seedsDesarrolloDir = path.resolve(__dirname, '../../dist/infrastructure/database/seeds-desarrollo');
@@ -16,13 +16,7 @@ describe('Usuarios de desarrollo (seeds-desarrollo/06_usuarios)', () => {
 
   beforeAll(async () => {
     db = createTestKnex();
-    container = buildContainer({
-      PORT: 0,
-      DATABASE_URL: process.env.DATABASE_URL_TEST!,
-      JWT_SECRET: 'secreto-de-pruebas-de-al-menos-32-caracteres',
-      NODE_ENV: 'test',
-      LOGIN_LIMITE_POR_VENTANA: 1000,
-    });
+    container = buildContainer(envDePrueba());
     await reiniciarEsquema(db);
     await db.migrate.latest();
     // Dos ejecuciones: la segunda no debe fallar ni duplicar usuarios.

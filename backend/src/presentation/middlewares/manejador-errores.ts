@@ -4,6 +4,39 @@ import { type CodigoError, ErrorDeAplicacion } from '../../application/errors/er
 
 const STATUS_POR_CODIGO: Record<CodigoError, number> = {
   VALIDACION: 400,
+  POLITICA_PASSWORD: 400,
+  TOKEN_RECUPERACION_INVALIDO: 400,
+  TOKEN_VERIFICACION_INVALIDO: 400,
+  CORREO_NO_VERIFICADO: 403,
+  ROL_NO_PERMITIDO: 400,
+  DEPENDENCIA_REQUERIDA: 400,
+  DEPENDENCIA_NO_PERMITIDA: 400,
+  DEPENDENCIA_INVALIDA: 400,
+  DPI_INVALIDO: 400,
+  EMAIL_DUPLICADO: 409,
+  DPI_DUPLICADO: 409,
+  OPERACION_SOBRE_SI_MISMO: 409,
+  ULTIMO_ADMINISTRADOR: 409,
+  TITULO_INVALIDO: 400,
+  DESCRIPCION_INVALIDA: 400,
+  DIRECCION_INVALIDA: 400,
+  DATO_INVALIDO: 400,
+  SOLICITANTE_INVALIDO: 400,
+  CATEGORIA_INVALIDA: 400,
+  ZONA_INVALIDA: 400,
+  CORRELATIVO_AGOTADO: 500,
+  NOMBRE_INVALIDO: 400,
+  TELEFONO_INVALIDO: 400,
+  EMAIL_INVALIDO: 400,
+  CONTACTO_REQUERIDO: 400,
+  DEFINICION_INVALIDA: 400,
+  DATOS_EXTRA_INVALIDOS: 400,
+  CAMBIO_INCOMPATIBLE: 409,
+  UBICACION_INCOMPLETA: 400,
+  UBICACION_INVALIDA: 400,
+  UBICACION_NO_CONFIGURADA: 400,
+  UBICACION_FUERA_DEL_MUNICIPIO: 400,
+  LIMITES_INVALIDOS: 400,
   NO_AUTENTICADO: 401,
   TOKEN_INVALIDO: 401,
   CREDENCIALES_INVALIDAS: 401,
@@ -23,7 +56,9 @@ export const rutaNoEncontrada: RequestHandler = (req, _res, next) => {
 // Último middleware de app.ts. Todo error sale como { codigo, mensaje }, el formato que lee el cliente HTTP.
 export const manejadorErrores: ErrorRequestHandler = (error, _req, res, _next) => {
   if (error instanceof ErrorDeAplicacion) {
-    res.status(STATUS_POR_CODIGO[error.codigo]).json({ codigo: error.codigo, mensaje: error.message });
+    // `detalles` solo aparece en los errores que lo traen (SPEC 14); el resto conserva { codigo, mensaje }.
+    const detalles = error.detalles ? { detalles: error.detalles } : {};
+    res.status(STATUS_POR_CODIGO[error.codigo]).json({ codigo: error.codigo, mensaje: error.message, ...detalles });
     return;
   }
 

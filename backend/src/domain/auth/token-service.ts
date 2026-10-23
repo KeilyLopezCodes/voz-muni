@@ -3,6 +3,15 @@ import type { Rol } from './roles';
 export const DURACION_ACCESO_MS = 15 * 60 * 1000;
 export const DURACION_RENOVACION_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Enlaces de un solo uso de restablecimientos (SPEC 09, 10 y 16).
+// recuperacion e invitacion se usan en /auth/restablecer; verificacion, en /auth/verificar.
+export type TipoRestablecimiento = 'recuperacion' | 'invitacion' | 'verificacion';
+export const VIGENCIA_RESTABLECIMIENTO_MS: Record<TipoRestablecimiento, number> = {
+  recuperacion: 30 * 60 * 1000,
+  invitacion: 24 * 60 * 60 * 1000,
+  verificacion: 24 * 60 * 60 * 1000,
+};
+
 // Contenido del token de acceso. Los permisos no viajan en el token: se leen de la base en cada petición.
 export interface PayloadAcceso {
   sub: string; // id del usuario
@@ -20,7 +29,8 @@ export interface TokenService {
   emitirAcceso(payload: PayloadAcceso, ahora: Date): TokenEmitido;
   // null si la firma es inválida o el token venció.
   verificarAcceso(token: string, ahora: Date): PayloadAcceso | null;
+  // 32 bytes aleatorios. También sirve para el token de recuperación de contraseña.
   generarRenovacion(): string;
-  // Lo único que se guarda del token de renovación.
+  // SHA-256: lo único que se guarda de un token de renovación o de recuperación.
   hashRenovacion(token: string): string;
 }

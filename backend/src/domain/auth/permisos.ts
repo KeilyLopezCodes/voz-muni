@@ -10,6 +10,7 @@ export const ACCIONES = [
   'comentarios.interno',
   'reportes.ver',
   'admin.catalogos',
+  'admin.usuarios',
   'bitacora.ver',
 ] as const;
 
