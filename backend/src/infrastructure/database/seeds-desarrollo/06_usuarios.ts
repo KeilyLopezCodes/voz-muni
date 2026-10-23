@@ -40,6 +40,8 @@ export async function seed(knex: Knex): Promise<void> {
       rol_id: rolId,
       dependencia_id: enDependencia ? dependencia.id : null,
       activo: true,
+      // SPEC 16: sin correo verificado no se inicia sesión.
+      correo_verificado_en: knex.fn.now(),
     };
   });
 

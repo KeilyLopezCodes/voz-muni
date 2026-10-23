@@ -11,6 +11,7 @@ export interface UsuarioConCredenciales {
   activo: boolean;
   passwordHash: string | null;
   bloqueo: EstadoBloqueo;
+  correoVerificado: boolean; // SPEC 16: sin verificar no se inicia sesión
 }
 
 // Usuario activo con los permisos actuales de su rol.

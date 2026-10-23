@@ -10,6 +10,7 @@ import { abrirSesion, respuestaSesion } from './emision-sesion';
 
 const CREDENCIALES_INVALIDAS = 'Correo o contraseña incorrectos';
 const CUENTA_BLOQUEADA = 'Cuenta bloqueada temporalmente por intentos fallidos';
+const CORREO_NO_VERIFICADO = 'El correo todavía no está verificado';
 const SESION_INVALIDA = 'La sesión no existe, venció o fue revocada';
 
 // Login, renovación y cierre de sesión (RF-02, RNF-09).
@@ -50,6 +51,11 @@ export class AuthService {
 
     if (usuario.bloqueo.intentosFallidos !== 0 || usuario.bloqueo.bloqueadoHasta !== null) {
       await this.usuarios.guardarBloqueo(usuario.id, registrarExito());
+    }
+
+    // SPEC 16: solo con la contraseña correcta, así quien no la conoce no sabe si la cuenta está verificada.
+    if (!usuario.correoVerificado) {
+      throw new ErrorDeAplicacion('CORREO_NO_VERIFICADO', CORREO_NO_VERIFICADO);
     }
 
     const datos: UsuarioSesion = {

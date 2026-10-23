@@ -5,6 +5,7 @@ import { ErrorDeAplicacion } from '../../../src/application/errors/error-de-apli
 import type { AuthService } from '../../../src/application/services/auth.service';
 import type { AutorizacionService } from '../../../src/application/services/autorizacion.service';
 import type { RecuperacionService } from '../../../src/application/services/recuperacion.service';
+import type { RegistroVecinosService } from '../../../src/application/services/registro-vecinos.service';
 import type { UsuariosService } from '../../../src/application/services/usuarios.service';
 import type { RegistroTicketsService } from '../../../src/application/services/registro-tickets.service';
 import type { VecinosService } from '../../../src/application/services/vecinos.service';
@@ -29,6 +30,7 @@ function buildTestContainer(): Container {
     authService: {} as AuthService,
     autorizacionService: {} as AutorizacionService,
     recuperacionService: {} as RecuperacionService,
+    registroVecinosService: {} as RegistroVecinosService,
     usuariosService: {} as UsuariosService,
     consultaTicketsService: {} as ConsultaTicketsService,
     reportesLectura: {} as ReporteLecturaRepository,

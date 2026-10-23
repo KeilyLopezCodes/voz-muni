@@ -50,6 +50,7 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['activo', 'boolean'],
     ['intentos_fallidos', 'integer'],
     ['bloqueado_hasta', 'timestamp with time zone'],
+    ['correo_verificado_en', 'timestamp with time zone'],
   ],
   sesiones: [
     ['id', 'bigint'],
@@ -382,6 +383,8 @@ describe('Esquema de base de datos', () => {
       }));
 
     it('revertir 0010 quita tipo y las 2 plantillas, y latest() las vuelve a crear', async () => {
+      // 0015 redefine el CHECK de tipo: se revierte antes que 0010 para no dejar el CHECK viejo al reaplicar.
+      await db.migrate.down({ name: '0015_verificacion_correo.js' });
       await db.migrate.down({ name: '0010_invitaciones.js' });
       try {
         const columnas = await db('information_schema.columns')
@@ -394,7 +397,85 @@ describe('Esquema de base de datos', () => {
       } finally {
         await db.migrate.latest();
       }
-      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '6' }]);
+      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '9' }]);
+    });
+  });
+
+  describe('verificación de correo (0015)', () => {
+    const CLAVES_0015 = ['verificacion_correo', 'cuenta_existente', 'registro_no_completado'];
+
+    async function checkTipo(): Promise<string> {
+      const fila: { def: string } = await db('pg_constraint')
+        .where({ conname: 'restablecimientos_tipo_check' })
+        .first(db.raw('pg_get_constraintdef(oid) AS def'));
+      return fila.def;
+    }
+
+    it('un usuario nuevo empieza sin correo verificado', () =>
+      withRollback(async (trx) => {
+        const rolId = await insertRol(trx);
+        const [usuario] = await trx('usuarios')
+          .insert({ nombre: 'Ana', email: 'ana@x.gt', rol_id: rolId })
+          .returning('correo_verificado_en');
+        expect(usuario.correo_verificado_en).toBeNull();
+      }));
+
+    it("tipo acepta 'verificacion' y rechaza 'otro'", () =>
+      withRollback(async (trx) => {
+        const rolId = await insertRol(trx);
+        const [usuario] = await trx('usuarios').insert({ nombre: 'Ana', email: 'ana@x.gt', rol_id: rolId }).returning('id');
+        const base = { usuario_id: usuario.id, expira_en: '2026-10-24T00:00:00Z' };
+        await trx('restablecimientos').insert({ ...base, token_hash: 'e'.repeat(64), tipo: 'verificacion' });
+        await expect(
+          trx('restablecimientos').insert({ ...base, token_hash: 'f'.repeat(64), tipo: 'otro' }),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+
+    it('existen las 3 plantillas de la verificación', async () => {
+      const filas: { clave: string }[] = await db('plantillas_notificacion').whereIn('clave', CLAVES_0015).select('clave');
+      expect(filas.map((fila) => fila.clave).sort()).toEqual([...CLAVES_0015].sort());
+    });
+
+    it('marca como verificados a los usuarios con contraseña creados antes de la migración', async () => {
+      await db.migrate.down({ name: '0015_verificacion_correo.js' });
+      try {
+        const [rol] = await db('roles').where({ nombre: 'vecino' }).select('id');
+        await db('usuarios').insert([
+          { nombre: 'Con contraseña', email: 'previo-con@x.gt', password_hash: 'hash', rol_id: rol.id },
+          { nombre: 'Sin contraseña', email: 'previo-sin@x.gt', rol_id: rol.id },
+        ]);
+      } finally {
+        await db.migrate.latest();
+      }
+      try {
+        const filas: { email: string; verificado: boolean }[] = await db('usuarios')
+          .whereIn('email', ['previo-con@x.gt', 'previo-sin@x.gt'])
+          .orderBy('email')
+          .select('email', db.raw('correo_verificado_en IS NOT NULL AS verificado'));
+        expect(filas).toEqual([
+          { email: 'previo-con@x.gt', verificado: true },
+          { email: 'previo-sin@x.gt', verificado: false },
+        ]);
+      } finally {
+        await db('usuarios').whereIn('email', ['previo-con@x.gt', 'previo-sin@x.gt']).delete();
+      }
+    });
+
+    it('revertir 0015 restaura el CHECK anterior y quita la columna y las plantillas', async () => {
+      expect(await checkTipo()).toContain('verificacion');
+      await db.migrate.down({ name: '0015_verificacion_correo.js' });
+      try {
+        expect(await checkTipo()).not.toContain('verificacion');
+        expect(await checkTipo()).toContain('invitacion');
+        const columnas = await db('information_schema.columns')
+          .where({ table_schema: 'public', table_name: 'usuarios', column_name: 'correo_verificado_en' })
+          .select('column_name');
+        expect(columnas).toEqual([]);
+        expect(await db('plantillas_notificacion').whereIn('clave', CLAVES_0015).select('clave')).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+      expect(await checkTipo()).toContain('verificacion');
     });
   });
 

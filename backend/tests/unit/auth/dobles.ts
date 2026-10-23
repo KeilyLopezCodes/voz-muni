@@ -8,7 +8,13 @@ import type {
   RestablecimientoRepository,
   RestablecimientoVigente,
 } from '../../../src/domain/repositories/restablecimiento-repository';
+import type {
+  NuevoRegistro,
+  RegistroVecinoRepository,
+  UsuariosParaRegistro,
+} from '../../../src/domain/repositories/registro-vecino-repository';
 import type { ReposTransaccionales, Transaccion } from '../../../src/domain/repositories/transaccion';
+import type { UsuarioParaRegistro } from '../../../src/domain/usuarios/registro-vecino';
 import type {
   CambiosUsuarioInterno,
   FiltroUsuarios,
@@ -51,6 +57,7 @@ export interface UsuarioFalso {
   passwordHash: string | null;
   bloqueo: EstadoBloqueo;
   permisos: Permisos;
+  correoVerificadoEn: Date | null; // SPEC 16
 }
 
 export class UsuariosEnMemoria implements UsuarioRepository {
@@ -58,7 +65,7 @@ export class UsuariosEnMemoria implements UsuarioRepository {
 
   async buscarPorEmail(email: string): Promise<UsuarioConCredenciales | null> {
     const u = this.filas.find((fila) => fila.email?.toLowerCase() === email.toLowerCase());
-    return u ? { ...u, bloqueo: { ...u.bloqueo } } : null;
+    return u ? { ...u, bloqueo: { ...u.bloqueo }, correoVerificado: u.correoVerificadoEn !== null } : null;
   }
 
   async guardarBloqueo(usuarioId: number, estado: EstadoBloqueo): Promise<void> {
@@ -189,6 +196,7 @@ export function usuario(cambios: Partial<UsuarioFalso> = {}): UsuarioFalso {
     passwordHash: `hash:${PASSWORD}`,
     bloqueo: { intentosFallidos: 0, bloqueadoHasta: null },
     permisos: { 'tickets.ver': 'dependencia' },
+    correoVerificadoEn: new Date('2026-01-01T00:00:00Z'),
     ...cambios,
   };
 }
@@ -243,8 +251,71 @@ export class VecinosEnMemoria implements VecinoRepository {
       passwordHash: null,
       bloqueo: { intentosFallidos: 0, bloqueadoHasta: null },
       permisos: { 'tickets.crear': 'propia', 'tickets.ver': 'propia' },
+      correoVerificadoEn: null,
     });
     return { id };
+  }
+}
+
+// Registro del portal (SPEC 16) sobre las mismas filas de UsuariosEnMemoria.
+export class RegistroVecinosEnMemoria implements RegistroVecinoRepository {
+  // Si se fija, crearPendiente lanza este duplicado, como si otro registro hubiera ganado la carrera.
+  duplicadoEnCarrera: 'EMAIL_DUPLICADO' | 'DPI_DUPLICADO' | null = null;
+
+  constructor(private readonly usuarios: UsuariosEnMemoria) {}
+
+  private aRegistro(u: UsuarioFalso | undefined): UsuarioParaRegistro | null {
+    return u
+      ? {
+          id: u.id,
+          rol: u.rol,
+          activo: u.activo,
+          tienePassword: u.passwordHash !== null,
+          verificado: u.correoVerificadoEn !== null,
+        }
+      : null;
+  }
+
+  async buscarParaRegistro(email: string, dpi: string): Promise<UsuariosParaRegistro> {
+    return {
+      porCorreo: this.aRegistro(this.usuarios.filas.find((u) => u.email?.toLowerCase() === email.toLowerCase())),
+      porDpi: this.aRegistro(this.usuarios.filas.find((u) => u.dpi === dpi)),
+    };
+  }
+
+  async crearPendiente(datos: NuevoRegistro): Promise<{ id: number }> {
+    if (this.duplicadoEnCarrera) {
+      throw new ReglaDeNegocioError(this.duplicadoEnCarrera, 'duplicado en carrera');
+    }
+    const id = Math.max(0, ...this.usuarios.filas.map((u) => u.id)) + 1;
+    this.usuarios.filas.push({
+      id,
+      nombre: datos.nombre,
+      email: datos.email,
+      telefono: datos.telefono,
+      dpi: datos.dpi,
+      rol: 'vecino',
+      dependenciaId: null,
+      activo: true,
+      passwordHash: datos.passwordHash,
+      bloqueo: { intentosFallidos: 0, bloqueadoHasta: null },
+      permisos: { 'tickets.crear': 'propia', 'tickets.ver': 'propia' },
+      correoVerificadoEn: null,
+    });
+    return { id };
+  }
+
+  async reemplazarPendiente(usuarioId: number, datos: NuevoRegistro): Promise<void> {
+    const u = this.usuarios.filas.find((fila) => fila.id === usuarioId && fila.correoVerificadoEn === null)!;
+    u.nombre = datos.nombre;
+    u.dpi = datos.dpi;
+    u.telefono = datos.telefono;
+    u.passwordHash = datos.passwordHash;
+  }
+
+  async marcarVerificado(usuarioId: number, ahora: Date): Promise<void> {
+    const u = this.usuarios.filas.find((fila) => fila.id === usuarioId)!;
+    u.correoVerificadoEn ??= ahora;
   }
 }
 
@@ -294,6 +365,7 @@ export class UsuariosAdminEnMemoria implements UsuarioAdminRepository {
       passwordHash: null,
       bloqueo: { intentosFallidos: 0, bloqueadoHasta: null },
       permisos: PERMISOS_POR_ROL[nuevo.rol] ?? {},
+      correoVerificadoEn: null,
     };
     this.usuarios.filas.push(fila);
     return this.aInterno(fila);
@@ -351,9 +423,18 @@ export class RestablecimientosEnMemoria implements RestablecimientoRepository {
     });
   }
 
-  async buscarVigente(tokenHash: string, ahora: Date): Promise<RestablecimientoVigente | null> {
+  async buscarVigente(
+    tokenHash: string,
+    ahora: Date,
+    tipos: readonly TipoRestablecimiento[],
+  ): Promise<RestablecimientoVigente | null> {
     const r = this.filas.find(
-      (f) => f.tokenHash === tokenHash && !f.usadoEn && !f.invalidadoEn && f.expiraEn.getTime() > ahora.getTime(),
+      (f) =>
+        f.tokenHash === tokenHash &&
+        tipos.includes(f.tipo) &&
+        !f.usadoEn &&
+        !f.invalidadoEn &&
+        f.expiraEn.getTime() > ahora.getTime(),
     );
     return r ? { id: r.id, usuarioId: r.usuarioId, tipo: r.tipo } : null;
   }
@@ -372,6 +453,9 @@ export class PlantillasEnMemoria implements PlantillaRepository {
       ['invitacion_usuario', 'Invitación', '{{nombre}} ({{rol}}): {{enlace}}', '<a href="{{enlace}}">{{nombre}}</a>'],
       ['cuenta_desactivada', 'Desactivada', '{{nombre}}', '<p>{{nombre}}</p>'],
       ['invitacion_vecino', 'Portal', '{{nombre}}: {{enlace}}', '<a href="{{enlace}}">{{nombre}}</a>'],
+      ['verificacion_correo', 'Confirma', '{{nombre}}: {{enlace}}', '<a href="{{enlace}}">{{nombre}}</a>'],
+      ['cuenta_existente', 'Ya tienes cuenta', 'Ya existe una cuenta', '<p>Ya existe una cuenta</p>'],
+      ['registro_no_completado', 'No se pudo', 'No pudimos crear tu cuenta', '<p>No pudimos crear tu cuenta</p>'],
     ].map(([clave, asunto, cuerpoTexto, cuerpoHtml]) => [clave, { clave, asunto, cuerpoTexto, cuerpoHtml }]),
   );
 

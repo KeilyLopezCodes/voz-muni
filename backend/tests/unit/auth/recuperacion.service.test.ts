@@ -6,6 +6,7 @@ import {
   HasherFalso,
   MINUTO,
   PlantillasEnMemoria,
+  RegistroVecinosEnMemoria,
   RelojFalso,
   RestablecimientosEnMemoria,
   SesionesEnMemoria,
@@ -36,6 +37,7 @@ function crearEscenario(filas: UsuarioFalso[] = [usuario()]) {
       sesiones,
       restablecimientos,
       vecinos: new VecinosEnMemoria(usuarios),
+      registroVecinos: new RegistroVecinosEnMemoria(usuarios),
     }),
     new EnvioCorreo(new PlantillasEnMemoria(), enviador, (mensaje) => errores.push(mensaje)),
     new HasherFalso(),
@@ -262,5 +264,36 @@ describe('Ampliaciones de SPEC 10', () => {
     await expect(e.servicio.restablecer('invitacion', NUEVA)).rejects.toMatchObject({ codigo: 'TOKEN_RECUPERACION_INVALIDO' });
     e.reloj.avanzar(-60 * MINUTO);
     await expect(e.servicio.restablecer('invitacion', NUEVA)).resolves.toMatchObject({ usuario: { id: 1 } });
+  });
+});
+
+describe('Ampliaciones de SPEC 16', () => {
+  it('restablecer marca el correo como verificado', async () => {
+    const e = crearEscenario([usuario({ rol: 'vecino', correoVerificadoEn: null })]);
+    const token = await pedirToken(e);
+
+    await e.servicio.restablecer(token, NUEVA);
+
+    expect(e.usuarios.filas[0].correoVerificadoEn).toEqual(e.reloj.actual);
+  });
+
+  it('restablecer conserva la fecha de verificación de un correo ya verificado', async () => {
+    const verificado = new Date('2026-01-01T00:00:00Z');
+    const e = crearEscenario([usuario({ correoVerificadoEn: verificado })]);
+    const token = await pedirToken(e);
+
+    await e.servicio.restablecer(token, NUEVA);
+
+    expect(e.usuarios.filas[0].correoVerificadoEn).toEqual(verificado);
+  });
+
+  it('un token de verificación no sirve para restablecer la contraseña', async () => {
+    const e = crearEscenario([usuario({ rol: 'vecino', correoVerificadoEn: null })]);
+    const hashOriginal = e.usuarios.filas[0].passwordHash;
+    await e.restablecimientos.crear(1, 'sha:verificacion', 'verificacion', e.reloj.actual);
+
+    await expect(e.servicio.restablecer('verificacion', NUEVA)).rejects.toMatchObject({ codigo: 'TOKEN_RECUPERACION_INVALIDO' });
+    expect(e.usuarios.filas[0]).toMatchObject({ passwordHash: hashOriginal, correoVerificadoEn: null });
+    expect(e.restablecimientos.filas[0].usadoEn).toBeNull();
   });
 });

@@ -9,6 +9,7 @@ import { EnvioCorreo } from './application/services/envio-correo';
 import { HealthService } from './application/services/health.service';
 import { RecuperacionService } from './application/services/recuperacion.service';
 import { RegistroTicketsService } from './application/services/registro-tickets.service';
+import { RegistroVecinosService } from './application/services/registro-vecinos.service';
 import { UsuariosService } from './application/services/usuarios.service';
 import { VecinosService } from './application/services/vecinos.service';
 import type { EnviadorCorreo } from './domain/notificaciones/enviador-correo';
@@ -43,6 +44,7 @@ export interface Container {
   authService: AuthService;
   autorizacionService: AutorizacionService;
   recuperacionService: RecuperacionService;
+  registroVecinosService: RegistroVecinosService;
   usuariosService: UsuariosService;
   // Lectura con alcance (SPEC 11). Los endpoints de tickets, reportes y bitácora llegan con sus specs.
   consultaTicketsService: ConsultaTicketsService;
@@ -101,6 +103,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
       clock,
       env.APP_URL,
     ),
+    registroVecinosService: new RegistroVecinosService(transaccion, correo, hasher, tokens, clock, env.APP_URL),
     usuariosService: new UsuariosService(new KnexUsuarioAdminRepository(db), transaccion, correo, tokens, clock, env.APP_URL),
     consultaTicketsService: new ConsultaTicketsService(new KnexTicketLecturaRepository(db)),
     reportesLectura: new KnexReporteLecturaRepository(db),

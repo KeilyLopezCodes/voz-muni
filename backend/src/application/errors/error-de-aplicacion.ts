@@ -5,6 +5,8 @@ export type CodigoError =
   | 'VALIDACION'
   | 'POLITICA_PASSWORD'
   | 'TOKEN_RECUPERACION_INVALIDO'
+  | 'TOKEN_VERIFICACION_INVALIDO'
+  | 'CORREO_NO_VERIFICADO'
   | 'ROL_NO_PERMITIDO'
   | 'DEPENDENCIA_REQUERIDA'
   | 'DEPENDENCIA_NO_PERMITIDA'
@@ -46,6 +48,7 @@ export type CodigoError =
 
 // Códigos de ReglaDeNegocioError del dominio que la API expone tal cual.
 const CODIGOS_DE_REGLA: readonly CodigoError[] = [
+  'POLITICA_PASSWORD',
   'DEPENDENCIA_REQUERIDA',
   'DEPENDENCIA_NO_PERMITIDA',
   'DPI_INVALIDO',

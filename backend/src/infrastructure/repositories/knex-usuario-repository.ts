@@ -18,6 +18,7 @@ interface FilaUsuario {
   password_hash: string | null;
   intentos_fallidos: number;
   bloqueado_hasta: Date | null;
+  correo_verificado_en: Date | null;
   permisos: Permisos;
 }
 
@@ -36,6 +37,7 @@ export class KnexUsuarioRepository implements UsuarioRepository {
         'u.password_hash',
         'u.intentos_fallidos',
         'u.bloqueado_hasta',
+        'u.correo_verificado_en',
         'r.permisos',
       );
   }
@@ -56,6 +58,7 @@ export class KnexUsuarioRepository implements UsuarioRepository {
       activo: fila.activo,
       passwordHash: fila.password_hash,
       bloqueo: { intentosFallidos: fila.intentos_fallidos, bloqueadoHasta: fila.bloqueado_hasta },
+      correoVerificado: fila.correo_verificado_en !== null,
     };
   }
 

@@ -111,6 +111,25 @@ describe('AuthService.login', () => {
   });
 });
 
+describe('Ampliaciones de SPEC 16', () => {
+  const sinVerificar = () => usuario({ rol: 'vecino', correoVerificadoEn: null, bloqueo: { intentosFallidos: 2, bloqueadoHasta: null } });
+
+  it('la contraseña correcta con el correo sin verificar responde CORREO_NO_VERIFICADO, sin tokens y con el contador reiniciado', async () => {
+    const { auth, usuarios, sesiones } = crearEscenario([sinVerificar()]);
+
+    await expect(auth.login('ana@vozmuni.test', PASSWORD)).rejects.toMatchObject({ codigo: 'CORREO_NO_VERIFICADO' });
+    expect(sesiones.filas).toEqual([]);
+    expect(usuarios.filas[0].bloqueo).toEqual({ intentosFallidos: 0, bloqueadoHasta: null });
+  });
+
+  it('la contraseña incorrecta con el correo sin verificar responde CREDENCIALES_INVALIDAS', async () => {
+    const { auth, usuarios } = crearEscenario([sinVerificar()]);
+
+    await expect(auth.login('ana@vozmuni.test', 'otra-clave-1')).rejects.toMatchObject({ codigo: 'CREDENCIALES_INVALIDAS' });
+    expect(usuarios.filas[0].bloqueo.intentosFallidos).toBe(3);
+  });
+});
+
 describe('AuthService.renovar', () => {
   it('rota el token: devuelve uno nuevo, revoca el anterior y lo enlaza', async () => {
     const { auth, sesiones, reloj } = crearEscenario();

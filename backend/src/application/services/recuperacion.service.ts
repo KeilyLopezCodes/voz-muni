@@ -11,6 +11,8 @@ import { abrirSesion } from './emision-sesion';
 import type { EnvioCorreo } from './envio-correo';
 
 const TOKEN_INVALIDO = 'El enlace de recuperación no existe, venció o ya se usó';
+// Los enlaces que acepta /auth/restablecer. Los de verificación de correo van a /auth/verificar (SPEC 16).
+const TIPOS_RESTABLECER = ['recuperacion', 'invitacion'] as const;
 
 // Recuperación de contraseña por correo (RF-03).
 export class RecuperacionService {
@@ -53,7 +55,7 @@ export class RecuperacionService {
 
     const tokenHash = this.tokens.hashRenovacion(token);
     const ahora = this.clock.now();
-    const vigente = await this.restablecimientos.buscarVigente(tokenHash, ahora);
+    const vigente = await this.restablecimientos.buscarVigente(tokenHash, ahora, TIPOS_RESTABLECER);
     const usuario = vigente ? await this.usuarios.buscarActivo(vigente.usuarioId) : null;
     if (!vigente || !usuario) {
       throw new ErrorDeAplicacion('TOKEN_RECUPERACION_INVALIDO', TOKEN_INVALIDO);
@@ -70,11 +72,13 @@ export class RecuperacionService {
 
     const respuesta = await this.transaccion.ejecutar(async (repos) => {
       // Otra petición pudo usar el mismo token mientras se calculaba el hash.
-      const sigueVigente = await repos.restablecimientos.buscarVigente(tokenHash, ahora);
+      const sigueVigente = await repos.restablecimientos.buscarVigente(tokenHash, ahora, TIPOS_RESTABLECER);
       if (!sigueVigente) {
         throw new ErrorDeAplicacion('TOKEN_RECUPERACION_INVALIDO', TOKEN_INVALIDO);
       }
       await repos.usuarios.cambiarPassword(usuario.id, passwordHash);
+      // Usar un enlace enviado al correo prueba que el correo es suyo (SPEC 16).
+      await repos.registroVecinos.marcarVerificado(usuario.id, ahora);
       await repos.restablecimientos.marcarUsado(sigueVigente.id, ahora);
       // La única sesión viva queda siendo la nueva.
       await repos.sesiones.revocarTodasDelUsuario(usuario.id, ahora);

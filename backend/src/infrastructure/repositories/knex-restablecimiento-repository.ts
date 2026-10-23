@@ -25,12 +25,17 @@ export class KnexRestablecimientoRepository implements RestablecimientoRepositor
     });
   }
 
-  async buscarVigente(tokenHash: string, ahora: Date): Promise<RestablecimientoVigente | null> {
+  async buscarVigente(
+    tokenHash: string,
+    ahora: Date,
+    tipos: readonly TipoRestablecimiento[],
+  ): Promise<RestablecimientoVigente | null> {
     // pg devuelve los bigint como string.
     const fila: { id: string; usuario_id: string; tipo: TipoRestablecimiento } | undefined = await this.db(
       'restablecimientos',
     )
       .where({ token_hash: tokenHash })
+      .whereIn('tipo', tipos)
       .whereNull('usado_en')
       .whereNull('invalidado_en')
       .where('expira_en', '>', ahora)
