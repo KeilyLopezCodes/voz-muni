@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repository contains the project foundations. There is no business logic yet.
 
-- `backend/`: the layered backend skeleton with `GET /health` and the layer dependency rules (SPEC 01), plus PostgreSQL 17 in docker-compose, Knex wiring, config validated with Zod, and `/health` reporting the database state (SPEC 02), plus the 14 tables of section 6 as Knex migrations, the insert-only `bitacora` trigger and the 6-role seed (SPEC 03).
+- `backend/`: the layered backend skeleton with `GET /health` and the layer dependency rules (SPEC 01), plus PostgreSQL 17 in docker-compose, Knex wiring, config validated with Zod, and `/health` reporting the database state (SPEC 02), plus the 14 tables of section 6 as Knex migrations, the insert-only `bitacora` trigger and the 6-role seed (SPEC 03), and fictional development catalogs loaded with `seed:dev` (SPEC 05).
 - `frontend/`: the React + Vite SPA scaffold (SPEC 06), with the shared HTTP client, the role-based route guards, the MUI layout, the Spanish translation files and the feature-boundary rules. The pages are placeholders, and there is no login yet, so the browser session is always `null`.
 
 It also contains:
@@ -30,6 +30,7 @@ Backend (run from `backend/`):
 - `npm start`: run `dist/server.js` (port from `PORT`, default 3000). Requires `npm run build` first.
 - `npm run migrate:latest` / `npm run migrate:rollback`: run the Knex CLI against the compiled migrations in `dist/`. Requires `npm run build` first.
 - `npm run seed:run`: run the compiled seeds in `dist/` (today, the 6 roles). Requires `npm run build` and `migrate:latest` first. Seeds are idempotent, so running it twice is safe.
+- `npm run seed:dev`: run the compiled development seeds in `dist/infrastructure/database/seeds-desarrollo/` (example dependencias, categorias, zonas, politicas_sla and the 2026–2027 calendario_laboral). Run it after the others: `migrate:latest` → `seed:run` → `seed:dev`. It refuses to run with `NODE_ENV=production`. To reset the example data, roll back all migrations and run the three commands again.
 - `npm test`: run the Jest tests in `tests/` except `tests/db/`. Does not need Docker. Use `npx jest tests/unit/health.service.test.ts` for a single file.
 - `npm run test:db`: build, then run `tests/db/` against real PostgreSQL using `DATABASE_URL_TEST`, with the migrations and seeds compiled in `dist/`. Requires `docker compose up -d`.
 - `npm run lint:deps`: check the layer dependency rules in `.dependency-cruiser.cjs` (RNF-17).
@@ -41,6 +42,7 @@ Migration convention (SPEC 03):
 - Migrations are written by hand. There is no `migrate:make`.
 - A migration already merged to `main` is never edited. Changes go in a new migration.
 - Seeds follow the same pattern in `seeds/NN_nombre.ts` and must be idempotent.
+- The data in `seeds-desarrollo/` is fictional and is never loaded in production (SPEC 05). Helpers used by seeds live in `seed-helpers/`, because Knex runs every file in a seeds folder as a seed.
 
 Frontend (run from `frontend/`):
 
