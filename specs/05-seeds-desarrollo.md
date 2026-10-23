@@ -1,6 +1,6 @@
 # SPEC 05 — Seeds de desarrollo con configuración municipal de ejemplo
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** SPEC 03
 > **Fecha:** 2026-10-22
 > **Objetivo:** Cargar con `npm run seed:dev` dependencias, categorías, zonas, políticas SLA y el calendario laboral 2026–2027 de ejemplo, solo en entornos que no son de producción, para tener un entorno de desarrollo funcional.
@@ -180,21 +180,21 @@ Cada seed usa `INSERT ... ON CONFLICT DO NOTHING` sobre su clave natural:
 
 ## Criterios de aceptación
 
-- [ ] Sobre una base recién migrada, `npm run seed:dev` termina con código 0.
-- [ ] Después de `seed:dev` hay exactamente 4 dependencias, 4 categorías, 6 zonas, 16 políticas SLA y 730 filas de calendario.
-- [ ] Ejecutar `npm run seed:dev` una segunda vez termina con código 0 y deja los mismos conteos.
-- [ ] Si se cambia a mano el nombre de una zona y se vuelve a ejecutar `seed:dev`, el cambio se conserva y se agrega otra vez la zona original.
-- [ ] `NODE_ENV=production npm run seed:dev` termina con código distinto de 0, muestra `seed:dev no se ejecuta en producción` y no inserta filas.
-- [ ] `npm run seed:run` no inserta dependencias, categorías, zonas, políticas ni calendario.
-- [ ] Cada categoría apunta a la dependencia de la tabla de contenido.
-- [ ] La política `Baches` / `media` tiene `horas_respuesta = 24` y `horas_resolucion = 72`.
-- [ ] `calendario_laboral` tiene 253 días hábiles en 2026 y 254 en 2027.
-- [ ] `2026-04-03` tiene `es_habil = false` y descripción `Viernes Santo`.
-- [ ] `2026-12-24` tiene `es_habil = true` y una descripción que contiene `asueto desde mediodía`.
-- [ ] Todos los sábados y domingos de 2026 y 2027 tienen `es_habil = false`.
-- [ ] Todas las dependencias tienen `coordinador_id = null` y todas las categorías tienen `campos_extra = '[]'`.
-- [ ] `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta `seed:dev` y su orden de ejecución.
+- [x] Sobre una base recién migrada, `npm run seed:dev` termina con código 0.
+- [x] Después de `seed:dev` hay exactamente 4 dependencias, 4 categorías, 6 zonas, 16 políticas SLA y 730 filas de calendario.
+- [x] Ejecutar `npm run seed:dev` una segunda vez termina con código 0 y deja los mismos conteos.
+- [x] Si se cambia a mano el nombre de una zona y se vuelve a ejecutar `seed:dev`, el cambio se conserva y se agrega otra vez la zona original.
+- [x] `NODE_ENV=production npm run seed:dev` termina con código distinto de 0, muestra `seed:dev no se ejecuta en producción` y no inserta filas.
+- [x] `npm run seed:run` no inserta dependencias, categorías, zonas, políticas ni calendario.
+- [x] Cada categoría apunta a la dependencia de la tabla de contenido.
+- [x] La política `Baches` / `media` tiene `horas_respuesta = 24` y `horas_resolucion = 72`.
+- [x] `calendario_laboral` tiene 253 días hábiles en 2026 y 254 en 2027.
+- [x] `2026-04-03` tiene `es_habil = false` y descripción `Viernes Santo`.
+- [x] `2026-12-24` tiene `es_habil = true` y una descripción que contiene `asueto desde mediodía`.
+- [x] Todos los sábados y domingos de 2026 y 2027 tienen `es_habil = false`.
+- [x] Todas las dependencias tienen `coordinador_id = null` y todas las categorías tienen `campos_extra = '[]'`.
+- [x] `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta `seed:dev` y su orden de ejecución.
 
 ## Decisiones
 
