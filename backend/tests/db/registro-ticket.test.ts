@@ -73,7 +73,7 @@ describe('Registro de tickets con correlativo (SPEC 12)', () => {
   });
 
   const registrar = (ahora = AHORA, actorId: number | null = base.registradoPor) =>
-    repo.registrar(Ticket.registrar(base, { actorId, ahora }));
+    repo.registrar(Ticket.registrar(base, { actorId, ahora }), () => ({}));
 
   it('el primer registro del año es -000001 y el segundo -000002, con su historial de creación', async () => {
     const primero = await registrar();

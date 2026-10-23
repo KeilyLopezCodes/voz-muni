@@ -8,6 +8,8 @@ import type { RecuperacionService } from '../../../src/application/services/recu
 import type { UsuariosService } from '../../../src/application/services/usuarios.service';
 import type { RegistroTicketsService } from '../../../src/application/services/registro-tickets.service';
 import type { VecinosService } from '../../../src/application/services/vecinos.service';
+import type { CatalogosService } from '../../../src/application/services/catalogos.service';
+import type { CamposExtraService } from '../../../src/application/services/campos-extra.service';
 import type { ConsultaTicketsService } from '../../../src/application/services/consulta-tickets.service';
 import type { BitacoraLecturaRepository } from '../../../src/domain/repositories/bitacora-lectura-repository';
 import type { ReporteLecturaRepository } from '../../../src/domain/repositories/reporte-lectura-repository';
@@ -32,6 +34,8 @@ function buildTestContainer(): Container {
     bitacoraLectura: {} as BitacoraLecturaRepository,
     registroTicketsService: {} as RegistroTicketsService,
     vecinosService: {} as VecinosService,
+    catalogosService: {} as CatalogosService,
+    camposExtraService: {} as CamposExtraService,
     dispose: async () => {},
   };
 }

@@ -1,6 +1,11 @@
 import type { Knex } from 'knex';
 import { ReglaDeNegocioError } from '../../domain/errors/regla-de-negocio-error';
-import type { RegistroTicketRepository, TicketCreado } from '../../domain/repositories/registro-ticket-repository';
+import type { CampoExtra } from '../../domain/categorias/campo-extra';
+import type {
+  PrepararDatosExtra,
+  RegistroTicketRepository,
+  TicketCreado,
+} from '../../domain/repositories/registro-ticket-repository';
 import { anioGuatemala, formatearNumero, MAX_CORRELATIVO } from '../../domain/ticket/numero-ticket';
 import type { TicketRegistrado } from '../../domain/ticket/ticket';
 
@@ -9,11 +14,19 @@ const CHECK_VIOLATION = '23514';
 export class KnexRegistroTicketRepository implements RegistroTicketRepository {
   constructor(private readonly db: Knex) {}
 
-  registrar({ datos, estado, historial }: TicketRegistrado): Promise<TicketCreado> {
+  registrar({ datos, estado, historial }: TicketRegistrado, prepararDatosExtra: PrepararDatosExtra): Promise<TicketCreado> {
     const creadoEn = historial.creadoEn;
     const anio = anioGuatemala(creadoEn);
 
     return this.db.transaction(async (trx) => {
+      // Antes del correlativo: si los datos adicionales no son válidos, no se consume un número.
+      // FOR SHARE: un cambio de definición (FOR UPDATE, SPEC 14) espera a que termine este registro.
+      const categoria: { campos_extra: CampoExtra[] } | undefined = await trx('categorias')
+        .where({ id: datos.categoriaId })
+        .forShare()
+        .first('campos_extra');
+      const datosExtra = prepararDatosExtra(categoria?.campos_extra ?? []);
+
       const numero = formatearNumero(anio, await this.siguienteCorrelativo(trx, anio));
 
       const [ticket] = await trx('tickets')
@@ -30,7 +43,7 @@ export class KnexRegistroTicketRepository implements RegistroTicketRepository {
           estado,
           creado_en: creadoEn,
           // dependencia, técnico, prioridad, ubicación y vencimientos se definen después (RF-10, RF-12, RF-26).
-          datos_extra: '{}',
+          datos_extra: JSON.stringify(datosExtra),
           escalado: false,
         })
         .returning('id');

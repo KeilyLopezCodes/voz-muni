@@ -2,17 +2,28 @@ import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { EnvioCorreo } from '../../../src/application/services/envio-correo';
 import { RegistroTicketsService } from '../../../src/application/services/registro-tickets.service';
 import type { CatalogoLecturaRepository } from '../../../src/domain/repositories/catalogo-lectura-repository';
-import type { RegistroTicketRepository, TicketCreado } from '../../../src/domain/repositories/registro-ticket-repository';
+import type { CampoExtra } from '../../../src/domain/categorias/campo-extra';
+import type { DatosExtra } from '../../../src/domain/categorias/datos-extra';
+import type {
+  PrepararDatosExtra,
+  RegistroTicketRepository,
+  TicketCreado,
+} from '../../../src/domain/repositories/registro-ticket-repository';
 import type { CriterioVecino, Vecino, VecinoRepository } from '../../../src/domain/repositories/vecino-repository';
 import { formatearNumero } from '../../../src/domain/ticket/numero-ticket';
 import type { TicketRegistrado } from '../../../src/domain/ticket/ticket';
 import { correosPendientes, EnviadorEnMemoria, PlantillasEnMemoria, RelojFalso } from '../auth/dobles';
 
+// Como el repositorio real: valida datosExtra con los campos de la categoría antes de tomar el número.
 class RegistrosEnMemoria implements RegistroTicketRepository {
   readonly registrados: TicketRegistrado[] = [];
+  readonly datosExtra: DatosExtra[] = [];
+  readonly camposPorCategoria = new Map<number, CampoExtra[]>();
 
-  async registrar(registro: TicketRegistrado): Promise<TicketCreado> {
+  async registrar(registro: TicketRegistrado, preparar: PrepararDatosExtra): Promise<TicketCreado> {
+    const datosExtra = preparar(this.camposPorCategoria.get(registro.datos.categoriaId) ?? []);
     this.registrados.push(registro);
+    this.datosExtra.push(datosExtra);
     const id = this.registrados.length;
     return { id, numero: formatearNumero(2026, id), creadoEn: registro.historial.creadoEn };
   }
@@ -28,6 +39,14 @@ class CatalogoFalso implements CatalogoLecturaRepository {
 
   async zonaExiste(zonaId: number): Promise<boolean> {
     return this.zonas.has(zonaId);
+  }
+
+  async listarCategoriasActivas() {
+    return [];
+  }
+
+  async listarZonas() {
+    return [];
   }
 }
 
@@ -88,7 +107,7 @@ function crear() {
     reloj,
     'http://localhost:5173',
   );
-  return { servicio, registros, catalogo, enviador, errores };
+  return { servicio, registros, catalogo, enviador, errores, reloj };
 }
 
 // Agrega queja_registrada a las plantillas de prueba.
@@ -205,5 +224,67 @@ describe('RegistroTicketsService.registrar', () => {
     await expect(fallo.servicio.registrar(vecino, 'propia', cuerpo)).resolves.toMatchObject({ numero: 'Q-2026-000001' });
     await correosPendientes();
     expect(fallo.errores).toEqual([expect.stringContaining('queja_registrada')]);
+  });
+});
+
+describe('RegistroTicketsService.registrar con datosExtra (SPEC 14)', () => {
+  const CAMPOS: CampoExtra[] = [
+    { clave: 'contador', etiqueta: 'Contador', tipo: 'texto', requerido: true, orden: 1, min: 4, max: 20 },
+    { clave: 'desde', etiqueta: 'Desde', tipo: 'fecha', requerido: false, orden: 2, noFutura: true },
+  ];
+
+  it('guarda los datos normalizados', async () => {
+    const e = crear();
+    e.registros.camposPorCategoria.set(1, CAMPOS);
+
+    await e.servicio.registrar(vecino, 'propia', { ...cuerpo, datosExtra: { contador: '  1234  ', desde: '2026-10-22' } });
+
+    expect(e.registros.datosExtra).toEqual([{ contador: '1234', desde: '2026-10-22' }]);
+  });
+
+  it('con datos inválidos lanza DATOS_EXTRA_INVALIDOS con detalles y no registra', async () => {
+    const e = crear();
+    e.registros.camposPorCategoria.set(1, CAMPOS);
+
+    await expect(
+      e.servicio.registrar(vecino, 'propia', { ...cuerpo, datosExtra: { contador: '12', desde: '2026-10-23', otro: 1 } }),
+    ).rejects.toMatchObject({
+      name: 'ErrorDeAplicacion',
+      codigo: 'DATOS_EXTRA_INVALIDOS',
+      detalles: [
+        { campo: 'otro', problema: 'CAMPO_DESCONOCIDO' },
+        { campo: 'contador', problema: 'MUY_CORTO' },
+        { campo: 'desde', problema: 'FECHA_FUTURA' },
+      ],
+    });
+    expect(e.registros.registrados).toEqual([]);
+  });
+
+  it('sin datosExtra y con un campo requerido, el registro es rechazado', async () => {
+    const e = crear();
+    e.registros.camposPorCategoria.set(1, CAMPOS);
+
+    await expect(e.servicio.registrar(vecino, 'propia', cuerpo)).rejects.toMatchObject({
+      codigo: 'DATOS_EXTRA_INVALIDOS',
+      detalles: [{ campo: 'contador', problema: 'REQUERIDO' }],
+    });
+  });
+
+  it('sin datosExtra en una categoría sin campos, guarda {}', async () => {
+    const e = crear();
+
+    await e.servicio.registrar(vecino, 'propia', cuerpo);
+
+    expect(e.registros.datosExtra).toEqual([{}]);
+  });
+
+  it('noFutura usa el día en Guatemala: el 22/10 a las 23:30 de Guatemala acepta 2026-10-22', async () => {
+    const e = crear();
+    e.registros.camposPorCategoria.set(1, CAMPOS);
+    e.reloj.actual = new Date('2026-10-23T05:30:00Z');
+
+    await e.servicio.registrar(vecino, 'propia', { ...cuerpo, datosExtra: { contador: '1234', desde: '2026-10-22' } });
+
+    expect(e.registros.datosExtra[0]).toMatchObject({ desde: '2026-10-22' });
   });
 });

@@ -1,5 +1,10 @@
 import type { Knex } from 'knex';
-import type { CatalogoLecturaRepository } from '../../domain/repositories/catalogo-lectura-repository';
+import type { CampoExtra } from '../../domain/categorias/campo-extra';
+import type {
+  CatalogoLecturaRepository,
+  CategoriaFormulario,
+  Zona,
+} from '../../domain/repositories/catalogo-lectura-repository';
 
 export class KnexCatalogoLecturaRepository implements CatalogoLecturaRepository {
   constructor(private readonly db: Knex) {}
@@ -14,5 +19,21 @@ export class KnexCatalogoLecturaRepository implements CatalogoLecturaRepository 
 
   async zonaExiste(zonaId: number): Promise<boolean> {
     return (await this.db('zonas').where({ id: zonaId }).first('id')) !== undefined;
+  }
+
+  async listarCategoriasActivas(): Promise<CategoriaFormulario[]> {
+    const filas: { id: string; nombre: string; campos_extra: CampoExtra[] }[] = await this.db('categorias as c')
+      .join('dependencias as d', 'd.id', 'c.dependencia_id')
+      .where({ 'c.activa': true, 'd.activa': true })
+      .select('c.id', 'c.nombre', 'c.campos_extra')
+      .orderBy('c.nombre');
+    return filas.map((fila) => ({ id: Number(fila.id), nombre: fila.nombre, camposExtra: fila.campos_extra }));
+  }
+
+  async listarZonas(): Promise<Zona[]> {
+    const filas: { id: string; nombre: string; tipo: string }[] = await this.db('zonas')
+      .select('id', 'nombre', 'tipo')
+      .orderBy([{ column: 'tipo' }, { column: 'nombre' }]);
+    return filas.map((fila) => ({ ...fila, id: Number(fila.id) }));
   }
 }

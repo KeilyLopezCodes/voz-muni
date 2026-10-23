@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 import type { ReposTransaccionales, Transaccion } from '../../domain/repositories/transaccion';
+import { KnexCategoriaAdminRepository } from './knex-categoria-admin-repository';
 import { KnexRestablecimientoRepository } from './knex-restablecimiento-repository';
 import { KnexSesionRepository } from './knex-sesion-repository';
 import { KnexUsuarioAdminRepository } from './knex-usuario-admin-repository';
@@ -18,6 +19,7 @@ export class KnexTransaccion implements Transaccion {
         sesiones: new KnexSesionRepository(trx),
         restablecimientos: new KnexRestablecimientoRepository(trx),
         vecinos: new KnexVecinoRepository(trx),
+        categoriasAdmin: new KnexCategoriaAdminRepository(trx),
       }),
     );
   }

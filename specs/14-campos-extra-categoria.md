@@ -1,6 +1,6 @@
 # SPEC 14 — Campos adicionales por categoría
 
-> **Estado:** Borrador
+> **Estado:** Implementado.
 > **Depende de:** SPEC 08, SPEC 12
 > **Fecha:** 2026-10-22
 > **Objetivo:** Definir el esquema de `categorias.campos_extra` (campos de tipo texto, número, fecha, selección y sí/no con sus reglas), permitir que el administrador lo edite sin romper los datos de quejas existentes, exponer las categorías y zonas al formulario, y validar `datosExtra` al registrar una queja.
@@ -253,20 +253,20 @@ backend/
 
 ## Criterios de aceptación
 
-- [ ] La sección 6 del documento de definición describe la forma de `campos_extra` y `datos_extra` y los 3 endpoints.
-- [ ] `validarDefinicion` acepta los 5 tipos con sus reglas y rechaza cada caso inválido de la tabla de reglas, con un detalle por problema.
-- [ ] `validarDatosExtra` aplica las reglas de cada tipo, rechaza las claves desconocidas, guarda solo los campos presentes, normaliza los textos recortados y devuelve todos los errores a la vez.
-- [ ] Una fecha con `noFutura` se compara contra el día actual en `America/Guatemala`.
-- [ ] El administrador reemplaza los campos de una categoría con `PUT /api/v1/admin/categorias/:id/campos-extra`, y cualquier otro rol recibe `403`.
-- [ ] En una categoría sin quejas se acepta cualquier definición válida. En una con quejas, cada cambio bloqueado de la tabla responde `409 CAMBIO_INCOMPATIBLE` con su detalle, y cada cambio permitido responde `200`.
-- [ ] `GET /api/v1/categorias` devuelve solo las categorías activas con dependencia activa, con sus `camposExtra`, y `GET /api/v1/zonas` devuelve todas las zonas. Los dos exigen sesión y `tickets.crear`.
-- [ ] `POST /api/v1/tickets` con `datosExtra` válido guarda los valores normalizados en `tickets.datos_extra`.
-- [ ] `POST /api/v1/tickets` con `datosExtra` inválido, o sin él en una categoría con campos requeridos, responde `400 DATOS_EXTRA_INVALIDOS` con `detalles`, no crea el ticket y no consume un número.
-- [ ] `lat`, `lng`, `prioridad` y `estado` siguen rechazados en `POST /api/v1/tickets`.
-- [ ] Los errores `DEFINICION_INVALIDA`, `DATOS_EXTRA_INVALIDOS` y `CAMBIO_INCOMPATIBLE` incluyen `detalles: [{ campo, problema }]`, y el resto de los errores conserva la forma `{ codigo, mensaje }`.
-- [ ] Ningún archivo de `src/domain/categorias/` importa algo fuera de `src/domain/`.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta el formato de los campos, la regla de compatibilidad y el campo `detalles`.
+- [x] La sección 6 del documento de definición describe la forma de `campos_extra` y `datos_extra` y los 3 endpoints.
+- [x] `validarDefinicion` acepta los 5 tipos con sus reglas y rechaza cada caso inválido de la tabla de reglas, con un detalle por problema.
+- [x] `validarDatosExtra` aplica las reglas de cada tipo, rechaza las claves desconocidas, guarda solo los campos presentes, normaliza los textos recortados y devuelve todos los errores a la vez.
+- [x] Una fecha con `noFutura` se compara contra el día actual en `America/Guatemala`.
+- [x] El administrador reemplaza los campos de una categoría con `PUT /api/v1/admin/categorias/:id/campos-extra`, y cualquier otro rol recibe `403`.
+- [x] En una categoría sin quejas se acepta cualquier definición válida. En una con quejas, cada cambio bloqueado de la tabla responde `409 CAMBIO_INCOMPATIBLE` con su detalle, y cada cambio permitido responde `200`.
+- [x] `GET /api/v1/categorias` devuelve solo las categorías activas con dependencia activa, con sus `camposExtra`, y `GET /api/v1/zonas` devuelve todas las zonas. Los dos exigen sesión y `tickets.crear`.
+- [x] `POST /api/v1/tickets` con `datosExtra` válido guarda los valores normalizados en `tickets.datos_extra`.
+- [x] `POST /api/v1/tickets` con `datosExtra` inválido, o sin él en una categoría con campos requeridos, responde `400 DATOS_EXTRA_INVALIDOS` con `detalles`, no crea el ticket y no consume un número.
+- [x] `lat`, `lng`, `prioridad` y `estado` siguen rechazados en `POST /api/v1/tickets`.
+- [x] Los errores `DEFINICION_INVALIDA`, `DATOS_EXTRA_INVALIDOS` y `CAMBIO_INCOMPATIBLE` incluyen `detalles: [{ campo, problema }]`, y el resto de los errores conserva la forma `{ codigo, mensaje }`.
+- [x] Ningún archivo de `src/domain/categorias/` importa algo fuera de `src/domain/`.
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta el formato de los campos, la regla de compatibilidad y el campo `detalles`.
 
 ## Decisiones
 
