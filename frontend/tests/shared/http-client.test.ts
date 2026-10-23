@@ -102,6 +102,20 @@ describe('http-client', () => {
     const error = await capturarError(apiClient.get('/tickets/99'))
     expect(error.status).toBe(404)
     expect(error.codigo).toBe('TICKET_NO_ENCONTRADO')
+    expect(error.detalles).toEqual([])
+  })
+
+  it('conserva los detalles { campo, problema } del cuerpo e ignora los mal formados', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(400, {
+        codigo: 'DATOS_EXTRA_INVALIDOS',
+        mensaje: 'x',
+        detalles: [{ campo: 'numero_poste', problema: 'REQUERIDO' }, { campo: 3 }, 'texto'],
+      }),
+    )
+
+    const error = await capturarError(apiClient.post('/tickets', {}))
+    expect(error.detalles).toEqual([{ campo: 'numero_poste', problema: 'REQUERIDO' }])
   })
 
   it('lanza ApiError con HTTP_500 cuando el cuerpo no trae codigo', async () => {

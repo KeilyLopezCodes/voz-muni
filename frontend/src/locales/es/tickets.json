@@ -3,7 +3,166 @@
     "titulo": "Quejas"
   },
   "nuevo": {
-    "titulo": "Nueva queja"
+    "titulo": "Nueva queja",
+    "progreso": "Paso {{actual}} de {{total}}",
+    "cargando": "Cargando…",
+    "pasos": {
+      "solicitante": "Solicitante",
+      "categoria": "Categoría",
+      "descripcion": "Descripción",
+      "ubicacion": "Ubicación",
+      "resumen": "Revisa y registra"
+    },
+    "acciones": {
+      "atras": "Atrás",
+      "siguiente": "Siguiente",
+      "editar": "Editar",
+      "editarPaso": "Editar {{paso}}",
+      "reintentar": "Reintentar",
+      "registrar": "Registrar queja",
+      "registrando": "Registrando…"
+    },
+    "avisos": {
+      "categoriaNoDisponible": "La categoría ya no está disponible. Elige otra.",
+      "camposActualizados": "Los datos adicionales de la categoría cambiaron. Revísalos y vuelve a intentar.",
+      "ubicacionNoConfigurada": "El mapa ya no está disponible y quitamos el punto marcado. Puedes continuar sin él.",
+      "solicitanteInvalido": "El vecino elegido ya no está disponible. Búscalo de nuevo.",
+      "vecinoDuplicado": "Ya existe un vecino con ese correo o DPI; búscalo.",
+      "red": "No pudimos conectar con el servidor. Tus datos siguen aquí; intenta de nuevo.",
+      "generico": "No pudimos registrar la queja. Tus datos siguen aquí; intenta de nuevo."
+    },
+    "exito": {
+      "titulo": "Registramos tu queja",
+      "tituloVentanilla": "Queja registrada",
+      "tuNumero": "Este es tu número de queja:",
+      "dictar": "Dicta este número al vecino:",
+      "numero": "Número de queja",
+      "copiar": "Copiar número",
+      "copiado": "Número copiado.",
+      "copiaNoDisponible": "No pudimos copiar el número. Anótalo.",
+      "correo": "Te enviamos el número a tu correo.",
+      "verMisQuejas": "Ver mis quejas",
+      "registrarOtra": "Registrar otra"
+    },
+    "solicitante": {
+      "buscarPor": "Buscar vecino por",
+      "tipos": {
+        "telefono": "Teléfono",
+        "email": "Correo electrónico",
+        "dpi": "DPI"
+      },
+      "ayuda": {
+        "telefono": "8 dígitos; puedes usar guiones o espacios",
+        "email": "El correo completo del vecino",
+        "dpi": "13 dígitos; puedes usar espacios"
+      },
+      "buscar": "Buscar",
+      "buscando": "Buscando…",
+      "resultados": "Vecinos encontrados",
+      "sinResultados": "No encontramos vecinos con ese dato. Puedes registrarlo como vecino nuevo.",
+      "sinContacto": "Sin contacto registrado",
+      "elegir": "Elegir",
+      "elegirA": "Elegir a {{nombre}}",
+      "elegido": "Vecino seleccionado",
+      "cambiar": "Cambiar vecino",
+      "contacto": "Contacto",
+      "requerido": "Busca y elige al vecino, o regístralo como vecino nuevo.",
+      "sinInvitacion": "El vecino quedó registrado, pero no pudimos enviarle la invitación por correo. Puede pedir un enlace nuevo con \"Olvidé mi contraseña\".",
+      "canal": "¿Por qué medio llegó la queja?",
+      "canalRequerido": "Elige el canal.",
+      "canales": {
+        "ventanilla": "Ventanilla",
+        "telefono": "Teléfono",
+        "redes": "Redes sociales",
+        "correo": "Correo electrónico"
+      },
+      "alta": {
+        "abrir": "Registrar vecino nuevo",
+        "titulo": "Vecino nuevo",
+        "nombre": "Nombre completo",
+        "dpi": "DPI",
+        "email": "Correo electrónico",
+        "telefono": "Teléfono",
+        "contactoAyuda": "Indica un correo, un teléfono o ambos",
+        "registrar": "Registrar vecino",
+        "registrando": "Registrando…",
+        "cancelar": "Cancelar"
+      },
+      "errores": {
+        "NOMBRE_INVALIDO": "Escribe el nombre (hasta 150 caracteres).",
+        "DPI_INVALIDO": "El DPI debe tener 13 dígitos.",
+        "EMAIL_INVALIDO": "Escribe un correo válido.",
+        "TELEFONO_INVALIDO": "El teléfono debe tener 8 dígitos.",
+        "SIN_CONTACTO": "Indica un correo o un teléfono."
+      }
+    },
+    "categoria": {
+      "etiqueta": "¿Qué tipo de problema quieres reportar?",
+      "requerida": "Elige una categoría.",
+      "sinCategorias": "Por ahora no hay categorías disponibles para registrar quejas. Intenta más tarde.",
+      "errorCarga": "No pudimos cargar las categorías. Revisa tu conexión.",
+      "camposAdicionales": "Datos adicionales de la categoría"
+    },
+    "camposExtra": {
+      "si": "Sí",
+      "no": "No",
+      "ninguna": "Ninguna",
+      "errores": {
+        "REQUERIDO": "Este dato es obligatorio.",
+        "TIPO_INVALIDO": "El valor no es válido.",
+        "MUY_CORTO": "Debe tener al menos {{min}} caracteres.",
+        "MUY_LARGO": "Debe tener como máximo {{max}} caracteres.",
+        "PATRON": "El formato no es válido.",
+        "MENOR_AL_MINIMO": "Debe ser como mínimo {{min}}.",
+        "MAYOR_AL_MAXIMO": "Debe ser como máximo {{max}}.",
+        "NO_ENTERO": "Debe ser un número entero.",
+        "FECHA_FUTURA": "La fecha no puede ser futura.",
+        "OPCION_INVALIDA": "Elige una de las opciones."
+      }
+    },
+    "descripcion": {
+      "titulo": "Título",
+      "tituloAyuda": "Un resumen corto del problema",
+      "descripcion": "Descripción",
+      "descripcionAyuda": "Cuenta qué pasa, desde cuándo y cualquier detalle útil",
+      "contador": "{{actual}}/{{max}}"
+    },
+    "ubicacion": {
+      "zona": "Zona, colonia o aldea",
+      "zonaAyuda": "Escribe para buscar",
+      "sinZonas": "No encontramos ese lugar",
+      "errorZonas": "No pudimos cargar las zonas. Revisa tu conexión.",
+      "tipos": {
+        "zona": "Zonas",
+        "colonia": "Colonias",
+        "aldea": "Aldeas"
+      },
+      "direccion": "Dirección",
+      "direccionAyuda": "Calle, avenida, número o una referencia cercana",
+      "mapa": "Mapa para marcar el lugar",
+      "mapaTitulo": "Marca el lugar en el mapa (opcional)",
+      "mapaAyuda": "Toca el mapa para marcar el punto; otro toque lo mueve.",
+      "mapaNoDisponible": "El mapa no está disponible ahora. Puedes continuar sin marcar el punto.",
+      "atribucion": "© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors",
+      "usarMiUbicacion": "Usar mi ubicación",
+      "quitar": "Quitar ubicación",
+      "puntoMarcado": "Punto marcado: {{latitud}}, {{longitud}}",
+      "sinPunto": "Sin punto en el mapa",
+      "avisos": {
+        "fueraDelMunicipio": "Ese punto está fuera del municipio. Marca un lugar dentro del mapa.",
+        "sinPermiso": "No pudimos obtener tu ubicación. Revisa el permiso del navegador o marca el punto en el mapa.",
+        "sinGeolocalizacion": "Tu navegador no permite obtener la ubicación. Marca el punto en el mapa."
+      }
+    },
+    "errores": {
+      "TITULO_INVALIDO": "El título debe tener de 5 a 150 caracteres.",
+      "DESCRIPCION_INVALIDA": "La descripción debe tener de 10 a 4000 caracteres.",
+      "ZONA_INVALIDA": "Elige una zona, colonia o aldea de la lista.",
+      "DIRECCION_INVALIDA": "La dirección debe tener de 5 a 300 caracteres.",
+      "UBICACION_FUERA_DEL_MUNICIPIO": "El punto marcado está fuera del municipio.",
+      "UBICACION_INCOMPLETA": "El punto marcado está incompleto. Márcalo de nuevo o quítalo.",
+      "UBICACION_INVALIDA": "El punto marcado no es válido. Márcalo de nuevo o quítalo."
+    }
   },
   "consulta": {
     "titulo": "Consultar el estado de una queja"

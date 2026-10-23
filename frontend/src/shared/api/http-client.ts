@@ -1,4 +1,4 @@
-import { ApiError } from './api-error'
+import { ApiError, type DetalleError } from './api-error'
 
 const TIEMPO_LIMITE_MS = 15_000
 
@@ -32,17 +32,24 @@ export interface HttpClient {
   delete<T>(path: string): Promise<T>
 }
 
-// Cuerpo de error del backend: { "codigo": "...", "mensaje": "..." }.
-async function codigoDeError(response: Response): Promise<string> {
+const esDetalle = (valor: unknown): valor is DetalleError =>
+  typeof valor === 'object' &&
+  valor !== null &&
+  typeof (valor as DetalleError).campo === 'string' &&
+  typeof (valor as DetalleError).problema === 'string'
+
+// Cuerpo de error del backend: { "codigo": "...", "mensaje": "...", "detalles"?: [{ campo, problema }] }.
+async function errorDeRespuesta(response: Response): Promise<ApiError> {
   try {
     const cuerpo: unknown = await response.json()
     if (cuerpo && typeof cuerpo === 'object' && 'codigo' in cuerpo && typeof cuerpo.codigo === 'string') {
-      return cuerpo.codigo
+      const detalles = 'detalles' in cuerpo && Array.isArray(cuerpo.detalles) ? cuerpo.detalles.filter(esDetalle) : []
+      return new ApiError(response.status, cuerpo.codigo, detalles)
     }
   } catch {
     // Cuerpo vacío o no JSON: se usa el código genérico.
   }
-  return `HTTP_${response.status}`
+  return new ApiError(response.status, `HTTP_${response.status}`)
 }
 
 export function createHttpClient(baseUrl: string): HttpClient {
@@ -97,7 +104,7 @@ export function createHttpClient(baseUrl: string): HttpClient {
       }
 
       if (!response.ok) {
-        throw new ApiError(response.status, await codigoDeError(response))
+        throw await errorDeRespuesta(response)
       }
       if (response.status === 204) {
         return undefined as T

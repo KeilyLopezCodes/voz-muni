@@ -1,6 +1,6 @@
 # SPEC 18 — Formulario de registro de queja
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** SPEC 12, SPEC 13, SPEC 14, SPEC 15, SPEC 16, SPEC 17
 > **Fecha:** 2026-10-22
 > **Objetivo:** Reemplazar el placeholder de `/tickets/nueva` por un formulario por pasos, usable desde 360 px, con el que el vecino registra su queja y el receptor o supervisor la registra a nombre de un vecino, con campos adicionales por categoría y mapa opcional, verificado con pruebas e2e de Playwright.
@@ -256,24 +256,24 @@ frontend/
 
 ## Criterios de aceptación
 
-- [ ] `/tickets/nueva` muestra el formulario por pasos con su barra de progreso, en lugar del placeholder.
-- [ ] El vecino completa 3 pasos y el resumen, y su envío no incluye `solicitanteId` ni `canal`.
-- [ ] El receptor y el supervisor ven antes el paso "Solicitante", buscan por correo, teléfono o DPI, eligen un vecino o lo dan de alta, eligen un canal distinto de `portal`, y su envío incluye `solicitanteId` y `canal`.
-- [ ] Ningún paso avanza con datos que el backend rechazaría por formato: los límites de título, descripción y dirección, los campos extra de SPEC 14, y el DPI, el teléfono y el correo del vecino nuevo.
-- [ ] Al elegir una categoría aparecen sus campos adicionales, con un input por tipo. Los números se envían como `number` y los sí/no como `boolean`, y cambiar de categoría vacía los valores.
-- [ ] "Atrás" y "Editar" no pierden datos, y el resumen muestra todo lo que se enviará.
-- [ ] Con la caja del municipio configurada, el mapa aparece en el paso Ubicación. Se puede marcar, mover y quitar el punto, y "Usar mi ubicación" solo marca puntos dentro de la caja. Sin caja configurada, el mapa no aparece y no se envían coordenadas.
-- [ ] Leaflet se carga en un chunk aparte, solo al llegar al paso Ubicación.
-- [ ] Cada código de error del backend de la tabla lleva al paso y al campo indicados, sin perder lo escrito.
-- [ ] Al registrar, se ve el número `Q-AAAA-NNNNNN` en grande con "Copiar número". El vecino ve además "Ver mis quejas" y "Registrar otra", y el receptor, "Registrar otra".
-- [ ] El botón de envío se deshabilita mientras la petición está en curso.
-- [ ] El formulario no guarda nada en `localStorage` ni en `sessionStorage`.
-- [ ] Ningún texto de la interfaz está fijo en un componente: todos están en `locales/es/tickets.json`. Las etiquetas de los campos extra vienen de la base.
-- [ ] Cada campo tiene una etiqueta asociada, los errores se anuncian con `role="alert"`, y al cambiar de paso el foco va al título del paso.
-- [ ] `npm run test:e2e` recorre a 360×740 los flujos del vecino y de ventanilla hasta la pantalla de éxito, sin scroll horizontal en ningún paso.
-- [ ] `features/tickets` no importa nada de `features/auth`, y las reglas de DPI, teléfono y correo viven en `shared/validacion/`.
-- [ ] En `frontend/`, `npm test`, `npm run build`, `npm run lint:deps` y `npm run test:e2e` terminan con código 0.
-- [ ] `CLAUDE.md` documenta `test:e2e`, la instalación del navegador, y que los adjuntos se agregan en este formulario.
+- [x] `/tickets/nueva` muestra el formulario por pasos con su barra de progreso, en lugar del placeholder.
+- [x] El vecino completa 3 pasos y el resumen, y su envío no incluye `solicitanteId` ni `canal`.
+- [x] El receptor y el supervisor ven antes el paso "Solicitante", buscan por correo, teléfono o DPI, eligen un vecino o lo dan de alta, eligen un canal distinto de `portal`, y su envío incluye `solicitanteId` y `canal`.
+- [x] Ningún paso avanza con datos que el backend rechazaría por formato: los límites de título, descripción y dirección, los campos extra de SPEC 14, y el DPI, el teléfono y el correo del vecino nuevo.
+- [x] Al elegir una categoría aparecen sus campos adicionales, con un input por tipo. Los números se envían como `number` y los sí/no como `boolean`, y cambiar de categoría vacía los valores.
+- [x] "Atrás" y "Editar" no pierden datos, y el resumen muestra todo lo que se enviará.
+- [x] Con la caja del municipio configurada, el mapa aparece en el paso Ubicación. Se puede marcar, mover y quitar el punto, y "Usar mi ubicación" solo marca puntos dentro de la caja. Sin caja configurada, el mapa no aparece y no se envían coordenadas.
+- [x] Leaflet se carga en un chunk aparte, solo al llegar al paso Ubicación.
+- [x] Cada código de error del backend de la tabla lleva al paso y al campo indicados, sin perder lo escrito.
+- [x] Al registrar, se ve el número `Q-AAAA-NNNNNN` en grande con "Copiar número". El vecino ve además "Ver mis quejas" y "Registrar otra", y el receptor, "Registrar otra".
+- [x] El botón de envío se deshabilita mientras la petición está en curso.
+- [x] El formulario no guarda nada en `localStorage` ni en `sessionStorage`.
+- [x] Ningún texto de la interfaz está fijo en un componente: todos están en `locales/es/tickets.json`. Las etiquetas de los campos extra vienen de la base.
+- [x] Cada campo tiene una etiqueta asociada, los errores se anuncian con `role="alert"`, y al cambiar de paso el foco va al título del paso.
+- [x] `npm run test:e2e` recorre a 360×740 los flujos del vecino y de ventanilla hasta la pantalla de éxito, sin scroll horizontal en ningún paso.
+- [x] `features/tickets` no importa nada de `features/auth`, y las reglas de DPI, teléfono y correo viven en `shared/validacion/`.
+- [x] En `frontend/`, `npm test`, `npm run build`, `npm run lint:deps` y `npm run test:e2e` terminan con código 0.
+- [x] `CLAUDE.md` documenta `test:e2e`, la instalación del navegador, y que los adjuntos se agregan en este formulario.
 
 ## Decisiones
 
