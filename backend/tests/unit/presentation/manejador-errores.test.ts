@@ -5,6 +5,7 @@ import { ErrorDeAplicacion } from '../../../src/application/errors/error-de-apli
 import type { AuthService } from '../../../src/application/services/auth.service';
 import type { AutorizacionService } from '../../../src/application/services/autorizacion.service';
 import type { RecuperacionService } from '../../../src/application/services/recuperacion.service';
+import type { UsuariosService } from '../../../src/application/services/usuarios.service';
 import { HealthService } from '../../../src/application/services/health.service';
 import type { Container } from '../../../src/container';
 import { manejadorErrores } from '../../../src/presentation/middlewares/manejador-errores';
@@ -20,6 +21,7 @@ function buildTestContainer(): Container {
     authService: {} as AuthService,
     autorizacionService: {} as AutorizacionService,
     recuperacionService: {} as RecuperacionService,
+    usuariosService: {} as UsuariosService,
     dispose: async () => {},
   };
 }

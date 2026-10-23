@@ -77,7 +77,8 @@ describe('API de autenticación /api/v1/auth', () => {
       const acceso = Date.parse(res.body.accessExpiraEn) - antes;
       const renovacion = Date.parse(res.body.refreshExpiraEn) - antes;
       expect(acceso).toBeGreaterThan(14 * MINUTO);
-      expect(acceso).toBeLessThanOrEqual(15 * MINUTO);
+      // Margen por lo que tarda la petición: el servidor emite el token después de medir `antes`.
+      expect(acceso).toBeLessThanOrEqual(15 * MINUTO + 5000);
       expect(renovacion).toBeGreaterThan(7 * 24 * 60 * MINUTO - MINUTO);
       expect(renovacion).toBeLessThanOrEqual(7 * 24 * 60 * MINUTO + MINUTO);
     });

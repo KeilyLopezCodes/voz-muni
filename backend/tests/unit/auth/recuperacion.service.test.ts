@@ -1,89 +1,21 @@
+import { EnvioCorreo } from '../../../src/application/services/envio-correo';
 import { RecuperacionService } from '../../../src/application/services/recuperacion.service';
-import type { EnviadorCorreo, MensajeCorreo } from '../../../src/domain/notificaciones/enviador-correo';
-import type { Plantilla } from '../../../src/domain/notificaciones/plantilla';
-import type { PlantillaRepository } from '../../../src/domain/repositories/plantilla-repository';
-import type { RestablecimientoRepository } from '../../../src/domain/repositories/restablecimiento-repository';
-import type { ReposTransaccionales, Transaccion } from '../../../src/domain/repositories/transaccion';
 import {
+  correosPendientes,
+  EnviadorEnMemoria,
   HasherFalso,
   MINUTO,
+  PlantillasEnMemoria,
   RelojFalso,
+  RestablecimientosEnMemoria,
   SesionesEnMemoria,
   TokensFalsos,
+  TransaccionEnMemoria,
   type UsuarioFalso,
+  UsuariosAdminEnMemoria,
   UsuariosEnMemoria,
   usuario,
 } from './dobles';
-
-interface RestablecimientoFalso {
-  id: number;
-  usuarioId: number;
-  tokenHash: string;
-  expiraEn: Date;
-  usadoEn: Date | null;
-  invalidadoEn: Date | null;
-}
-
-class RestablecimientosEnMemoria implements RestablecimientoRepository {
-  readonly filas: RestablecimientoFalso[] = [];
-
-  async invalidarPendientes(usuarioId: number, ahora: Date): Promise<void> {
-    for (const r of this.filas.filter((f) => f.usuarioId === usuarioId && !f.usadoEn && !f.invalidadoEn)) {
-      r.invalidadoEn = ahora;
-    }
-  }
-
-  async crear(usuarioId: number, tokenHash: string, expiraEn: Date): Promise<void> {
-    this.filas.push({ id: this.filas.length + 1, usuarioId, tokenHash, expiraEn, usadoEn: null, invalidadoEn: null });
-  }
-
-  async buscarVigente(tokenHash: string, ahora: Date): Promise<{ id: number; usuarioId: number } | null> {
-    const r = this.filas.find(
-      (f) => f.tokenHash === tokenHash && !f.usadoEn && !f.invalidadoEn && f.expiraEn.getTime() > ahora.getTime(),
-    );
-    return r ? { id: r.id, usuarioId: r.usuarioId } : null;
-  }
-
-  async marcarUsado(id: number, ahora: Date): Promise<void> {
-    this.filas.find((f) => f.id === id)!.usadoEn = ahora;
-  }
-}
-
-// Las plantillas reales viven en la base; aquí basta con usar las variables.
-class PlantillasEnMemoria implements PlantillaRepository {
-  readonly plantillas = new Map<string, Plantilla>([
-    ['recuperacion_password', { clave: 'recuperacion_password', asunto: 'Recupera', cuerpoTexto: '{{nombre}}: {{enlace}}', cuerpoHtml: '<a href="{{enlace}}">{{nombre}}</a>' }],
-    ['password_cambiado', { clave: 'password_cambiado', asunto: 'Cambiada', cuerpoTexto: '{{nombre}}', cuerpoHtml: '<p>{{nombre}}</p>' }],
-  ]);
-
-  async buscarPorClave(clave: string): Promise<Plantilla | null> {
-    return this.plantillas.get(clave) ?? null;
-  }
-}
-
-class EnviadorEnMemoria implements EnviadorCorreo {
-  readonly enviados: MensajeCorreo[] = [];
-  fallar = false;
-
-  async enviar(mensaje: MensajeCorreo): Promise<void> {
-    if (this.fallar) {
-      throw new Error('ECONNREFUSED smtp');
-    }
-    this.enviados.push(mensaje);
-  }
-}
-
-// Sin rollback real: los dobles en memoria no lo necesitan para estas pruebas.
-class TransaccionEnMemoria implements Transaccion {
-  constructor(private readonly repos: ReposTransaccionales) {}
-
-  ejecutar<T>(trabajo: (repos: ReposTransaccionales) => Promise<T>): Promise<T> {
-    return trabajo(this.repos);
-  }
-}
-
-// El correo sale sin esperar: deja correr las promesas pendientes.
-const correosPendientes = () => new Promise((resolver) => setImmediate(resolver));
 
 const NUEVA = 'Nueva-clave-2026';
 
@@ -97,13 +29,12 @@ function crearEscenario(filas: UsuarioFalso[] = [usuario()]) {
   const servicio = new RecuperacionService(
     usuarios,
     restablecimientos,
-    new PlantillasEnMemoria(),
-    new TransaccionEnMemoria({ usuarios, sesiones, restablecimientos }),
-    enviador,
+    new TransaccionEnMemoria({ usuarios, usuariosAdmin: new UsuariosAdminEnMemoria(usuarios), sesiones, restablecimientos }),
+    new EnvioCorreo(new PlantillasEnMemoria(), enviador, (mensaje) => errores.push(mensaje)),
     new HasherFalso(),
     new TokensFalsos(),
     reloj,
-    { appUrl: 'http://localhost:5173', registrarError: (mensaje) => errores.push(mensaje) },
+    'http://localhost:5173',
   );
   return { servicio, usuarios, sesiones, restablecimientos, enviador, errores, reloj };
 }
@@ -152,7 +83,7 @@ describe('RecuperacionService.solicitar', () => {
   it.each([
     ['inexistente', [usuario()], 'nadie@vozmuni.test'],
     ['inactivo', [usuario({ activo: false })], 'ana@vozmuni.test'],
-    ['sin password_hash', [usuario({ passwordHash: null })], 'ana@vozmuni.test'],
+    ['de un vecino sin password_hash', [usuario({ passwordHash: null, rol: 'vecino', dependenciaId: null })], 'ana@vozmuni.test'],
   ])('un correo %s termina igual y no envía nada', async (_caso, filas, email) => {
     const e = crearEscenario(filas);
 
@@ -251,5 +182,58 @@ describe('RecuperacionService.restablecer', () => {
     await correosPendientes();
 
     expect(e.errores).toEqual([expect.stringContaining('password_cambiado')]);
+  });
+});
+
+describe('Ampliaciones de SPEC 10', () => {
+  it('un usuario interno activo sin contraseña recibe el enlace de recuperación', async () => {
+    const e = crearEscenario([usuario({ passwordHash: null, rol: 'tecnico' })]);
+
+    await e.servicio.solicitar('ana@vozmuni.test');
+    await correosPendientes();
+
+    expect(e.restablecimientos.filas).toEqual([expect.objectContaining({ usuarioId: 1, tipo: 'recuperacion' })]);
+    expect(e.enviador.enviados).toEqual([expect.objectContaining({ para: 'ana@vozmuni.test', asunto: 'Recupera' })]);
+  });
+
+  it('un vecino sin contraseña no recibe nada', async () => {
+    const e = crearEscenario([usuario({ passwordHash: null, rol: 'vecino', dependenciaId: null })]);
+
+    await e.servicio.solicitar('ana@vozmuni.test');
+    await correosPendientes();
+
+    expect(e.restablecimientos.filas).toEqual([]);
+    expect(e.enviador.enviados).toEqual([]);
+  });
+
+  it('restablecer con un token de invitación define la contraseña sin enviar password_cambiado', async () => {
+    const e = crearEscenario([usuario({ passwordHash: null, rol: 'tecnico' })]);
+    await e.restablecimientos.crear(1, 'sha:invitacion', 'invitacion', e.reloj.actual);
+
+    await expect(e.servicio.restablecer('invitacion', NUEVA)).resolves.toMatchObject({ usuario: { id: 1 } });
+    await correosPendientes();
+
+    expect(e.usuarios.filas[0].passwordHash).toBe(`hash:${NUEVA}`);
+    expect(e.enviador.enviados).toEqual([]);
+  });
+
+  it('restablecer con un token de recuperación sí envía password_cambiado', async () => {
+    const e = crearEscenario();
+    const token = await pedirToken(e);
+
+    await e.servicio.restablecer(token, NUEVA);
+    await correosPendientes();
+
+    expect(e.enviador.enviados.map((correo) => correo.asunto)).toEqual(['Recupera', 'Cambiada']);
+  });
+
+  it('la invitación sigue vigente a las 23 h y vence a las 24 h', async () => {
+    const e = crearEscenario([usuario({ passwordHash: null, rol: 'tecnico' })]);
+    await e.restablecimientos.crear(1, 'sha:invitacion', 'invitacion', e.reloj.actual);
+
+    e.reloj.avanzar(24 * 60 * MINUTO);
+    await expect(e.servicio.restablecer('invitacion', NUEVA)).rejects.toMatchObject({ codigo: 'TOKEN_RECUPERACION_INVALIDO' });
+    e.reloj.avanzar(-60 * MINUTO);
+    await expect(e.servicio.restablecer('invitacion', NUEVA)).resolves.toMatchObject({ usuario: { id: 1 } });
   });
 });

@@ -1,8 +1,10 @@
 import knex from 'knex';
 import { AuthService } from './application/services/auth.service';
 import { AutorizacionService } from './application/services/autorizacion.service';
+import { EnvioCorreo } from './application/services/envio-correo';
 import { HealthService } from './application/services/health.service';
 import { RecuperacionService } from './application/services/recuperacion.service';
+import { UsuariosService } from './application/services/usuarios.service';
 import type { EnviadorCorreo } from './domain/notificaciones/enviador-correo';
 import { BcryptPasswordHasher } from './infrastructure/auth/bcrypt-password-hasher';
 import { JwtTokenService } from './infrastructure/auth/jwt-token-service';
@@ -15,6 +17,7 @@ import { KnexPlantillaRepository } from './infrastructure/repositories/knex-plan
 import { KnexRestablecimientoRepository } from './infrastructure/repositories/knex-restablecimiento-repository';
 import { KnexSesionRepository } from './infrastructure/repositories/knex-sesion-repository';
 import { KnexTransaccion } from './infrastructure/repositories/knex-transaccion';
+import { KnexUsuarioAdminRepository } from './infrastructure/repositories/knex-usuario-admin-repository';
 import { KnexUsuarioRepository } from './infrastructure/repositories/knex-usuario-repository';
 
 export interface Container {
@@ -25,6 +28,7 @@ export interface Container {
   authService: AuthService;
   autorizacionService: AutorizacionService;
   recuperacionService: RecuperacionService;
+  usuariosService: UsuariosService;
   dispose(): Promise<void>;
 }
 
@@ -51,6 +55,8 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
       pass: env.SMTP_PASS,
       from: env.MAIL_FROM,
     });
+  const transaccion = new KnexTransaccion(db);
+  const correo = new EnvioCorreo(new KnexPlantillaRepository(db), enviadorCorreo, (mensaje) => console.error(mensaje));
   return {
     port: env.PORT,
     loginLimitePorVentana: env.LOGIN_LIMITE_POR_VENTANA,
@@ -61,14 +67,14 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     recuperacionService: new RecuperacionService(
       usuarios,
       new KnexRestablecimientoRepository(db),
-      new KnexPlantillaRepository(db),
-      new KnexTransaccion(db),
-      enviadorCorreo,
+      transaccion,
+      correo,
       hasher,
       tokens,
       clock,
-      { appUrl: env.APP_URL, registrarError: (mensaje) => console.error(mensaje) },
+      env.APP_URL,
     ),
+    usuariosService: new UsuariosService(new KnexUsuarioAdminRepository(db), transaccion, correo, tokens, clock, env.APP_URL),
     dispose: () => db.destroy(),
   };
 }
