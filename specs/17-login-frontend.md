@@ -285,3 +285,4 @@ frontend/
 - Auditoría formal de accesibilidad.
 
 Cada uno de estos temas, cuando llegue, va en su propia spec.
+
