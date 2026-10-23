@@ -300,6 +300,12 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 
 Índices clave: `tickets(estado, dependencia_id)`, `tickets(asignado_a, estado)`, `tickets(vence_resolucion)` para las tareas de SLA y `tickets(numero)` para la consulta pública.
 
+Campos adicionales por categoría (RF-09):
+
+- `categorias.campos_extra` es una lista de hasta 20 definiciones `{ clave, etiqueta, ayuda?, requerido, orden, tipo, … }`. Los tipos son `texto` (`min`, `max`, `patron`), `numero` (`min`, `max`, `entero`), `fecha` (`min`, `max`, `noFutura`), `seleccion` (`opciones` con `valor` y `etiqueta`) y `si_no`. `'[]'` significa que la categoría no tiene campos.
+- `tickets.datos_extra` guarda los valores por `clave`: texto recortado, número, fecha `AAAA-MM-DD`, el `valor` de la opción o un booleano. Solo se guardan los campos presentes.
+- En una categoría que ya tiene quejas, el administrador solo puede hacer cambios que no invaliden los datos guardados: cambiar etiquetas, ayuda u orden, quitar `requerido`, ampliar límites, agregar opciones o agregar campos opcionales.
+
 ### Endpoints principales
 
 | Método y ruta | Uso | Roles |
@@ -327,4 +333,7 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | POST /api/v1/admin/usuarios/:id/desactivacion | Desactivar usuario y cerrar sus sesiones | Admin |
 | POST /api/v1/admin/usuarios/:id/activacion | Reactivar usuario | Admin |
 | POST /api/v1/admin/usuarios/:id/desbloqueo | Quitar el bloqueo por intentos fallidos | Admin |
+| GET /api/v1/categorias | Categorías activas (con dependencia activa) y sus campos adicionales, para el formulario | Vecino, Receptor, Supervisor |
+| GET /api/v1/zonas | Zonas para el formulario | Vecino, Receptor, Supervisor |
+| PUT /api/v1/admin/categorias/:id/campos-extra | Reemplazar los campos adicionales de una categoría | Admin |
 | /api/v1/admin/\* | CRUD de catálogos | Admin |

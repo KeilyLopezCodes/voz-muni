@@ -27,6 +27,9 @@ const STATUS_POR_CODIGO: Record<CodigoError, number> = {
   TELEFONO_INVALIDO: 400,
   EMAIL_INVALIDO: 400,
   CONTACTO_REQUERIDO: 400,
+  DEFINICION_INVALIDA: 400,
+  DATOS_EXTRA_INVALIDOS: 400,
+  CAMBIO_INCOMPATIBLE: 409,
   NO_AUTENTICADO: 401,
   TOKEN_INVALIDO: 401,
   CREDENCIALES_INVALIDAS: 401,
@@ -46,7 +49,9 @@ export const rutaNoEncontrada: RequestHandler = (req, _res, next) => {
 // Último middleware de app.ts. Todo error sale como { codigo, mensaje }, el formato que lee el cliente HTTP.
 export const manejadorErrores: ErrorRequestHandler = (error, _req, res, _next) => {
   if (error instanceof ErrorDeAplicacion) {
-    res.status(STATUS_POR_CODIGO[error.codigo]).json({ codigo: error.codigo, mensaje: error.message });
+    // `detalles` solo aparece en los errores que lo traen (SPEC 14); el resto conserva { codigo, mensaje }.
+    const detalles = error.detalles ? { detalles: error.detalles } : {};
+    res.status(STATUS_POR_CODIGO[error.codigo]).json({ codigo: error.codigo, mensaje: error.message, ...detalles });
     return;
   }
 

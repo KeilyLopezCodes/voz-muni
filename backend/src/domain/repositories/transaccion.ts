@@ -1,3 +1,4 @@
+import type { CategoriaAdminRepository } from './categoria-admin-repository';
 import type { RestablecimientoRepository } from './restablecimiento-repository';
 import type { SesionRepository } from './sesion-repository';
 import type { UsuarioAdminRepository } from './usuario-admin-repository';
@@ -11,6 +12,7 @@ export interface ReposTransaccionales {
   sesiones: SesionRepository;
   restablecimientos: RestablecimientoRepository;
   vecinos: VecinoRepository;
+  categoriasAdmin: CategoriaAdminRepository;
 }
 
 // Puerto: ejecuta `trabajo` en una transacción; si lanza, no queda nada escrito.

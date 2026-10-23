@@ -393,11 +393,12 @@ export class EnviadorEnMemoria implements EnviadorCorreo {
 }
 
 // Sin rollback real: los dobles en memoria no lo necesitan para estas pruebas.
+// Cada prueba pasa solo los repositorios que su servicio usa.
 export class TransaccionEnMemoria implements Transaccion {
-  constructor(private readonly repos: ReposTransaccionales) {}
+  constructor(private readonly repos: Partial<ReposTransaccionales>) {}
 
   ejecutar<T>(trabajo: (repos: ReposTransaccionales) => Promise<T>): Promise<T> {
-    return trabajo(this.repos);
+    return trabajo(this.repos as ReposTransaccionales);
   }
 }
 

@@ -1,4 +1,4 @@
-import { ReglaDeNegocioError } from '../../domain/errors/regla-de-negocio-error';
+import { type DetalleProblema, ReglaDeNegocioError } from '../../domain/errors/regla-de-negocio-error';
 
 // Códigos de error de la API. presentation/ los traduce a status HTTP.
 export type CodigoError =
@@ -26,6 +26,9 @@ export type CodigoError =
   | 'TELEFONO_INVALIDO'
   | 'EMAIL_INVALIDO'
   | 'CONTACTO_REQUERIDO'
+  | 'DEFINICION_INVALIDA'
+  | 'DATOS_EXTRA_INVALIDOS'
+  | 'CAMBIO_INCOMPATIBLE'
   | 'NO_AUTENTICADO'
   | 'TOKEN_INVALIDO'
   | 'CREDENCIALES_INVALIDAS'
@@ -54,16 +57,23 @@ const CODIGOS_DE_REGLA: readonly CodigoError[] = [
   'TELEFONO_INVALIDO',
   'EMAIL_INVALIDO',
   'CONTACTO_REQUERIDO',
+  'DEFINICION_INVALIDA',
+  'DATOS_EXTRA_INVALIDOS',
 ];
 
 // Error esperado de un caso de uso. El mensaje es para desarrolladores, no para la UI.
+// `detalles` lista todos los problemas de un formulario a la vez (SPEC 14).
 export class ErrorDeAplicacion extends Error {
   readonly codigo: CodigoError;
+  readonly detalles?: DetalleProblema[];
 
-  constructor(codigo: CodigoError, mensaje: string = codigo) {
+  constructor(codigo: CodigoError, mensaje: string = codigo, detalles?: DetalleProblema[]) {
     super(mensaje);
     this.name = 'ErrorDeAplicacion';
     this.codigo = codigo;
+    if (detalles) {
+      this.detalles = detalles;
+    }
   }
 }
 
@@ -74,7 +84,7 @@ export async function conReglasDeNegocio<T>(trabajo: () => Promise<T>): Promise<
   } catch (error) {
     const codigo = (error as { codigo?: unknown } | null)?.codigo;
     if (error instanceof ReglaDeNegocioError && CODIGOS_DE_REGLA.includes(codigo as CodigoError)) {
-      throw new ErrorDeAplicacion(codigo as CodigoError, error.message);
+      throw new ErrorDeAplicacion(codigo as CodigoError, error.message, error.detalles);
     }
     throw error;
   }

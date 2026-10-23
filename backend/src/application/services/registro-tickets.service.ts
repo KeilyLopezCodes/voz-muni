@@ -1,4 +1,5 @@
 import type { Alcance } from '../../domain/auth/permisos';
+import { hoyGuatemala, validarDatosExtra } from '../../domain/categorias/datos-extra';
 import type { Clock } from '../../domain/health/clock';
 import type { CatalogoLecturaRepository } from '../../domain/repositories/catalogo-lectura-repository';
 import type { RegistroTicketRepository } from '../../domain/repositories/registro-ticket-repository';
@@ -36,6 +37,7 @@ export class RegistroTicketsService {
         throw new ErrorDeAplicacion('ZONA_INVALIDA', `La zona ${datos.zonaId} no existe`);
       }
 
+      const ahora = this.clock.now();
       // registrado_por siempre es el usuario autenticado (SPEC 11): el vecino para sí, o el receptor de ventanilla.
       const registro = Ticket.registrar(
         {
@@ -48,9 +50,13 @@ export class RegistroTicketsService {
           descripcion: datos.descripcion,
           direccion: datos.direccion,
         },
-        { actorId: usuario.id, ahora: this.clock.now() },
+        { actorId: usuario.id, ahora },
       );
-      const creado = await this.registros.registrar(registro);
+      // Los campos se leen en la misma transacción del registro; sin datosExtra cuenta como {}.
+      const hoy = hoyGuatemala(ahora);
+      const creado = await this.registros.registrar(registro, (campos) =>
+        validarDatosExtra(campos, datos.datosExtra, hoy),
+      );
 
       // Después del commit y sin esperar: la queja no depende del correo.
       if (solicitante.email) {

@@ -180,7 +180,6 @@ describe('API de registro de quejas /api/v1/tickets y /api/v1/vecinos', () => {
       ['el vecino envía solicitanteId', 'vecino', () => ({ solicitanteId: ids.vecino })],
       ['el receptor sin canal', 'receptor', () => ({ solicitanteId: ids.vecino })],
       ['el receptor con canal portal', 'receptor', () => ({ solicitanteId: ids.vecino, canal: 'portal' })],
-      ['datosExtra', 'vecino', () => ({ datosExtra: {} })],
       ['lat y lng', 'vecino', () => ({ lat: 14.6, lng: -90.5 })],
       ['prioridad', 'vecino', () => ({ prioridad: 'alta' })],
       ['estado', 'vecino', () => ({ estado: 'asignada' })],
@@ -203,6 +202,18 @@ describe('API de registro de quejas /api/v1/tickets y /api/v1/vecinos', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.codigo).toBe(codigo);
+    });
+
+    it('datosExtra se valida contra la categoría (SPEC 14): una clave desconocida → 400 DATOS_EXTRA_INVALIDOS', async () => {
+      const res = await registrar('vecino', { ...cuerpo(), datosExtra: { color: 'rojo' } });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({
+        codigo: 'DATOS_EXTRA_INVALIDOS',
+        mensaje: expect.any(String),
+        detalles: [{ campo: 'color', problema: 'CAMPO_DESCONOCIDO' }],
+      });
+      expect((await registrar('vecino', { ...cuerpo(), datosExtra: {} })).status).toBe(201);
     });
 
     it.each([

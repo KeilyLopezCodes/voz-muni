@@ -9,6 +9,7 @@ export interface DatosRegistroTicket {
   direccion: string;
   solicitanteId?: number;
   canal?: Canal;
+  datosExtra?: unknown; // se valida contra los campos de la categoría (SPEC 14)
 }
 
 export interface TicketCreadoDto {

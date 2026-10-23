@@ -1,6 +1,8 @@
 import knex from 'knex';
 import { AuthService } from './application/services/auth.service';
 import { AutorizacionService } from './application/services/autorizacion.service';
+import { CamposExtraService } from './application/services/campos-extra.service';
+import { CatalogosService } from './application/services/catalogos.service';
 import { ConsultaTicketsService } from './application/services/consulta-tickets.service';
 import { EnvioCorreo } from './application/services/envio-correo';
 import { HealthService } from './application/services/health.service';
@@ -46,6 +48,8 @@ export interface Container {
   bitacoraLectura: BitacoraLecturaRepository;
   registroTicketsService: RegistroTicketsService;
   vecinosService: VecinosService;
+  catalogosService: CatalogosService;
+  camposExtraService: CamposExtraService;
   dispose(): Promise<void>;
 }
 
@@ -74,6 +78,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     });
   const transaccion = new KnexTransaccion(db);
   const vecinos = new KnexVecinoRepository(db);
+  const catalogo = new KnexCatalogoLecturaRepository(db);
   const correo = new EnvioCorreo(new KnexPlantillaRepository(db), enviadorCorreo, (mensaje) => console.error(mensaje));
   return {
     port: env.PORT,
@@ -98,13 +103,15 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     bitacoraLectura: new KnexBitacoraLecturaRepository(db),
     registroTicketsService: new RegistroTicketsService(
       new KnexRegistroTicketRepository(db),
-      new KnexCatalogoLecturaRepository(db),
+      catalogo,
       vecinos,
       correo,
       clock,
       env.APP_URL,
     ),
     vecinosService: new VecinosService(vecinos, transaccion, correo, tokens, clock, env.APP_URL),
+    catalogosService: new CatalogosService(catalogo),
+    camposExtraService: new CamposExtraService(transaccion),
     dispose: () => db.destroy(),
   };
 }

@@ -1,6 +1,8 @@
 import express, { type Express } from 'express';
 import type { Container } from './container';
 import { AuthController } from './presentation/controllers/auth.controller';
+import { CamposExtraController } from './presentation/controllers/campos-extra.controller';
+import { CatalogosController } from './presentation/controllers/catalogos.controller';
 import { HealthController } from './presentation/controllers/health.controller';
 import { RecuperacionController } from './presentation/controllers/recuperacion.controller';
 import { TicketsController } from './presentation/controllers/tickets.controller';
@@ -11,6 +13,8 @@ import { limiteLogin } from './presentation/middlewares/limite-login';
 import { limiteRecuperacion } from './presentation/middlewares/limite-recuperacion';
 import { manejadorErrores, rutaNoEncontrada } from './presentation/middlewares/manejador-errores';
 import { authRoutes } from './presentation/routes/auth.routes';
+import { camposExtraRoutes } from './presentation/routes/campos-extra.routes';
+import { catalogosRoutes } from './presentation/routes/catalogos.routes';
 import { healthRoutes } from './presentation/routes/health.routes';
 import { recuperacionRoutes } from './presentation/routes/recuperacion.routes';
 import { ticketsRoutes } from './presentation/routes/tickets.routes';
@@ -47,6 +51,14 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1/vecinos',
     vecinosRoutes(new VecinosController(container.vecinosService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1',
+    catalogosRoutes(new CatalogosController(container.catalogosService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1/admin/categorias',
+    camposExtraRoutes(new CamposExtraController(container.camposExtraService), autenticar(container.autorizacionService)),
   );
   app.use('/api/v1', rutaNoEncontrada);
   app.use(manejadorErrores);
