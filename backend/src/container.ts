@@ -5,7 +5,9 @@ import { ConsultaTicketsService } from './application/services/consulta-tickets.
 import { EnvioCorreo } from './application/services/envio-correo';
 import { HealthService } from './application/services/health.service';
 import { RecuperacionService } from './application/services/recuperacion.service';
+import { RegistroTicketsService } from './application/services/registro-tickets.service';
 import { UsuariosService } from './application/services/usuarios.service';
+import { VecinosService } from './application/services/vecinos.service';
 import type { EnviadorCorreo } from './domain/notificaciones/enviador-correo';
 import type { BitacoraLecturaRepository } from './domain/repositories/bitacora-lectura-repository';
 import type { ReporteLecturaRepository } from './domain/repositories/reporte-lectura-repository';
@@ -17,7 +19,9 @@ import { buildKnexConfig } from './infrastructure/database/knex-config';
 import { KnexDatabaseHealthCheck } from './infrastructure/database/knex-database-health-check';
 import { NodemailerEnviadorCorreo } from './infrastructure/mail/nodemailer-enviador-correo';
 import { KnexBitacoraLecturaRepository } from './infrastructure/repositories/knex-bitacora-lectura-repository';
+import { KnexCatalogoLecturaRepository } from './infrastructure/repositories/knex-catalogo-lectura-repository';
 import { KnexPlantillaRepository } from './infrastructure/repositories/knex-plantilla-repository';
+import { KnexRegistroTicketRepository } from './infrastructure/repositories/knex-registro-ticket-repository';
 import { KnexReporteLecturaRepository } from './infrastructure/repositories/knex-reporte-lectura-repository';
 import { KnexRestablecimientoRepository } from './infrastructure/repositories/knex-restablecimiento-repository';
 import { KnexSesionRepository } from './infrastructure/repositories/knex-sesion-repository';
@@ -25,6 +29,7 @@ import { KnexTicketLecturaRepository } from './infrastructure/repositories/knex-
 import { KnexTransaccion } from './infrastructure/repositories/knex-transaccion';
 import { KnexUsuarioAdminRepository } from './infrastructure/repositories/knex-usuario-admin-repository';
 import { KnexUsuarioRepository } from './infrastructure/repositories/knex-usuario-repository';
+import { KnexVecinoRepository } from './infrastructure/repositories/knex-vecino-repository';
 
 export interface Container {
   port: number;
@@ -39,6 +44,8 @@ export interface Container {
   consultaTicketsService: ConsultaTicketsService;
   reportesLectura: ReporteLecturaRepository;
   bitacoraLectura: BitacoraLecturaRepository;
+  registroTicketsService: RegistroTicketsService;
+  vecinosService: VecinosService;
   dispose(): Promise<void>;
 }
 
@@ -66,6 +73,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
       from: env.MAIL_FROM,
     });
   const transaccion = new KnexTransaccion(db);
+  const vecinos = new KnexVecinoRepository(db);
   const correo = new EnvioCorreo(new KnexPlantillaRepository(db), enviadorCorreo, (mensaje) => console.error(mensaje));
   return {
     port: env.PORT,
@@ -88,6 +96,15 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     consultaTicketsService: new ConsultaTicketsService(new KnexTicketLecturaRepository(db)),
     reportesLectura: new KnexReporteLecturaRepository(db),
     bitacoraLectura: new KnexBitacoraLecturaRepository(db),
+    registroTicketsService: new RegistroTicketsService(
+      new KnexRegistroTicketRepository(db),
+      new KnexCatalogoLecturaRepository(db),
+      vecinos,
+      correo,
+      clock,
+      env.APP_URL,
+    ),
+    vecinosService: new VecinosService(vecinos),
     dispose: () => db.destroy(),
   };
 }

@@ -226,8 +226,8 @@ Durante la definición de esta spec se encontró que la sección 6 del documento
 
 | Requerimiento | Falta |
 | --- | --- |
-| RF-06 | `tickets.titulo` y `tickets.descripcion` |
-| RF-08 | Mecanismo del correlativo anual de `Q-AAAA-NNNNNN` |
+| RF-06 | Resuelto en SPEC 12: `tickets.titulo` y `tickets.descripcion`. |
+| RF-08 | Resuelto en SPEC 12: tabla `correlativos` con el correlativo anual de `Q-AAAA-NNNNNN`. |
 | RF-15 | Tabla de solicitudes de traslado con aprobación |
 | RF-17 | Referencia de la queja duplicada a la original |
 | RF-41 | Catálogo de motivos de rechazo |

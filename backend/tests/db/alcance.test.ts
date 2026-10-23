@@ -93,6 +93,8 @@ async function crearFixture(db: Knex): Promise<Fixture> {
         canal: 'portal',
         zona_id: zona.id,
         direccion: 'Calle principal',
+        titulo: `Queja ${nombre}`,
+        descripcion: 'Descripción de prueba del fixture',
         // T1 es el más antiguo: el listado sale T4, T3, T2, T1.
         creado_en: new Date(Date.UTC(2026, 9, 20 + i)),
       })
