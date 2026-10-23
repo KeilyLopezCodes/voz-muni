@@ -17,6 +17,7 @@
     "migrate:latest": "node --env-file-if-exists=.env node_modules/knex/bin/cli.js --knexfile dist/infrastructure/database/knexfile.js migrate:latest",
     "migrate:rollback": "node --env-file-if-exists=.env node_modules/knex/bin/cli.js --knexfile dist/infrastructure/database/knexfile.js migrate:rollback",
     "seed:run": "node --env-file-if-exists=.env node_modules/knex/bin/cli.js --knexfile dist/infrastructure/database/knexfile.js seed:run",
+    "seed:dev": "node --env-file-if-exists=.env node_modules/knex/bin/cli.js --knexfile dist/infrastructure/database/knexfile-desarrollo.js seed:run",
     "lint:deps": "depcruise src --config .dependency-cruiser.cjs"
   },
   "dependencies": {
