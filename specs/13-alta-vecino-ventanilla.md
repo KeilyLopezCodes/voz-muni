@@ -1,6 +1,6 @@
 # SPEC 13 — Alta de vecino en ventanilla
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 09, SPEC 10, SPEC 12
 > **Fecha:** 2026-10-22
 > **Objetivo:** Exponer `POST /api/v1/vecinos` para que un receptor o supervisor dé de alta a un vecino nuevo sin cuenta (nombre, DPI y correo o teléfono), invitándolo por correo a definir su contraseña si dio un correo, para luego registrar su queja con `POST /api/v1/tickets` de SPEC 12.
@@ -213,23 +213,23 @@ backend/
 
 ## Criterios de aceptación
 
-- [ ] La sección 6 del documento de definición incluye `POST /api/v1/vecinos`.
-- [ ] Después de `migrate:latest` existe la plantilla `invitacion_vecino`, y ningún texto de correo nuevo está escrito en `src/` fuera de la migración `0013_invitacion_vecino`.
-- [ ] Un receptor y un supervisor dan de alta un vecino con `POST /api/v1/vecinos` y reciben `201`. El usuario queda con rol `vecino`, `activo = true`, `password_hash = null` y `dependencia_id = null`.
-- [ ] El vecino, el técnico, el coordinador y el administrador reciben `403 PERMISO_DENEGADO`, y una petición sin token recibe `401`.
-- [ ] El alta exige nombre, DPI de 13 dígitos y al menos correo o teléfono, con los códigos `NOMBRE_INVALIDO`, `DPI_INVALIDO` y `CONTACTO_REQUERIDO`.
-- [ ] El teléfono acepta espacios y guiones, se guarda como 8 dígitos, y cualquier otra forma responde `400 TELEFONO_INVALIDO`.
-- [ ] Un correo (sin distinguir mayúsculas) o un DPI que ya pertenecen a cualquier usuario responden `409 EMAIL_DUPLICADO` o `409 DPI_DUPLICADO`, sin datos del registro existente.
-- [ ] Dos vecinos pueden compartir el mismo teléfono.
-- [ ] Un vecino con correo recibe `invitacion_vecino` con un enlace que vence a las 24 h, y la respuesta tiene `invitacionEnviada: true`. Un vecino sin correo no recibe nada y tiene `invitacionEnviada: false`.
-- [ ] Si el envío de la invitación falla, la respuesta es `201` con `invitacionEnviada: false`, y el vecino existe.
-- [ ] Con el enlace de invitación, `/auth/restablecer` define la contraseña e inicia sesión sin enviar `password_cambiado`, y después `/auth/login` funciona.
-- [ ] La respuesta del alta enmascara el correo y el teléfono, y nunca incluye el DPI.
-- [ ] Con el id devuelto, el receptor registra una queja con `POST /api/v1/tickets` y un canal distinto de `portal` (SPEC 12).
-- [ ] `GET /api/v1/vecinos?telefono=5555-0000` encuentra a los vecinos guardados con `55550000`.
-- [ ] `/auth/recuperar` envía un enlace a un vecino activo sin contraseña que tiene correo, y responde `202` idéntica en todos los casos.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta el flujo de ventanilla, el formato del teléfono y la invitación del vecino.
+- [x] La sección 6 del documento de definición incluye `POST /api/v1/vecinos`.
+- [x] Después de `migrate:latest` existe la plantilla `invitacion_vecino`, y ningún texto de correo nuevo está escrito en `src/` fuera de la migración `0013_invitacion_vecino`.
+- [x] Un receptor y un supervisor dan de alta un vecino con `POST /api/v1/vecinos` y reciben `201`. El usuario queda con rol `vecino`, `activo = true`, `password_hash = null` y `dependencia_id = null`.
+- [x] El vecino, el técnico, el coordinador y el administrador reciben `403 PERMISO_DENEGADO`, y una petición sin token recibe `401`.
+- [x] El alta exige nombre, DPI de 13 dígitos y al menos correo o teléfono, con los códigos `NOMBRE_INVALIDO`, `DPI_INVALIDO` y `CONTACTO_REQUERIDO`.
+- [x] El teléfono acepta espacios y guiones, se guarda como 8 dígitos, y cualquier otra forma responde `400 TELEFONO_INVALIDO`.
+- [x] Un correo (sin distinguir mayúsculas) o un DPI que ya pertenecen a cualquier usuario responden `409 EMAIL_DUPLICADO` o `409 DPI_DUPLICADO`, sin datos del registro existente.
+- [x] Dos vecinos pueden compartir el mismo teléfono.
+- [x] Un vecino con correo recibe `invitacion_vecino` con un enlace que vence a las 24 h, y la respuesta tiene `invitacionEnviada: true`. Un vecino sin correo no recibe nada y tiene `invitacionEnviada: false`.
+- [x] Si el envío de la invitación falla, la respuesta es `201` con `invitacionEnviada: false`, y el vecino existe.
+- [x] Con el enlace de invitación, `/auth/restablecer` define la contraseña e inicia sesión sin enviar `password_cambiado`, y después `/auth/login` funciona.
+- [x] La respuesta del alta enmascara el correo y el teléfono, y nunca incluye el DPI.
+- [x] Con el id devuelto, el receptor registra una queja con `POST /api/v1/tickets` y un canal distinto de `portal` (SPEC 12).
+- [x] `GET /api/v1/vecinos?telefono=5555-0000` encuentra a los vecinos guardados con `55550000`.
+- [x] `/auth/recuperar` envía un enlace a un vecino activo sin contraseña que tiene correo, y responde `202` idéntica en todos los casos.
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta el flujo de ventanilla, el formato del teléfono y la invitación del vecino.
 
 ## Decisiones
 

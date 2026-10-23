@@ -17,3 +17,15 @@ export const busquedaVecinoSchema = z
     if (query.telefono !== undefined) return { telefono: query.telefono };
     return { dpi: query.dpi! };
   });
+
+// Alta en ventanilla. strict(): rol, password, activo o cualquier otro campo responden VALIDACION.
+// Nombre, DPI, teléfono y correo los valida el dominio (NOMBRE_INVALIDO, DPI_INVALIDO, TELEFONO_INVALIDO, EMAIL_INVALIDO).
+export const altaVecinoSchema = z
+  .object({
+    nombre: z.string().max(1000),
+    dpi: z.string().max(100),
+    email: z.string().max(320).optional(),
+    telefono: z.string().max(100).optional(),
+  })
+  .strict()
+  .transform((datos) => ({ ...datos, email: datos.email ?? null, telefono: datos.telefono ?? null }));

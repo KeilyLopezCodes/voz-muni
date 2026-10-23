@@ -42,6 +42,10 @@ class VecinosEnMemoria implements VecinoRepository {
   async buscarActivos(_criterio: CriterioVecino, limite: number): Promise<Vecino[]> {
     return this.activos.slice(0, limite);
   }
+
+  async crear(): Promise<{ id: number }> {
+    throw new Error('no se usa en estas pruebas');
+  }
 }
 
 const VECINO: Vecino = { id: 10, nombre: 'Vecina Ana', email: 'ana@vozmuni.test', telefono: '55550000' };

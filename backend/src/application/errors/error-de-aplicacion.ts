@@ -22,6 +22,10 @@ export type CodigoError =
   | 'CATEGORIA_INVALIDA'
   | 'ZONA_INVALIDA'
   | 'CORRELATIVO_AGOTADO'
+  | 'NOMBRE_INVALIDO'
+  | 'TELEFONO_INVALIDO'
+  | 'EMAIL_INVALIDO'
+  | 'CONTACTO_REQUERIDO'
   | 'NO_AUTENTICADO'
   | 'TOKEN_INVALIDO'
   | 'CREDENCIALES_INVALIDAS'
@@ -46,6 +50,10 @@ const CODIGOS_DE_REGLA: readonly CodigoError[] = [
   'DIRECCION_INVALIDA',
   'DATO_INVALIDO',
   'CORRELATIVO_AGOTADO',
+  'NOMBRE_INVALIDO',
+  'TELEFONO_INVALIDO',
+  'EMAIL_INVALIDO',
+  'CONTACTO_REQUERIDO',
 ];
 
 // Error esperado de un caso de uso. El mensaje es para desarrolladores, no para la UI.

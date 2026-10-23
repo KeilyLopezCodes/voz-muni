@@ -393,7 +393,7 @@ describe('API de administración de usuarios /api/v1/admin/usuarios', () => {
   });
 
   describe('/auth/recuperar con la invitación vencida', () => {
-    it('envía un enlace nuevo a un usuario interno sin contraseña y nada a un vecino sin contraseña', async () => {
+    it('envía un enlace nuevo a un usuario interno sin contraseña, y desde SPEC 13 también a un vecino sin contraseña', async () => {
       await comoAdmin.post(BASE, altaTecnico());
       await db('restablecimientos').update({ expira_en: db.raw("now() - interval '1 second'") });
       await crearUsuario('vecino@vozmuni.test', 'vecino', { password_hash: null });
@@ -403,15 +403,16 @@ describe('API de administración de usuarios /api/v1/admin/usuarios', () => {
 
       expect(interno.status).toBe(202);
       expect(vecino.body).toEqual(interno.body);
-      const correos = await esperarCorreos(enviador, 2);
-      await new Promise((resolver) => setTimeout(resolver, 150));
-      expect(correos.map((correo) => [correo.para, correo.asunto])).toEqual([
+      const correos = await esperarCorreos(enviador, 3);
+      expect(correos.map((correo) => [correo.para, correo.asunto]).sort()).toEqual([
         ['tomas@vozmuni.test', 'VozMuni: activa tu cuenta'],
         ['tomas@vozmuni.test', 'VozMuni: restablece tu contraseña'],
+        ['vecino@vozmuni.test', 'VozMuni: restablece tu contraseña'],
       ]);
+      const recuperacion = correos.find((c) => c.para === 'tomas@vozmuni.test' && c.asunto.includes('restablece'))!;
       const restablecido = await request(app)
         .post('/api/v1/auth/restablecer')
-        .send({ token: tokenDe(correos[1]), password: NUEVA });
+        .send({ token: tokenDe(recuperacion), password: NUEVA });
       expect(restablecido.status).toBe(200);
     });
   });

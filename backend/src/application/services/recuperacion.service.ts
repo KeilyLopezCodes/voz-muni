@@ -28,9 +28,9 @@ export class RecuperacionService {
   // Nunca revela si el correo existe: termina igual en todos los casos, y el correo sale sin esperar.
   async solicitar(email: string): Promise<void> {
     const usuario = await this.usuarios.buscarPorEmail(email);
-    // Un usuario interno sin contraseña sí recibe el enlace: así obtiene otro si su invitación venció (SPEC 10).
-    // Un vecino sin contraseña no: su primera contraseña es del registro (RF-01).
-    if (!usuario || !usuario.activo || (usuario.passwordHash === null && usuario.rol === 'vecino')) {
+    // Cualquier usuario activo con correo recibe el enlace, tenga o no contraseña y sea interno o vecino (SPEC 13):
+    // así quien tiene la invitación vencida obtiene otro enlace.
+    if (!usuario || !usuario.activo) {
       return;
     }
 

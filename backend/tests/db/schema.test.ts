@@ -320,6 +320,19 @@ describe('Esquema de base de datos', () => {
         asunto: 'VozMuni: recibimos tu queja {{numero}}',
       });
     });
+
+    it('existe invitacion_vecino y desaparece al revertir solo 0013', async () => {
+      const plantilla = () => db('plantillas_notificacion').where({ clave: 'invitacion_vecino' }).first('asunto');
+      expect(await plantilla()).toEqual({ asunto: 'VozMuni: sigue tus quejas en el portal' });
+
+      await db.migrate.down({ name: '0013_invitacion_vecino.js' });
+      try {
+        expect(await plantilla()).toBeUndefined();
+      } finally {
+        await db.migrate.latest();
+      }
+      expect(await plantilla()).toBeDefined();
+    });
   });
 
   describe('restablecimientos', () => {
@@ -363,7 +376,7 @@ describe('Esquema de base de datos', () => {
       } finally {
         await db.migrate.latest();
       }
-      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '5' }]);
+      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '6' }]);
     });
   });
 

@@ -4,6 +4,7 @@ import { KnexRestablecimientoRepository } from './knex-restablecimiento-reposito
 import { KnexSesionRepository } from './knex-sesion-repository';
 import { KnexUsuarioAdminRepository } from './knex-usuario-admin-repository';
 import { KnexUsuarioRepository } from './knex-usuario-repository';
+import { KnexVecinoRepository } from './knex-vecino-repository';
 
 // Los repositorios Knex aceptan una transacción en lugar de la conexión.
 export class KnexTransaccion implements Transaccion {
@@ -16,6 +17,7 @@ export class KnexTransaccion implements Transaccion {
         usuariosAdmin: new KnexUsuarioAdminRepository(trx),
         sesiones: new KnexSesionRepository(trx),
         restablecimientos: new KnexRestablecimientoRepository(trx),
+        vecinos: new KnexVecinoRepository(trx),
       }),
     );
   }
