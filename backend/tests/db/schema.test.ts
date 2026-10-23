@@ -149,6 +149,7 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['usado_en', 'timestamp with time zone'],
     ['invalidado_en', 'timestamp with time zone'],
     ['creado_en', 'timestamp with time zone'],
+    ['tipo', 'text'],
   ],
 };
 
@@ -252,11 +253,24 @@ describe('Esquema de base de datos', () => {
     it('la migración carga recuperacion_password y password_cambiado', async () => {
       const filas: { clave: string; asunto: string }[] = await db('plantillas_notificacion')
         .select('clave', 'asunto')
+        .whereIn('clave', ['recuperacion_password', 'password_cambiado'])
         .orderBy('id');
 
       expect(filas).toEqual([
         { clave: 'recuperacion_password', asunto: 'VozMuni: restablece tu contraseña' },
         { clave: 'password_cambiado', asunto: 'VozMuni: tu contraseña fue cambiada' },
+      ]);
+    });
+
+    it('la migración 0010 carga invitacion_usuario y cuenta_desactivada', async () => {
+      const filas: { clave: string; asunto: string }[] = await db('plantillas_notificacion')
+        .select('clave', 'asunto')
+        .whereIn('clave', ['invitacion_usuario', 'cuenta_desactivada'])
+        .orderBy('id');
+
+      expect(filas).toEqual([
+        { clave: 'invitacion_usuario', asunto: 'VozMuni: activa tu cuenta' },
+        { clave: 'cuenta_desactivada', asunto: 'VozMuni: tu cuenta fue desactivada' },
       ]);
     });
 
@@ -284,6 +298,40 @@ describe('Esquema de base de datos', () => {
         await trx('restablecimientos').insert(fila);
         await expect(trx('restablecimientos').insert(fila)).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
       }));
+
+    it('tipo vale recuperacion por defecto y rechaza otros valores', () =>
+      withRollback(async (trx) => {
+        const rolId = await insertRol(trx);
+        const [usuario] = await trx('usuarios').insert({ nombre: 'Ana', email: 'ana@x.gt', rol_id: rolId }).returning('id');
+        const [fila] = await trx('restablecimientos')
+          .insert({ usuario_id: usuario.id, token_hash: 'c'.repeat(64), expira_en: '2026-10-23T00:30:00Z' })
+          .returning('tipo');
+        expect(fila.tipo).toBe('recuperacion');
+        await expect(
+          trx('restablecimientos').insert({
+            usuario_id: usuario.id,
+            token_hash: 'd'.repeat(64),
+            expira_en: '2026-10-23T00:30:00Z',
+            tipo: 'otro',
+          }),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+
+    it('revertir 0010 quita tipo y las 2 plantillas, y latest() las vuelve a crear', async () => {
+      await db.migrate.down({ name: '0010_invitaciones.js' });
+      try {
+        const columnas = await db('information_schema.columns')
+          .where({ table_schema: 'public', table_name: 'restablecimientos', column_name: 'tipo' })
+          .select('column_name');
+        expect(columnas).toEqual([]);
+        expect(
+          await db('plantillas_notificacion').whereIn('clave', ['invitacion_usuario', 'cuenta_desactivada']).select('clave'),
+        ).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '4' }]);
+    });
   });
 
   describe('autenticación', () => {
@@ -469,13 +517,16 @@ describe('Esquema de base de datos', () => {
       },
     };
 
+    // Estado tras todas las migraciones: 0009_permiso_admin_usuarios agrega admin.usuarios al administrador.
+    const MATRIZ_ACTUAL = { ...MATRIZ, administrador: { ...MATRIZ.administrador, 'admin.usuarios': 'si' } };
+
     async function permisosPorRol(): Promise<Record<string, unknown>> {
       const roles: { nombre: string; permisos: unknown }[] = await db('roles').select('nombre', 'permisos').orderBy('id');
       return Object.fromEntries(roles.map((rol) => [rol.nombre, rol.permisos]));
     }
 
     it('deja exactamente los 6 roles con la matriz de permisos', async () => {
-      expect(await permisosPorRol()).toEqual(MATRIZ);
+      expect(await permisosPorRol()).toEqual(MATRIZ_ACTUAL);
       expect(Object.keys(await permisosPorRol())).toEqual([
         'vecino',
         'receptor',
@@ -487,11 +538,13 @@ describe('Esquema de base de datos', () => {
     });
 
     it('carga la matriz en roles que ya existían con permisos vacíos, sin duplicarlos', async () => {
+      // 0009 depende de los roles: se revierte antes y vuelve a aplicarse con latest().
+      await db.migrate.down({ name: '0009_permiso_admin_usuarios.js' });
       await db.migrate.down({ name: '0006_roles.js' });
       await db('roles').insert(Object.keys(MATRIZ).map((nombre) => ({ nombre, permisos: {} })));
       await db.migrate.latest();
 
-      expect(await permisosPorRol()).toEqual(MATRIZ);
+      expect(await permisosPorRol()).toEqual(MATRIZ_ACTUAL);
     });
 
     it('el down falla si un usuario tiene uno de esos roles', async () => {
@@ -499,7 +552,7 @@ describe('Esquema de base de datos', () => {
       const [usuario] = await db('usuarios').insert({ nombre: 'Vecino', telefono: '55550000', rol_id: rolId }).returning('id');
       try {
         await expect(db.migrate.down({ name: '0006_roles.js' })).rejects.toMatchObject({ code: FOREIGN_KEY_VIOLATION });
-        expect(await permisosPorRol()).toEqual(MATRIZ);
+        expect(await permisosPorRol()).toEqual(MATRIZ_ACTUAL);
       } finally {
         await db('usuarios').where({ id: usuario.id }).delete();
       }
@@ -507,6 +560,26 @@ describe('Esquema de base de datos', () => {
 
     it('seed.run() termina sin error con la carpeta seeds/ vacía', async () => {
       await expect(db.seed.run()).resolves.toEqual([[]]);
+    });
+
+    describe('migración 0009_permiso_admin_usuarios', () => {
+      it('solo el administrador tiene admin.usuarios = si', async () => {
+        const conPermiso: { nombre: string; valor: string }[] = await db('roles')
+          .select('nombre', db.raw("permisos->>'admin.usuarios' as valor"))
+          .whereRaw("permisos->>'admin.usuarios' IS NOT NULL");
+
+        expect(conPermiso).toEqual([{ nombre: 'administrador', valor: 'si' }]);
+      });
+
+      it('al revertirla desaparece la clave y el resto de los permisos queda igual', async () => {
+        await db.migrate.down({ name: '0009_permiso_admin_usuarios.js' });
+        try {
+          expect(await permisosPorRol()).toEqual(MATRIZ);
+        } finally {
+          await db.migrate.latest();
+        }
+        expect(await permisosPorRol()).toEqual(MATRIZ_ACTUAL);
+      });
     });
   });
 

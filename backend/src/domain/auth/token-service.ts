@@ -2,7 +2,13 @@ import type { Rol } from './roles';
 
 export const DURACION_ACCESO_MS = 15 * 60 * 1000;
 export const DURACION_RENOVACION_MS = 7 * 24 * 60 * 60 * 1000;
-export const DURACION_RESTABLECIMIENTO_MS = 30 * 60 * 1000;
+
+// Enlaces de un solo uso de restablecimientos (SPEC 09 y SPEC 10). Los dos se usan en /auth/restablecer.
+export type TipoRestablecimiento = 'recuperacion' | 'invitacion';
+export const VIGENCIA_RESTABLECIMIENTO_MS: Record<TipoRestablecimiento, number> = {
+  recuperacion: 30 * 60 * 1000,
+  invitacion: 24 * 60 * 60 * 1000,
+};
 
 // Contenido del token de acceso. Los permisos no viajan en el token: se leen de la base en cada petición.
 export interface PayloadAcceso {

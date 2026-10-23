@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repository contains the project foundations. There is no business logic yet.
 
-- `backend/`: the layered backend skeleton with `GET /health` and the layer dependency rules (SPEC 01), plus PostgreSQL 17 in docker-compose, Knex wiring, config validated with Zod, and `/health` reporting the database state (SPEC 02), plus the 14 tables of section 6 as Knex migrations, the insert-only `bitacora` trigger (SPEC 03), fictional development catalogs loaded with `seed:dev` (SPEC 05), and login, token renewal, logout, lockout, the `autenticar` / `requierePermiso` middlewares, the global error handler and the 6 roles with their permission matrix (SPEC 08), and password recovery by email with Nodemailer and templates stored in the database (SPEC 09).
+- `backend/`: the layered backend skeleton with `GET /health` and the layer dependency rules (SPEC 01), plus PostgreSQL 17 in docker-compose, Knex wiring, config validated with Zod, and `/health` reporting the database state (SPEC 02), plus the 14 tables of section 6 as Knex migrations, the insert-only `bitacora` trigger (SPEC 03), fictional development catalogs loaded with `seed:dev` (SPEC 05), and login, token renewal, logout, lockout, the `autenticar` / `requierePermiso` middlewares, the global error handler and the 6 roles with their permission matrix (SPEC 08), password recovery by email with Nodemailer and templates stored in the database (SPEC 09), and internal user management by the administrator under `/api/v1/admin/usuarios` (SPEC 10).
 - `frontend/`: the React + Vite SPA scaffold (SPEC 06), with the shared HTTP client, the role-based route guards, the MUI layout, the Spanish translation files and the feature-boundary rules. The pages are placeholders, and there is no login yet, so the browser session is always `null`.
 
 It also contains:
@@ -104,6 +104,13 @@ These points are spread across the definition document. Follow them when writing
   - Errors leave the API as `{ codigo, mensaje }`. Use cases throw `ErrorDeAplicacion` (`application/errors/`), and `manejadorErrores` maps its `codigo` to the HTTP status.
 - **Email templates live in the database.** Subjects and bodies are rows of `plantillas_notificacion` (RF-33), read on every send with `{{variable}}` placeholders rendered by `domain/notificaciones/plantilla.ts`. Never write an email subject or body in `src/`; a new template goes in a migration as data. Emails go through the `EnviadorCorreo` port and are sent without blocking the HTTP response; a failed send is logged with the `usuario_id`, never with a token.
 - **Password policy.** Any password a user defines must pass `validarPassword` from `domain/auth/politica-password.ts` (RNF-08: 8–200 characters, at least one letter and one digit).
+- **Internal users (SPEC 10).** The administrator manages them through `/api/v1/admin/usuarios`, protected by `autenticar` + `requierePermiso('admin.usuarios')`:
+  - `GET /` (paginated, 20 per page by default, max 100, filters `rol`, `dependenciaId`, `activo`, `busqueda`), `GET /:id`, `POST /`, `PATCH /:id`, `POST /:id/desactivacion`, `POST /:id/activacion` and `POST /:id/desbloqueo`. Vecinos never appear here and their ids answer `404`.
+  - Only the 5 internal roles are assignable. `tecnico` and `coordinador` require a dependency; the other roles must not have one. The DPI has 13 digits. Email and DPI cannot be edited.
+  - A new user is active with no password and receives the `invitacion_usuario` email with a single-use link valid for 24 hours (`restablecimientos.tipo = 'invitacion'`), used in `/auth/restablecer`. There is no resend endpoint: if the invitation expires, the user asks for a new link with "olvidé mi contraseña" (`/auth/recuperar` also serves internal users without a password).
+  - Changing the role or dependency, or deactivating, revokes the user's sessions. An administrator cannot deactivate or demote themselves, and no operation may leave 0 active administrators (counted with `FOR UPDATE`).
+  - Users are never deleted: they are deactivated.
+  - Domain rules live in `domain/usuarios/usuario-interno.ts`. Operations that touch several tables use the `Transaccion` port.
 - **Cross-cutting conventions:**
   - API routes start with `/api/v1` and are documented in OpenAPI 3.
   - Ticket numbers use the format `Q-AAAA-NNNNNN`.

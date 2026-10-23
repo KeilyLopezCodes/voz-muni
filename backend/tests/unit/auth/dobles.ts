@@ -1,9 +1,31 @@
 // Dobles de prueba en memoria para los servicios de autenticación (SPEC 08 y SPEC 09).
 import type { EstadoBloqueo } from '../../../src/domain/auth/bloqueo';
+import { ReglaDeNegocioError } from '../../../src/domain/errors/regla-de-negocio-error';
+import type { EnviadorCorreo, MensajeCorreo } from '../../../src/domain/notificaciones/enviador-correo';
+import type { Plantilla } from '../../../src/domain/notificaciones/plantilla';
+import type { PlantillaRepository } from '../../../src/domain/repositories/plantilla-repository';
+import type {
+  RestablecimientoRepository,
+  RestablecimientoVigente,
+} from '../../../src/domain/repositories/restablecimiento-repository';
+import type { ReposTransaccionales, Transaccion } from '../../../src/domain/repositories/transaccion';
+import type {
+  CambiosUsuarioInterno,
+  FiltroUsuarios,
+  NuevoUsuarioInterno,
+  UsuarioAdminRepository,
+  UsuarioInterno,
+} from '../../../src/domain/repositories/usuario-admin-repository';
+import type { RolInterno } from '../../../src/domain/usuarios/usuario-interno';
 import type { PasswordHasher } from '../../../src/domain/auth/password-hasher';
 import type { Permisos } from '../../../src/domain/auth/permisos';
 import type { Rol } from '../../../src/domain/auth/roles';
-import type { PayloadAcceso, TokenService } from '../../../src/domain/auth/token-service';
+import {
+  type PayloadAcceso,
+  type TipoRestablecimiento,
+  type TokenService,
+  VIGENCIA_RESTABLECIMIENTO_MS,
+} from '../../../src/domain/auth/token-service';
 import type { Clock } from '../../../src/domain/health/clock';
 import type { NuevaSesion, Sesion, SesionRepository } from '../../../src/domain/repositories/sesion-repository';
 import type {
@@ -19,6 +41,8 @@ export interface UsuarioFalso {
   id: number;
   nombre: string;
   email: string | null;
+  telefono: string | null;
+  dpi: string | null;
   rol: Rol;
   dependenciaId: number | null;
   activo: boolean;
@@ -155,6 +179,8 @@ export function usuario(cambios: Partial<UsuarioFalso> = {}): UsuarioFalso {
     id: 1,
     nombre: 'Ana Coordinadora',
     email: 'ana@vozmuni.test',
+    telefono: null,
+    dpi: null,
     rol: 'coordinador',
     dependenciaId: 4,
     activo: true,
@@ -164,3 +190,164 @@ export function usuario(cambios: Partial<UsuarioFalso> = {}): UsuarioFalso {
     ...cambios,
   };
 }
+
+// Permisos por rol para los usuarios que crea el doble de UsuarioAdminRepository.
+const PERMISOS_POR_ROL: Record<string, Permisos> = {
+  administrador: { 'admin.usuarios': 'si' },
+  tecnico: { 'tickets.ver': 'asignadas' },
+};
+
+// Comparte las filas con UsuariosEnMemoria, como en la base comparten la tabla usuarios.
+export class UsuariosAdminEnMemoria implements UsuarioAdminRepository {
+  readonly dependenciasActivas = new Set<number>([4]);
+  bloqueosDeConteo = 0;
+
+  constructor(private readonly usuarios: UsuariosEnMemoria) {}
+
+  private aInterno(u: UsuarioFalso): UsuarioInterno {
+    return {
+      id: u.id,
+      nombre: u.nombre,
+      email: u.email!,
+      telefono: u.telefono,
+      dpi: u.dpi,
+      rol: u.rol as RolInterno,
+      dependenciaId: u.dependenciaId,
+      activo: u.activo,
+      tienePassword: u.passwordHash !== null,
+      bloqueadoHasta: u.bloqueo.bloqueadoHasta,
+    };
+  }
+
+  async listar(filtro: FiltroUsuarios): Promise<{ datos: UsuarioInterno[]; total: number }> {
+    const todos = this.usuarios.filas.filter((u) => u.rol !== 'vecino').map((u) => this.aInterno(u));
+    return { datos: todos.slice((filtro.pagina - 1) * filtro.tamano, filtro.pagina * filtro.tamano), total: todos.length };
+  }
+
+  async obtenerInterno(id: number): Promise<UsuarioInterno | null> {
+    const u = this.usuarios.filas.find((fila) => fila.id === id && fila.rol !== 'vecino');
+    return u ? this.aInterno(u) : null;
+  }
+
+  async crear(nuevo: NuevoUsuarioInterno): Promise<UsuarioInterno> {
+    if (this.usuarios.filas.some((u) => u.email?.toLowerCase() === nuevo.email.toLowerCase())) {
+      throw new ReglaDeNegocioError('EMAIL_DUPLICADO', 'correo repetido');
+    }
+    if (this.usuarios.filas.some((u) => u.dpi === nuevo.dpi)) {
+      throw new ReglaDeNegocioError('DPI_DUPLICADO', 'DPI repetido');
+    }
+    const fila: UsuarioFalso = {
+      ...nuevo,
+      id: Math.max(0, ...this.usuarios.filas.map((u) => u.id)) + 1,
+      activo: true,
+      passwordHash: null,
+      bloqueo: { intentosFallidos: 0, bloqueadoHasta: null },
+      permisos: PERMISOS_POR_ROL[nuevo.rol] ?? {},
+    };
+    this.usuarios.filas.push(fila);
+    return this.aInterno(fila);
+  }
+
+  async actualizar(id: number, cambios: CambiosUsuarioInterno): Promise<UsuarioInterno> {
+    const u = this.usuarios.filas.find((fila) => fila.id === id)!;
+    if (cambios.nombre !== undefined) u.nombre = cambios.nombre;
+    if (cambios.telefono !== undefined) u.telefono = cambios.telefono;
+    if (cambios.rol !== undefined) u.rol = cambios.rol;
+    if (cambios.dependenciaId !== undefined) u.dependenciaId = cambios.dependenciaId;
+    if (cambios.activo !== undefined) u.activo = cambios.activo;
+    if (cambios.desbloquear) u.bloqueo = { intentosFallidos: 0, bloqueadoHasta: null };
+    return this.aInterno(u);
+  }
+
+  async contarAdminsActivosParaActualizar(): Promise<number> {
+    this.bloqueosDeConteo += 1;
+    return this.usuarios.filas.filter((u) => u.rol === 'administrador' && u.activo).length;
+  }
+
+  async dependenciaActiva(dependenciaId: number): Promise<boolean> {
+    return this.dependenciasActivas.has(dependenciaId);
+  }
+}
+
+export interface RestablecimientoFalso {
+  id: number;
+  usuarioId: number;
+  tokenHash: string;
+  tipo: TipoRestablecimiento;
+  expiraEn: Date;
+  usadoEn: Date | null;
+  invalidadoEn: Date | null;
+}
+
+export class RestablecimientosEnMemoria implements RestablecimientoRepository {
+  readonly filas: RestablecimientoFalso[] = [];
+
+  async invalidarPendientes(usuarioId: number, ahora: Date): Promise<void> {
+    for (const r of this.filas.filter((f) => f.usuarioId === usuarioId && !f.usadoEn && !f.invalidadoEn)) {
+      r.invalidadoEn = ahora;
+    }
+  }
+
+  async crear(usuarioId: number, tokenHash: string, tipo: TipoRestablecimiento, ahora: Date): Promise<void> {
+    this.filas.push({
+      id: this.filas.length + 1,
+      usuarioId,
+      tokenHash,
+      tipo,
+      expiraEn: new Date(ahora.getTime() + VIGENCIA_RESTABLECIMIENTO_MS[tipo]),
+      usadoEn: null,
+      invalidadoEn: null,
+    });
+  }
+
+  async buscarVigente(tokenHash: string, ahora: Date): Promise<RestablecimientoVigente | null> {
+    const r = this.filas.find(
+      (f) => f.tokenHash === tokenHash && !f.usadoEn && !f.invalidadoEn && f.expiraEn.getTime() > ahora.getTime(),
+    );
+    return r ? { id: r.id, usuarioId: r.usuarioId, tipo: r.tipo } : null;
+  }
+
+  async marcarUsado(id: number, ahora: Date): Promise<void> {
+    this.filas.find((f) => f.id === id)!.usadoEn = ahora;
+  }
+}
+
+// Las plantillas reales viven en la base; aquí basta con usar las variables.
+export class PlantillasEnMemoria implements PlantillaRepository {
+  readonly plantillas = new Map<string, Plantilla>(
+    [
+      ['recuperacion_password', 'Recupera', '{{nombre}}: {{enlace}}', '<a href="{{enlace}}">{{nombre}}</a>'],
+      ['password_cambiado', 'Cambiada', '{{nombre}}', '<p>{{nombre}}</p>'],
+      ['invitacion_usuario', 'Invitación', '{{nombre}} ({{rol}}): {{enlace}}', '<a href="{{enlace}}">{{nombre}}</a>'],
+      ['cuenta_desactivada', 'Desactivada', '{{nombre}}', '<p>{{nombre}}</p>'],
+    ].map(([clave, asunto, cuerpoTexto, cuerpoHtml]) => [clave, { clave, asunto, cuerpoTexto, cuerpoHtml }]),
+  );
+
+  async buscarPorClave(clave: string): Promise<Plantilla | null> {
+    return this.plantillas.get(clave) ?? null;
+  }
+}
+
+export class EnviadorEnMemoria implements EnviadorCorreo {
+  readonly enviados: MensajeCorreo[] = [];
+  fallar = false;
+
+  async enviar(mensaje: MensajeCorreo): Promise<void> {
+    if (this.fallar) {
+      throw new Error('ECONNREFUSED smtp');
+    }
+    this.enviados.push(mensaje);
+  }
+}
+
+// Sin rollback real: los dobles en memoria no lo necesitan para estas pruebas.
+export class TransaccionEnMemoria implements Transaccion {
+  constructor(private readonly repos: ReposTransaccionales) {}
+
+  ejecutar<T>(trabajo: (repos: ReposTransaccionales) => Promise<T>): Promise<T> {
+    return trabajo(this.repos);
+  }
+}
+
+// Los correos que salen sin esperar: deja correr las promesas pendientes.
+export const correosPendientes = () => new Promise((resolver) => setImmediate(resolver));

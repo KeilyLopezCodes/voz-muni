@@ -295,7 +295,7 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | calendario\_laboral | fecha, es\_habil, descripcion |
 | bitacora | id, usuario\_id, accion, entidad, entidad\_id, detalle (jsonb), ip, creado\_en |
 | plantillas\_notificacion | id, clave (única), asunto, cuerpo\_texto, cuerpo\_html, actualizado\_en |
-| restablecimientos | id, usuario\_id, token\_hash (SHA-256 del token de recuperación, único), expira\_en, usado\_en, invalidado\_en, creado\_en |
+| restablecimientos | id, usuario\_id, token\_hash (SHA-256 del token, único), tipo (recuperacion, invitacion), expira\_en, usado\_en, invalidado\_en, creado\_en |
 
 Índices clave: `tickets(estado, dependencia_id)`, `tickets(asignado_a, estado)`, `tickets(vence_resolucion)` para las tareas de SLA y `tickets(numero)` para la consulta pública.
 
@@ -317,4 +317,11 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | POST /api/v1/tickets/:id/adjuntos | Subir archivo | Vecino, internos |
 | POST /api/v1/tickets/:id/encuesta | Calificar la atención | Vecino |
 | GET /api/v1/reportes/resumen | Indicadores del tablero | Coordinador, Supervisor, Admin |
-| /api/v1/admin/\* | CRUD de catálogos y usuarios | Admin |
+| GET /api/v1/admin/usuarios | Listado paginado de usuarios internos con filtros por rol, dependencia, estado y búsqueda | Admin |
+| GET /api/v1/admin/usuarios/:id | Detalle de un usuario interno | Admin |
+| POST /api/v1/admin/usuarios | Alta de usuario interno con invitación por correo | Admin |
+| PATCH /api/v1/admin/usuarios/:id | Editar nombre, teléfono, rol y dependencia | Admin |
+| POST /api/v1/admin/usuarios/:id/desactivacion | Desactivar usuario y cerrar sus sesiones | Admin |
+| POST /api/v1/admin/usuarios/:id/activacion | Reactivar usuario | Admin |
+| POST /api/v1/admin/usuarios/:id/desbloqueo | Quitar el bloqueo por intentos fallidos | Admin |
+| /api/v1/admin/\* | CRUD de catálogos | Admin |
