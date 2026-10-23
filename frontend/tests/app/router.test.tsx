@@ -87,6 +87,15 @@ describe('router', () => {
     expect(tituloActual()).toBe(tickets.consulta.titulo)
   })
 
+  it.each([
+    ['/registro', auth.registro.titulo],
+    ['/verificar', auth.verificar.titulo],
+  ])('%s carga sin sesión', (path, titulo) => {
+    const router = renderRuta(path, null)
+    expect(router.state.location.pathname).toBe(path)
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(titulo)
+  })
+
   it('una ruta inexistente muestra la página 404', () => {
     renderRuta('/no-existe', null)
     expect(tituloActual()).toBe(comun.errores.noEncontrado.titulo)

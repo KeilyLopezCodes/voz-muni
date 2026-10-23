@@ -30,7 +30,10 @@ const USUARIOS: UsuarioActivo[] = [
 const usuarios: UsuarioRepository = {
   buscarPorEmail: async () => null,
   guardarBloqueo: async () => {},
+  cambiarPassword: async () => {},
+  marcarCorreoVerificado: async () => {},
   buscarActivo: async (id) => USUARIOS.find((u) => u.id === id) ?? null,
+  emailDe: async () => null,
 };
 
 const tokens = new JwtTokenService(SECRETO);

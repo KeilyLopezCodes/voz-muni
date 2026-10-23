@@ -9,6 +9,22 @@ export interface Env extends DatabaseEnv {
   JWT_SECRET: string;
   NODE_ENV: 'development' | 'test' | 'production';
   LOGIN_LIMITE_POR_VENTANA: number;
+  SMTP_HOST: string;
+  SMTP_PORT: number;
+  SMTP_SECURE: boolean;
+  SMTP_USER: string;
+  SMTP_PASS: string;
+  MAIL_FROM: string;
+  APP_URL: string;
+  RECUPERACION_LIMITE_POR_VENTANA: number;
+}
+
+const OBLIGATORIA = { error: 'es obligatoria' };
+
+// `Nombre <correo>` o solo el correo.
+function esRemitente(valor: string): boolean {
+  const conNombre = /^[^<>]+<([^<>]+)>$/.exec(valor.trim());
+  return z.email().safeParse(conNombre ? conNombre[1] : valor.trim()).success;
 }
 
 const databaseEnvSchema = z.object({
@@ -17,9 +33,23 @@ const databaseEnvSchema = z.object({
 
 const envSchema = databaseEnvSchema.extend({
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-  JWT_SECRET: z.string({ error: 'es obligatoria' }).min(32, { error: 'debe tener al menos 32 caracteres' }),
+  JWT_SECRET: z.string(OBLIGATORIA).min(32, { error: 'debe tener al menos 32 caracteres' }),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   LOGIN_LIMITE_POR_VENTANA: z.coerce.number().int().positive().default(10),
+  SMTP_HOST: z.string(OBLIGATORIA).min(1, OBLIGATORIA),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  // false = STARTTLS en el puerto 587; true = TLS directo, normalmente en el 465.
+  SMTP_SECURE: z
+    .enum(['true', 'false'], { error: 'debe ser true o false' })
+    .default('false')
+    .transform((valor) => valor === 'true'),
+  SMTP_USER: z.string(OBLIGATORIA).min(1, OBLIGATORIA),
+  SMTP_PASS: z.string(OBLIGATORIA).min(1, OBLIGATORIA),
+  MAIL_FROM: z.string(OBLIGATORIA).refine(esRemitente, { error: 'debe tener la forma Nombre <correo> o ser un correo' }),
+  APP_URL: z
+    .url({ protocol: /^https?$/, error: 'debe ser una URL http:// o https://' })
+    .refine((url) => !url.endsWith('/'), { error: 'no debe terminar en /' }),
+  RECUPERACION_LIMITE_POR_VENTANA: z.coerce.number().int().positive().default(5),
 });
 
 function parse<T>(schema: z.ZodType<T>, source: NodeJS.ProcessEnv): T {

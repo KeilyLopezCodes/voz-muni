@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LoginPage } from '../../src/features/auth/pages/LoginPage'
 import auth from '../../src/locales/es/auth.json'
@@ -11,7 +12,9 @@ function renderLogin() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
-      <LoginPage />
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -26,6 +29,14 @@ afterEach(() => {
 })
 
 describe('LoginPage', () => {
+  it('tiene el enlace "Crear cuenta" a /registro', () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+
+    renderLogin()
+
+    expect(screen.getByRole('link', { name: auth.login.crearCuenta })).toHaveAttribute('href', '/registro')
+  })
+
   it('muestra "Servidor disponible" cuando /health responde 200', async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ status: 'ok', database: 'up', timestamp: '2026-10-22T15:04:05.000Z' }), {

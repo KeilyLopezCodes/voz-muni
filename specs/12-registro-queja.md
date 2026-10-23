@@ -1,6 +1,6 @@
 # SPEC 12 — Registro de queja (API, sin adjuntos)
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 04, SPEC 08, SPEC 09, SPEC 11
 > **Fecha:** 2026-10-22
 > **Objetivo:** Exponer `POST /api/v1/tickets` para que un vecino registre su queja, o un receptor o supervisor la registre a nombre de un vecino existente, con categoría, título, descripción, zona y dirección, asignando el número `Q-AAAA-NNNNNN`, guardando el historial inicial y enviando el número por correo.
@@ -305,25 +305,25 @@ backend/
 
 ## Criterios de aceptación
 
-- [ ] La sección 6 del documento de definición incluye `tickets.titulo`, `tickets.descripcion`, `correlativos` y `GET /api/v1/vecinos`, y los vacíos de RF-06 y RF-08 figuran como resueltos.
-- [ ] `npm run migrate:latest` crea las columnas, la tabla `correlativos` y la plantilla `queja_registrada`, y un rollback completo no deja ninguna de las 18 tablas.
-- [ ] Un vecino autenticado registra una queja con `POST /api/v1/tickets` y recibe `201` con `id`, `numero`, `estado: 'nueva'`, `creadoEn` y el encabezado `Location`.
-- [ ] El ticket creado tiene `solicitante_id` y `registrado_por` iguales al vecino, `canal = 'portal'`, `datos_extra = '{}'`, `escalado = false`, y `dependencia_id`, `asignado_a`, `prioridad`, `lat`, `lng` y los vencimientos en `null`.
-- [ ] Cada registro escribe una fila en `ticket_historial` con `estado_anterior = null`, `estado_nuevo = 'nueva'` y `usuario_id` igual a quien registra.
-- [ ] El primer número de cada año es `Q-AAAA-000001`, y 20 registros simultáneos reciben 20 números consecutivos distintos.
-- [ ] Un registro que falla después de tomar el número no deja huecos: el siguiente registro usa ese número.
-- [ ] Una queja registrada el 31 de diciembre de 2026 a las 23:30 hora de Guatemala recibe un número `Q-2026-…`.
-- [ ] Un receptor y un supervisor registran a nombre de un vecino activo existente con un canal distinto de `portal`, y el ticket queda con `registrado_por` igual a su id.
-- [ ] Técnico, coordinador y administrador reciben `403 PERMISO_DENEGADO` al registrar.
-- [ ] El título (5–150), la descripción (10–4000) y la dirección (5–300) se validan sobre el texto recortado y se guardan recortados.
-- [ ] Una categoría inactiva, o cuya dependencia está inactiva, responde `400 CATEGORIA_INVALIDA`, y una zona inexistente responde `400 ZONA_INVALIDA`.
-- [ ] Un `solicitanteId` que no es un vecino activo responde `400 SOLICITANTE_INVALIDO`.
-- [ ] Un cuerpo con `datosExtra`, `lat`, `lng`, `prioridad` o `estado` responde `400 VALIDACION`.
-- [ ] El solicitante con correo recibe `queja_registrada` con su número y el enlace `APP_URL/consulta?numero=<numero>`. Un fallo del envío no impide el `201`.
-- [ ] `GET /api/v1/vecinos` encuentra por correo, teléfono o DPI exactos solo a vecinos activos, enmascara el correo y el teléfono, nunca devuelve el DPI, y responde `403` al vecino.
-- [ ] Las pruebas de SPEC 04 siguen pasando con `estadoAnterior: EstadoTicket | null`.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta el endpoint de registro, el correlativo y la regla de `registrado_por`.
+- [x] La sección 6 del documento de definición incluye `tickets.titulo`, `tickets.descripcion`, `correlativos` y `GET /api/v1/vecinos`, y los vacíos de RF-06 y RF-08 figuran como resueltos.
+- [x] `npm run migrate:latest` crea las columnas, la tabla `correlativos` y la plantilla `queja_registrada`, y un rollback completo no deja ninguna de las 18 tablas.
+- [x] Un vecino autenticado registra una queja con `POST /api/v1/tickets` y recibe `201` con `id`, `numero`, `estado: 'nueva'`, `creadoEn` y el encabezado `Location`.
+- [x] El ticket creado tiene `solicitante_id` y `registrado_por` iguales al vecino, `canal = 'portal'`, `datos_extra = '{}'`, `escalado = false`, y `dependencia_id`, `asignado_a`, `prioridad`, `lat`, `lng` y los vencimientos en `null`.
+- [x] Cada registro escribe una fila en `ticket_historial` con `estado_anterior = null`, `estado_nuevo = 'nueva'` y `usuario_id` igual a quien registra.
+- [x] El primer número de cada año es `Q-AAAA-000001`, y 20 registros simultáneos reciben 20 números consecutivos distintos.
+- [x] Un registro que falla después de tomar el número no deja huecos: el siguiente registro usa ese número.
+- [x] Una queja registrada el 31 de diciembre de 2026 a las 23:30 hora de Guatemala recibe un número `Q-2026-…`.
+- [x] Un receptor y un supervisor registran a nombre de un vecino activo existente con un canal distinto de `portal`, y el ticket queda con `registrado_por` igual a su id.
+- [x] Técnico, coordinador y administrador reciben `403 PERMISO_DENEGADO` al registrar.
+- [x] El título (5–150), la descripción (10–4000) y la dirección (5–300) se validan sobre el texto recortado y se guardan recortados.
+- [x] Una categoría inactiva, o cuya dependencia está inactiva, responde `400 CATEGORIA_INVALIDA`, y una zona inexistente responde `400 ZONA_INVALIDA`.
+- [x] Un `solicitanteId` que no es un vecino activo responde `400 SOLICITANTE_INVALIDO`.
+- [x] Un cuerpo con `datosExtra`, `lat`, `lng`, `prioridad` o `estado` responde `400 VALIDACION`.
+- [x] El solicitante con correo recibe `queja_registrada` con su número y el enlace `APP_URL/consulta?numero=<numero>`. Un fallo del envío no impide el `201`.
+- [x] `GET /api/v1/vecinos` encuentra por correo, teléfono o DPI exactos solo a vecinos activos, enmascara el correo y el teléfono, nunca devuelve el DPI, y responde `403` al vecino.
+- [x] Las pruebas de SPEC 04 siguen pasando con `estadoAnterior: EstadoTicket | null`.
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta el endpoint de registro, el correlativo y la regla de `registrado_por`.
 
 ## Decisiones
 

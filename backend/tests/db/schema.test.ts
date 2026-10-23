@@ -50,6 +50,7 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['activo', 'boolean'],
     ['intentos_fallidos', 'integer'],
     ['bloqueado_hasta', 'timestamp with time zone'],
+    ['correo_verificado_en', 'timestamp with time zone'],
   ],
   sesiones: [
     ['id', 'bigint'],
@@ -81,6 +82,9 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['creado_en', 'timestamp with time zone'],
     ['resuelto_en', 'timestamp with time zone'],
     ['cerrado_en', 'timestamp with time zone'],
+    ['registrado_por', 'bigint'],
+    ['titulo', 'text'],
+    ['descripcion', 'text'],
   ],
   ticket_historial: [
     ['id', 'bigint'],
@@ -132,6 +136,34 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['detalle', 'jsonb'],
     ['ip', 'inet'],
     ['creado_en', 'timestamp with time zone'],
+    ['dependencia_id', 'bigint'],
+  ],
+  parametros: [
+    ['clave', 'text'],
+    ['valor', 'jsonb'],
+    ['actualizado_en', 'timestamp with time zone'],
+  ],
+  correlativos: [
+    ['anio', 'smallint'],
+    ['ultimo', 'integer'],
+  ],
+  plantillas_notificacion: [
+    ['id', 'bigint'],
+    ['clave', 'text'],
+    ['asunto', 'text'],
+    ['cuerpo_texto', 'text'],
+    ['cuerpo_html', 'text'],
+    ['actualizado_en', 'timestamp with time zone'],
+  ],
+  restablecimientos: [
+    ['id', 'bigint'],
+    ['usuario_id', 'bigint'],
+    ['token_hash', 'text'],
+    ['expira_en', 'timestamp with time zone'],
+    ['usado_en', 'timestamp with time zone'],
+    ['invalidado_en', 'timestamp with time zone'],
+    ['creado_en', 'timestamp with time zone'],
+    ['tipo', 'text'],
   ],
 };
 
@@ -186,6 +218,8 @@ describe('Esquema de base de datos', () => {
         canal: 'portal',
         zona_id: zona.id,
         direccion: 'Calle principal',
+        titulo: 'Bache en la calle',
+        descripcion: 'Hay un bache profundo frente a la escuela',
         ...overrides,
       })
       .returning('id');
@@ -227,6 +261,200 @@ describe('Esquema de base de datos', () => {
           code: FOREIGN_KEY_VIOLATION,
         });
       }));
+  });
+
+  describe('plantillas_notificacion', () => {
+    const plantilla = { asunto: 'Asunto', cuerpo_texto: 'Texto', cuerpo_html: '<p>Html</p>' };
+
+    it('la migración carga recuperacion_password y password_cambiado', async () => {
+      const filas: { clave: string; asunto: string }[] = await db('plantillas_notificacion')
+        .select('clave', 'asunto')
+        .whereIn('clave', ['recuperacion_password', 'password_cambiado'])
+        .orderBy('id');
+
+      expect(filas).toEqual([
+        { clave: 'recuperacion_password', asunto: 'VozMuni: restablece tu contraseña' },
+        { clave: 'password_cambiado', asunto: 'VozMuni: tu contraseña fue cambiada' },
+      ]);
+    });
+
+    it('la migración 0010 carga invitacion_usuario y cuenta_desactivada', async () => {
+      const filas: { clave: string; asunto: string }[] = await db('plantillas_notificacion')
+        .select('clave', 'asunto')
+        .whereIn('clave', ['invitacion_usuario', 'cuenta_desactivada'])
+        .orderBy('id');
+
+      expect(filas).toEqual([
+        { clave: 'invitacion_usuario', asunto: 'VozMuni: activa tu cuenta' },
+        { clave: 'cuenta_desactivada', asunto: 'VozMuni: tu cuenta fue desactivada' },
+      ]);
+    });
+
+    it('rechaza una clave con mayúsculas', () =>
+      withRollback(async (trx) => {
+        await expect(trx('plantillas_notificacion').insert({ clave: 'Bienvenida', ...plantilla })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }));
+
+    it('una clave repetida viola UNIQUE', () =>
+      withRollback(async (trx) => {
+        await expect(
+          trx('plantillas_notificacion').insert({ clave: 'recuperacion_password', ...plantilla }),
+        ).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
+      }));
+  });
+
+  describe('parametros', () => {
+    it('la migración no carga limites_municipio', async () => {
+      expect(await db('parametros').select('clave')).toEqual([]);
+    });
+
+    it('rechaza una clave con mayúsculas', () =>
+      withRollback(async (trx) => {
+        await expect(trx('parametros').insert({ clave: 'LimitesMunicipio', valor: {} })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }));
+  });
+
+  describe('correlativos', () => {
+    it('rechaza ultimo = 1000000', () =>
+      withRollback(async (trx) => {
+        await expect(trx('correlativos').insert({ anio: 2026, ultimo: 1_000_000 })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }));
+
+    it('acepta ultimo = 999999 y un solo registro por año', () =>
+      withRollback(async (trx) => {
+        await trx('correlativos').insert({ anio: 2026, ultimo: 999_999 });
+        await expect(trx('correlativos').insert({ anio: 2026, ultimo: 1 })).rejects.toMatchObject({
+          code: UNIQUE_VIOLATION,
+        });
+      }));
+
+    it('existe la plantilla queja_registrada', async () => {
+      expect(await db('plantillas_notificacion').where({ clave: 'queja_registrada' }).first('asunto')).toEqual({
+        asunto: 'VozMuni: recibimos tu queja {{numero}}',
+      });
+    });
+
+    it('existe invitacion_vecino y desaparece al revertir solo 0013', async () => {
+      const plantilla = () => db('plantillas_notificacion').where({ clave: 'invitacion_vecino' }).first('asunto');
+      expect(await plantilla()).toEqual({ asunto: 'VozMuni: sigue tus quejas en el portal' });
+
+      await db.migrate.down({ name: '0013_invitacion_vecino.js' });
+      try {
+        expect(await plantilla()).toBeUndefined();
+      } finally {
+        await db.migrate.latest();
+      }
+      expect(await plantilla()).toBeDefined();
+    });
+  });
+
+  describe('migración 0015_verificacion_correo', () => {
+    it('carga las 3 plantillas del registro', async () => {
+      const claves = await db('plantillas_notificacion')
+        .whereIn('clave', ['verificacion_correo', 'cuenta_existente', 'registro_no_completado'])
+        .orderBy('id')
+        .pluck('clave');
+
+      expect(claves).toEqual(['verificacion_correo', 'cuenta_existente', 'registro_no_completado']);
+    });
+
+    it('verifica a quien ya tenía contraseña, y revertirla restaura el CHECK de tipo', async () => {
+      await db.migrate.down({ name: '0015_verificacion_correo.js' });
+      const { id: rolId } = await db('roles').where({ nombre: 'vecino' }).first('id');
+      const ids: string[] = [];
+      try {
+        const usuarios = await db('usuarios')
+          .insert([
+            { nombre: 'Con clave', email: 'conclave@x.gt', rol_id: rolId, password_hash: 'hash' },
+            { nombre: 'Sin clave', email: 'sinclave@x.gt', rol_id: rolId },
+          ])
+          .returning('id');
+        ids.push(...usuarios.map((u) => u.id));
+        // Con la migración revertida, el CHECK vuelve a no aceptar 'verificacion'.
+        await expect(
+          db('restablecimientos').insert({
+            usuario_id: ids[0],
+            token_hash: 'f'.repeat(64),
+            expira_en: '2026-10-23T00:30:00Z',
+            tipo: 'verificacion',
+          }),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+
+        await db.migrate.latest();
+
+        const filas = await db('usuarios').whereIn('id', ids).orderBy('id').select('correo_verificado_en');
+        expect(filas[0].correo_verificado_en).toBeInstanceOf(Date);
+        expect(filas[1].correo_verificado_en).toBeNull();
+      } finally {
+        await db.migrate.latest();
+        await db('usuarios').whereIn('id', ids).delete();
+      }
+    });
+  });
+
+  describe('restablecimientos', () => {
+    it('dos filas no pueden tener el mismo token_hash', () =>
+      withRollback(async (trx) => {
+        const rolId = await insertRol(trx);
+        const [usuario] = await trx('usuarios').insert({ nombre: 'Ana', email: 'ana@x.gt', rol_id: rolId }).returning('id');
+        const fila = { usuario_id: usuario.id, token_hash: 'b'.repeat(64), expira_en: '2026-10-23T00:30:00Z' };
+        await trx('restablecimientos').insert(fila);
+        await expect(trx('restablecimientos').insert(fila)).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
+      }));
+
+    it('acepta tipo = verificacion (SPEC 16)', () =>
+      withRollback(async (trx) => {
+        const rolId = await insertRol(trx);
+        const [usuario] = await trx('usuarios').insert({ nombre: 'Ana', email: 'ana@x.gt', rol_id: rolId }).returning('id');
+        await expect(
+          trx('restablecimientos').insert({
+            usuario_id: usuario.id,
+            token_hash: 'e'.repeat(64),
+            expira_en: '2026-10-23T00:30:00Z',
+            tipo: 'verificacion',
+          }),
+        ).resolves.toBeDefined();
+      }));
+
+    it('tipo vale recuperacion por defecto y rechaza otros valores', () =>
+      withRollback(async (trx) => {
+        const rolId = await insertRol(trx);
+        const [usuario] = await trx('usuarios').insert({ nombre: 'Ana', email: 'ana@x.gt', rol_id: rolId }).returning('id');
+        const [fila] = await trx('restablecimientos')
+          .insert({ usuario_id: usuario.id, token_hash: 'c'.repeat(64), expira_en: '2026-10-23T00:30:00Z' })
+          .returning('tipo');
+        expect(fila.tipo).toBe('recuperacion');
+        await expect(
+          trx('restablecimientos').insert({
+            usuario_id: usuario.id,
+            token_hash: 'd'.repeat(64),
+            expira_en: '2026-10-23T00:30:00Z',
+            tipo: 'otro',
+          }),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+
+    it('revertir 0010 quita tipo y las 2 plantillas, y latest() las vuelve a crear', async () => {
+      await db.migrate.down({ name: '0010_invitaciones.js' });
+      try {
+        const columnas = await db('information_schema.columns')
+          .where({ table_schema: 'public', table_name: 'restablecimientos', column_name: 'tipo' })
+          .select('column_name');
+        expect(columnas).toEqual([]);
+        expect(
+          await db('plantillas_notificacion').whereIn('clave', ['invitacion_usuario', 'cuenta_desactivada']).select('clave'),
+        ).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '9' }]);
+    });
   });
 
   describe('autenticación', () => {
@@ -287,6 +515,36 @@ describe('Esquema de base de datos', () => {
         await expect(insertTicket(trx, { prioridad: 'critica' })).rejects.toMatchObject({ code: CHECK_VIOLATION });
       }));
 
+    it('rechaza un titulo de 4 caracteres', () =>
+      withRollback(async (trx) => {
+        await expect(insertTicket(trx, { titulo: 'Hoyo' })).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+
+    it('rechaza una descripcion de 4001 caracteres', () =>
+      withRollback(async (trx) => {
+        await expect(insertTicket(trx, { descripcion: 'x'.repeat(4001) })).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+
+    it('acepta título y descripción en sus límites (150 y 4000)', () =>
+      withRollback(async (trx) => {
+        await expect(
+          insertTicket(trx, { titulo: 't'.repeat(150), descripcion: 'd'.repeat(4000) }),
+        ).resolves.toEqual(expect.any(String));
+      }));
+
+    it('lat y lng van juntas o ninguna (tickets_ubicacion_completa)', () =>
+      withRollback(async (trx) => {
+        await expect(insertTicket(trx, { lat: 14.6 })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'tickets_ubicacion_completa',
+        });
+      }));
+
+    it('acepta un ticket con ambas coordenadas', () =>
+      withRollback(async (trx) => {
+        await expect(insertTicket(trx, { lat: 14.6, lng: -90.5 })).resolves.toEqual(expect.any(String));
+      }));
+
     it('rechaza un canal fuera de la lista', () =>
       withRollback(async (trx) => {
         await expect(insertTicket(trx, { canal: 'whatsapp' })).rejects.toMatchObject({ code: CHECK_VIOLATION });
@@ -322,6 +580,18 @@ describe('Esquema de base de datos', () => {
       }));
   });
 
+  describe('índices de alcance (0011)', () => {
+    it.each([
+      ['tickets_solicitante_idx', 'tickets', '(solicitante_id)'],
+      ['tickets_registrado_por_idx', 'tickets', '(registrado_por)'],
+      ['bitacora_dependencia_creado_en_idx', 'bitacora', '(dependencia_id, creado_en)'],
+    ])('existe %s', async (nombre, tabla, columnas) => {
+      const indice = await db('pg_indexes').where({ schemaname: 'public', indexname: nombre }).first('tablename', 'indexdef');
+      expect(indice.tablename).toBe(tabla);
+      expect(indice.indexdef).toContain(columnas);
+    });
+  });
+
   describe('bitacora', () => {
     const SOLO_INSERCION = 'bitacora es solo de inserción';
 
@@ -348,6 +618,18 @@ describe('Esquema de base de datos', () => {
       withRollback(async (trx) => {
         const id = await insertBitacora(trx);
         await expect(trx('bitacora').where({ id }).delete()).rejects.toThrow(SOLO_INSERCION);
+      }));
+
+    it('acepta una fila con dependencia_id y el trigger sigue bloqueando UPDATE', () =>
+      withRollback(async (trx) => {
+        const [dependencia] = await trx('dependencias').insert({ nombre: 'Dependencia prueba' }).returning('id');
+        const [fila] = await trx('bitacora')
+          .insert({ accion: 'crear', entidad: 'ticket', entidad_id: '1', dependencia_id: dependencia.id })
+          .returning(['id', 'dependencia_id']);
+        expect(fila.dependencia_id).toBe(dependencia.id);
+        await expect(trx('bitacora').where({ id: fila.id }).update({ dependencia_id: null })).rejects.toThrow(
+          SOLO_INSERCION,
+        );
       }));
 
     it('rechaza TRUNCATE', () =>
@@ -412,13 +694,16 @@ describe('Esquema de base de datos', () => {
       },
     };
 
+    // Estado tras todas las migraciones: 0009_permiso_admin_usuarios agrega admin.usuarios al administrador.
+    const MATRIZ_ACTUAL = { ...MATRIZ, administrador: { ...MATRIZ.administrador, 'admin.usuarios': 'si' } };
+
     async function permisosPorRol(): Promise<Record<string, unknown>> {
       const roles: { nombre: string; permisos: unknown }[] = await db('roles').select('nombre', 'permisos').orderBy('id');
       return Object.fromEntries(roles.map((rol) => [rol.nombre, rol.permisos]));
     }
 
     it('deja exactamente los 6 roles con la matriz de permisos', async () => {
-      expect(await permisosPorRol()).toEqual(MATRIZ);
+      expect(await permisosPorRol()).toEqual(MATRIZ_ACTUAL);
       expect(Object.keys(await permisosPorRol())).toEqual([
         'vecino',
         'receptor',
@@ -430,19 +715,21 @@ describe('Esquema de base de datos', () => {
     });
 
     it('carga la matriz en roles que ya existían con permisos vacíos, sin duplicarlos', async () => {
-      await db.migrate.down();
+      // 0009 depende de los roles: se revierte antes y vuelve a aplicarse con latest().
+      await db.migrate.down({ name: '0009_permiso_admin_usuarios.js' });
+      await db.migrate.down({ name: '0006_roles.js' });
       await db('roles').insert(Object.keys(MATRIZ).map((nombre) => ({ nombre, permisos: {} })));
       await db.migrate.latest();
 
-      expect(await permisosPorRol()).toEqual(MATRIZ);
+      expect(await permisosPorRol()).toEqual(MATRIZ_ACTUAL);
     });
 
     it('el down falla si un usuario tiene uno de esos roles', async () => {
       const { id: rolId } = await db('roles').where({ nombre: 'vecino' }).first('id');
       const [usuario] = await db('usuarios').insert({ nombre: 'Vecino', telefono: '55550000', rol_id: rolId }).returning('id');
       try {
-        await expect(db.migrate.down()).rejects.toMatchObject({ code: FOREIGN_KEY_VIOLATION });
-        expect(await permisosPorRol()).toEqual(MATRIZ);
+        await expect(db.migrate.down({ name: '0006_roles.js' })).rejects.toMatchObject({ code: FOREIGN_KEY_VIOLATION });
+        expect(await permisosPorRol()).toEqual(MATRIZ_ACTUAL);
       } finally {
         await db('usuarios').where({ id: usuario.id }).delete();
       }
@@ -450,6 +737,26 @@ describe('Esquema de base de datos', () => {
 
     it('seed.run() termina sin error con la carpeta seeds/ vacía', async () => {
       await expect(db.seed.run()).resolves.toEqual([[]]);
+    });
+
+    describe('migración 0009_permiso_admin_usuarios', () => {
+      it('solo el administrador tiene admin.usuarios = si', async () => {
+        const conPermiso: { nombre: string; valor: string }[] = await db('roles')
+          .select('nombre', db.raw("permisos->>'admin.usuarios' as valor"))
+          .whereRaw("permisos->>'admin.usuarios' IS NOT NULL");
+
+        expect(conPermiso).toEqual([{ nombre: 'administrador', valor: 'si' }]);
+      });
+
+      it('al revertirla desaparece la clave y el resto de los permisos queda igual', async () => {
+        await db.migrate.down({ name: '0009_permiso_admin_usuarios.js' });
+        try {
+          expect(await permisosPorRol()).toEqual(MATRIZ);
+        } finally {
+          await db.migrate.latest();
+        }
+        expect(await permisosPorRol()).toEqual(MATRIZ_ACTUAL);
+      });
     });
   });
 
@@ -463,7 +770,7 @@ describe('Esquema de base de datos', () => {
         .where({ table_schema: 'public' })
         .whereIn('table_name', Object.keys(expectedColumns));
       expect(tables).toEqual([]);
-      expect(Object.keys(expectedColumns)).toHaveLength(15);
+      expect(Object.keys(expectedColumns)).toHaveLength(19);
 
       const tipos = await db('pg_type').select('typname').where({ typname: 'estado_ticket' });
       expect(tipos).toEqual([]);

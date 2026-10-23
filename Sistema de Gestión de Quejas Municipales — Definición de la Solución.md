@@ -279,30 +279,49 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 
 | Tabla | Columnas principales |
 | --- | --- |
-| usuarios | id, nombre, email, telefono, dpi, password\_hash, rol\_id, dependencia\_id, activo, intentos\_fallidos, bloqueado\_hasta |
+| usuarios | id, nombre, email, telefono, dpi, password\_hash, rol\_id, dependencia\_id, activo, intentos\_fallidos, bloqueado\_hasta, correo\_verificado\_en (sin verificar no se inicia sesión) |
 | sesiones | id, usuario\_id, token\_hash (SHA-256 del token de renovación, único), expira\_en, revocada\_en, reemplazada\_por, creado\_en |
 | roles | id, nombre, permisos (jsonb) |
 | dependencias | id, nombre, coordinador\_id, activa |
 | categorias | id, nombre, dependencia\_id, campos\_extra (jsonb), activa |
 | politicas\_sla | id, categoria\_id, prioridad, horas\_respuesta, horas\_resolucion |
 | zonas | id, nombre, tipo (zona, colonia, aldea) |
-| tickets | id, numero (único), solicitante\_id, categoria\_id, dependencia\_id, asignado\_a, estado, prioridad, canal, zona\_id, direccion, lat, lng, datos\_extra (jsonb), vence\_respuesta, vence\_resolucion, escalado, creado\_en, resuelto\_en, cerrado\_en |
+| tickets | id, numero (único), titulo, descripcion, solicitante\_id, categoria\_id, dependencia\_id, asignado\_a, estado, prioridad, canal, zona\_id, direccion, lat, lng, datos\_extra (jsonb), vence\_respuesta, vence\_resolucion, escalado, creado\_en, resuelto\_en, cerrado\_en, registrado\_por (usuario que la registró: el propio vecino o el receptor de ventanilla) |
 | ticket\_historial | id, ticket\_id, estado\_anterior, estado\_nuevo, usuario\_id, motivo, creado\_en |
 | comentarios | id, ticket\_id, autor\_id, cuerpo, es\_interno, creado\_en |
 | adjuntos | id, ticket\_id, comentario\_id, nombre, ruta, tipo\_mime, tamano\_bytes |
 | encuestas | id, ticket\_id, calificacion, comentario, creado\_en |
 | notificaciones | id, usuario\_id, ticket\_id, tipo, leida, creado\_en |
 | calendario\_laboral | fecha, es\_habil, descripcion |
-| bitacora | id, usuario\_id, accion, entidad, entidad\_id, detalle (jsonb), ip, creado\_en |
+| bitacora | id, usuario\_id, accion, entidad, entidad\_id, detalle (jsonb), ip, creado\_en, dependencia\_id (para la bitácora por dependencia; nulo en acciones sin dependencia) |
+| plantillas\_notificacion | id, clave (única), asunto, cuerpo\_texto, cuerpo\_html, actualizado\_en |
+| parametros | clave (PK), valor (jsonb), actualizado\_en: parámetros municipales que configura el administrador, como `limites_municipio` |
+| correlativos | anio (PK), ultimo: último correlativo del año (en America/Guatemala) para el número Q-AAAA-NNNNNN |
+| restablecimientos | id, usuario\_id, token\_hash (SHA-256 del token, único), tipo (recuperacion, invitacion, verificacion), expira\_en, usado\_en, invalidado\_en, creado\_en |
 
 Índices clave: `tickets(estado, dependencia_id)`, `tickets(asignado_a, estado)`, `tickets(vence_resolucion)` para las tareas de SLA y `tickets(numero)` para la consulta pública.
+
+Ubicación de la queja (RF-10):
+
+- `tickets.lat` y `tickets.lng` van juntas o ninguna (CHECK `tickets_ubicacion_completa`).
+- Solo se aceptan si caen dentro de la caja del municipio, guardada en `parametros` con la clave `limites_municipio` y la forma `{ latMin, latMax, lngMin, lngMax }`. Sin esa caja configurada no se aceptan coordenadas.
+
+Campos adicionales por categoría (RF-09):
+
+- `categorias.campos_extra` es una lista de hasta 20 definiciones `{ clave, etiqueta, ayuda?, requerido, orden, tipo, … }`. Los tipos son `texto` (`min`, `max`, `patron`), `numero` (`min`, `max`, `entero`), `fecha` (`min`, `max`, `noFutura`), `seleccion` (`opciones` con `valor` y `etiqueta`) y `si_no`. `'[]'` significa que la categoría no tiene campos.
+- `tickets.datos_extra` guarda los valores por `clave`: texto recortado, número, fecha `AAAA-MM-DD`, el `valor` de la opción o un booleano. Solo se guardan los campos presentes.
+- En una categoría que ya tiene quejas, el administrador solo puede hacer cambios que no invaliden los datos guardados: cambiar etiquetas, ayuda u orden, quitar `requerido`, ampliar límites, agregar opciones o agregar campos opcionales.
 
 ### Endpoints principales
 
 | Método y ruta | Uso | Roles |
 | --- | --- | --- |
-| POST /api/v1/auth/register, /login, /refresh, /logout | Registro, inicio, renovación y cierre de sesión | Público |
+| POST /api/v1/auth/registro, /login, /refresh, /logout | Registro del vecino, inicio, renovación y cierre de sesión | Público |
+| POST /api/v1/auth/verificar | Verificar el correo con el enlace de registro | Público |
 | GET /api/v1/auth/sesion | Usuario de la sesión y permisos de su rol | Autenticado |
+| POST /api/v1/auth/recuperar, /restablecer | Pedir el enlace de recuperación y definir la contraseña nueva | Público |
+| GET /api/v1/vecinos | Buscar un vecino por correo, teléfono o DPI exactos, con el contacto enmascarado | Receptor, Supervisor |
+| POST /api/v1/vecinos | Alta de un vecino nuevo en ventanilla (nombre, DPI y correo o teléfono), con invitación si da correo | Receptor, Supervisor |
 | GET /api/v1/public/tickets/:numero | Consulta de estado con dato de contacto | Público |
 | POST /api/v1/tickets | Registrar queja | Vecino, Receptor, Supervisor |
 | GET /api/v1/tickets | Listado filtrado y paginado, limitado por rol | Internos, Vecino |
@@ -314,4 +333,16 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | POST /api/v1/tickets/:id/adjuntos | Subir archivo | Vecino, internos |
 | POST /api/v1/tickets/:id/encuesta | Calificar la atención | Vecino |
 | GET /api/v1/reportes/resumen | Indicadores del tablero | Coordinador, Supervisor, Admin |
-| /api/v1/admin/\* | CRUD de catálogos y usuarios | Admin |
+| GET /api/v1/admin/usuarios | Listado paginado de usuarios internos con filtros por rol, dependencia, estado y búsqueda | Admin |
+| GET /api/v1/admin/usuarios/:id | Detalle de un usuario interno | Admin |
+| POST /api/v1/admin/usuarios | Alta de usuario interno con invitación por correo | Admin |
+| PATCH /api/v1/admin/usuarios/:id | Editar nombre, teléfono, rol y dependencia | Admin |
+| POST /api/v1/admin/usuarios/:id/desactivacion | Desactivar usuario y cerrar sus sesiones | Admin |
+| POST /api/v1/admin/usuarios/:id/activacion | Reactivar usuario | Admin |
+| POST /api/v1/admin/usuarios/:id/desbloqueo | Quitar el bloqueo por intentos fallidos | Admin |
+| GET /api/v1/categorias | Categorías activas (con dependencia activa) y sus campos adicionales, para el formulario | Vecino, Receptor, Supervisor |
+| GET /api/v1/zonas | Zonas para el formulario | Vecino, Receptor, Supervisor |
+| GET /api/v1/parametros/limites-municipio | Caja geográfica del municipio para el mapa del formulario | Vecino, Receptor, Supervisor |
+| PUT /api/v1/admin/parametros/limites-municipio | Configurar la caja geográfica del municipio | Admin |
+| PUT /api/v1/admin/categorias/:id/campos-extra | Reemplazar los campos adicionales de una categoría | Admin |
+| /api/v1/admin/\* | CRUD de catálogos | Admin |

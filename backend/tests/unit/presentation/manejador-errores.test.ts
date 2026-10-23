@@ -4,6 +4,17 @@ import { createApp } from '../../../src/app';
 import { ErrorDeAplicacion } from '../../../src/application/errors/error-de-aplicacion';
 import type { AuthService } from '../../../src/application/services/auth.service';
 import type { AutorizacionService } from '../../../src/application/services/autorizacion.service';
+import type { RecuperacionService } from '../../../src/application/services/recuperacion.service';
+import type { UsuariosService } from '../../../src/application/services/usuarios.service';
+import type { RegistroTicketsService } from '../../../src/application/services/registro-tickets.service';
+import type { VecinosService } from '../../../src/application/services/vecinos.service';
+import type { CatalogosService } from '../../../src/application/services/catalogos.service';
+import type { CamposExtraService } from '../../../src/application/services/campos-extra.service';
+import type { ParametrosService } from '../../../src/application/services/parametros.service';
+import type { RegistroVecinosService } from '../../../src/application/services/registro-vecinos.service';
+import type { ConsultaTicketsService } from '../../../src/application/services/consulta-tickets.service';
+import type { BitacoraLecturaRepository } from '../../../src/domain/repositories/bitacora-lectura-repository';
+import type { ReporteLecturaRepository } from '../../../src/domain/repositories/reporte-lectura-repository';
 import { HealthService } from '../../../src/application/services/health.service';
 import type { Container } from '../../../src/container';
 import { manejadorErrores } from '../../../src/presentation/middlewares/manejador-errores';
@@ -13,10 +24,22 @@ function buildTestContainer(): Container {
   return {
     port: 0,
     loginLimitePorVentana: 10,
+    recuperacionLimitePorVentana: 5,
     healthService: new HealthService({ now: () => new Date() }, { isUp: async () => true }),
     // Estas pruebas fallan antes de llegar a los servicios de auth.
     authService: {} as AuthService,
     autorizacionService: {} as AutorizacionService,
+    recuperacionService: {} as RecuperacionService,
+    usuariosService: {} as UsuariosService,
+    consultaTicketsService: {} as ConsultaTicketsService,
+    reportesLectura: {} as ReporteLecturaRepository,
+    bitacoraLectura: {} as BitacoraLecturaRepository,
+    registroTicketsService: {} as RegistroTicketsService,
+    vecinosService: {} as VecinosService,
+    catalogosService: {} as CatalogosService,
+    camposExtraService: {} as CamposExtraService,
+    parametrosService: {} as ParametrosService,
+    registroVecinosService: {} as RegistroVecinosService,
     dispose: async () => {},
   };
 }

@@ -1,6 +1,6 @@
 # SPEC 10 — Gestión de usuarios internos
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 08, SPEC 09
 > **Fecha:** 2026-10-22
 > **Objetivo:** Permitir que el administrador cree usuarios internos con rol y dependencia, los invite por correo a definir su contraseña, los edite, los desactive y reactive, y los desbloquee, mediante endpoints `/api/v1/admin/usuarios` protegidos por el permiso `admin.usuarios`.
@@ -310,28 +310,28 @@ backend/
 
 ## Criterios de aceptación
 
-- [ ] La sección 6 del documento de definición incluye `restablecimientos.tipo` y los 7 endpoints de `/api/v1/admin/usuarios`.
-- [ ] Después de `migrate:latest`, solo el rol `administrador` tiene `admin.usuarios = 'si'`, y existen las plantillas `invitacion_usuario` y `cuenta_desactivada`.
-- [ ] Un rollback completo, sin usuarios, sigue sin dejar tablas, y revertir `0009` y `0010` deja los permisos y `restablecimientos` como estaban después de SPEC 09.
-- [ ] Todos los endpoints de `/api/v1/admin/usuarios` responden `401` sin token y `403 PERMISO_DENEGADO` a cualquier rol distinto de `administrador`.
-- [ ] El alta de un usuario interno responde `201`, lo deja activo y sin contraseña, y envía `invitacion_usuario` con un enlace que vence a las 24 h.
-- [ ] Con el enlace de invitación, `/auth/restablecer` define la contraseña e inicia sesión sin enviar `password_cambiado`, y después `/auth/login` funciona con esa contraseña.
-- [ ] Si el envío de la invitación falla, el alta responde `201` con `invitacionEnviada: false`, y el usuario existe.
-- [ ] El alta rechaza `rol: 'vecino'` (`ROL_NO_PERMITIDO`), un técnico o coordinador sin dependencia (`DEPENDENCIA_REQUERIDA`), un receptor, supervisor o administrador con dependencia (`DEPENDENCIA_NO_PERMITIDA`), y una dependencia inexistente o inactiva (`DEPENDENCIA_INVALIDA`).
-- [ ] El alta rechaza un DPI que no tiene 13 dígitos (`DPI_INVALIDO`), acepta `2547 12345 0101` y lo guarda como `2547123450101`.
-- [ ] Un correo repetido, sin distinguir mayúsculas, responde `409 EMAIL_DUPLICADO`, y un DPI repetido responde `409 DPI_DUPLICADO`, aunque el existente sea de un vecino.
-- [ ] El listado está paginado (20 por defecto, máximo 100), filtra por `rol`, `dependenciaId`, `activo` y `busqueda`, nunca incluye vecinos, y devuelve el `total` correcto.
-- [ ] `GET /admin/usuarios/:id` con el id de un vecino responde `404 NO_ENCONTRADO`.
-- [ ] `PATCH` cambia nombre, teléfono, rol y dependencia, valida la regla de dependencia sobre el estado final, y rechaza `email`, `dpi` y `activo` con `400 VALIDACION`.
-- [ ] Un `PATCH` que cambia el rol o la dependencia revoca todas las sesiones del usuario, y uno que cambia solo el nombre no.
-- [ ] La desactivación deja `activo = false`, revoca las sesiones, invalida los enlaces pendientes y envía `cuenta_desactivada`. Después, el login responde `401` y el token de acceso vigente también.
-- [ ] La reactivación deja `activo = true` y el usuario puede volver a iniciar sesión con su contraseña.
-- [ ] Un administrador no puede desactivarse ni quitarse el rol a sí mismo (`409 OPERACION_SOBRE_SI_MISMO`), y ninguna operación deja 0 administradores activos (`409 ULTIMO_ADMINISTRADOR`).
-- [ ] El desbloqueo permite iniciar sesión de inmediato a un usuario bloqueado por 5 intentos fallidos.
-- [ ] `/auth/recuperar` envía un enlace a un usuario interno activo sin contraseña, no envía nada a un vecino sin contraseña, y responde `202` idéntica en ambos casos.
-- [ ] Ningún asunto ni cuerpo de correo nuevo está escrito en `src/` fuera de la migración `0010_invitaciones`.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta los endpoints, la invitación y su vigencia, y que los usuarios nunca se borran.
+- [x] La sección 6 del documento de definición incluye `restablecimientos.tipo` y los 7 endpoints de `/api/v1/admin/usuarios`.
+- [x] Después de `migrate:latest`, solo el rol `administrador` tiene `admin.usuarios = 'si'`, y existen las plantillas `invitacion_usuario` y `cuenta_desactivada`.
+- [x] Un rollback completo, sin usuarios, sigue sin dejar tablas, y revertir `0009` y `0010` deja los permisos y `restablecimientos` como estaban después de SPEC 09.
+- [x] Todos los endpoints de `/api/v1/admin/usuarios` responden `401` sin token y `403 PERMISO_DENEGADO` a cualquier rol distinto de `administrador`.
+- [x] El alta de un usuario interno responde `201`, lo deja activo y sin contraseña, y envía `invitacion_usuario` con un enlace que vence a las 24 h.
+- [x] Con el enlace de invitación, `/auth/restablecer` define la contraseña e inicia sesión sin enviar `password_cambiado`, y después `/auth/login` funciona con esa contraseña.
+- [x] Si el envío de la invitación falla, el alta responde `201` con `invitacionEnviada: false`, y el usuario existe.
+- [x] El alta rechaza `rol: 'vecino'` (`ROL_NO_PERMITIDO`), un técnico o coordinador sin dependencia (`DEPENDENCIA_REQUERIDA`), un receptor, supervisor o administrador con dependencia (`DEPENDENCIA_NO_PERMITIDA`), y una dependencia inexistente o inactiva (`DEPENDENCIA_INVALIDA`).
+- [x] El alta rechaza un DPI que no tiene 13 dígitos (`DPI_INVALIDO`), acepta `2547 12345 0101` y lo guarda como `2547123450101`.
+- [x] Un correo repetido, sin distinguir mayúsculas, responde `409 EMAIL_DUPLICADO`, y un DPI repetido responde `409 DPI_DUPLICADO`, aunque el existente sea de un vecino.
+- [x] El listado está paginado (20 por defecto, máximo 100), filtra por `rol`, `dependenciaId`, `activo` y `busqueda`, nunca incluye vecinos, y devuelve el `total` correcto.
+- [x] `GET /admin/usuarios/:id` con el id de un vecino responde `404 NO_ENCONTRADO`.
+- [x] `PATCH` cambia nombre, teléfono, rol y dependencia, valida la regla de dependencia sobre el estado final, y rechaza `email`, `dpi` y `activo` con `400 VALIDACION`.
+- [x] Un `PATCH` que cambia el rol o la dependencia revoca todas las sesiones del usuario, y uno que cambia solo el nombre no.
+- [x] La desactivación deja `activo = false`, revoca las sesiones, invalida los enlaces pendientes y envía `cuenta_desactivada`. Después, el login responde `401` y el token de acceso vigente también.
+- [x] La reactivación deja `activo = true` y el usuario puede volver a iniciar sesión con su contraseña.
+- [x] Un administrador no puede desactivarse ni quitarse el rol a sí mismo (`409 OPERACION_SOBRE_SI_MISMO`), y ninguna operación deja 0 administradores activos (`409 ULTIMO_ADMINISTRADOR`).
+- [x] El desbloqueo permite iniciar sesión de inmediato a un usuario bloqueado por 5 intentos fallidos.
+- [x] `/auth/recuperar` envía un enlace a un usuario interno activo sin contraseña, no envía nada a un vecino sin contraseña, y responde `202` idéntica en ambos casos.
+- [x] Ningún asunto ni cuerpo de correo nuevo está escrito en `src/` fuera de la migración `0010_invitaciones`.
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta los endpoints, la invitación y su vigencia, y que los usuarios nunca se borran.
 
 ## Decisiones
 

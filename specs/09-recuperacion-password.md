@@ -1,6 +1,6 @@
 # SPEC 09 — Recuperación de contraseña por correo
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 08
 > **Fecha:** 2026-10-22
 > **Objetivo:** Permitir que un usuario con cuenta pida por correo un enlace de un solo uso, válido 30 minutos, y con él defina una contraseña nueva que cumpla RNF-08, enviando los correos con Nodemailer sobre SMTP y plantillas guardadas en la base de datos.
@@ -299,23 +299,23 @@ backend/
 
 ## Criterios de aceptación
 
-- [ ] La sección 6 del documento de definición incluye `plantillas_notificacion`, `restablecimientos` y los endpoints `recuperar` y `restablecer`, y la tabla de vacíos refleja lo resuelto.
-- [ ] `npm run migrate:latest` crea las 2 tablas y las 2 plantillas, y un rollback completo no deja ninguna de las 17 tablas.
-- [ ] `POST /auth/recuperar` responde `202` con el mismo cuerpo para un correo registrado, un correo inexistente, un usuario inactivo y un usuario sin contraseña. Solo en el primer caso se envía un correo.
-- [ ] `POST /auth/recuperar` responde `202` aunque el envío del correo falle, y el fallo aparece en el log sin el token.
-- [ ] El correo de recuperación usa la plantilla `recuperacion_password` de la base, con el nombre del usuario y el enlace `APP_URL/restablecer?token=<token>`.
-- [ ] Si se cambia el `asunto` de `recuperacion_password` en la base, el siguiente correo usa el asunto nuevo sin reiniciar el backend.
-- [ ] `restablecimientos.token_hash` guarda el SHA-256 del token, nunca el token en claro.
-- [ ] Después de dos solicitudes seguidas, solo el token de la segunda restablece la contraseña, y el de la primera responde `400 TOKEN_RECUPERACION_INVALIDO`.
-- [ ] Un token deja de servir a los 30 min, y también después de usarse una vez.
-- [ ] `POST /auth/restablecer` con `Abc1234`, `12345678` o `abcdefgh` responde `400 POLITICA_PASSWORD`, y el token sigue vigente.
-- [ ] Un restablecimiento correcto responde `200` con `RespuestaSesion`. Después: la contraseña nueva inicia sesión y la anterior no; los `refreshToken` previos del usuario responden `401`; `intentos_fallidos = 0` y `bloqueado_hasta = null`; y se envía el correo `password_cambiado`.
-- [ ] Con `RECUPERACION_LIMITE_POR_VENTANA=2`, la 3.ª petición a `/auth/recuperar` desde la misma IP responde `429 DEMASIADAS_PETICIONES`.
-- [ ] El backend no arranca si falta `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` o `APP_URL`.
-- [ ] Con una cuenta de Ethereal configurada, una solicitud real deja en el log un enlace de vista previa de Ethereal, y el correo se ve en la bandeja de esa cuenta.
-- [ ] Ningún asunto ni cuerpo de correo está escrito en `src/` fuera de la migración `0007_plantillas_notificacion`.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta las variables nuevas, cómo usar Ethereal en desarrollo y que las plantillas viven en la base.
+- [x] La sección 6 del documento de definición incluye `plantillas_notificacion`, `restablecimientos` y los endpoints `recuperar` y `restablecer`, y la tabla de vacíos refleja lo resuelto.
+- [x] `npm run migrate:latest` crea las 2 tablas y las 2 plantillas, y un rollback completo no deja ninguna de las 17 tablas.
+- [x] `POST /auth/recuperar` responde `202` con el mismo cuerpo para un correo registrado, un correo inexistente, un usuario inactivo y un usuario sin contraseña. Solo en el primer caso se envía un correo.
+- [x] `POST /auth/recuperar` responde `202` aunque el envío del correo falle, y el fallo aparece en el log sin el token.
+- [x] El correo de recuperación usa la plantilla `recuperacion_password` de la base, con el nombre del usuario y el enlace `APP_URL/restablecer?token=<token>`.
+- [x] Si se cambia el `asunto` de `recuperacion_password` en la base, el siguiente correo usa el asunto nuevo sin reiniciar el backend.
+- [x] `restablecimientos.token_hash` guarda el SHA-256 del token, nunca el token en claro.
+- [x] Después de dos solicitudes seguidas, solo el token de la segunda restablece la contraseña, y el de la primera responde `400 TOKEN_RECUPERACION_INVALIDO`.
+- [x] Un token deja de servir a los 30 min, y también después de usarse una vez.
+- [x] `POST /auth/restablecer` con `Abc1234`, `12345678` o `abcdefgh` responde `400 POLITICA_PASSWORD`, y el token sigue vigente.
+- [x] Un restablecimiento correcto responde `200` con `RespuestaSesion`. Después: la contraseña nueva inicia sesión y la anterior no; los `refreshToken` previos del usuario responden `401`; `intentos_fallidos = 0` y `bloqueado_hasta = null`; y se envía el correo `password_cambiado`.
+- [x] Con `RECUPERACION_LIMITE_POR_VENTANA=2`, la 3.ª petición a `/auth/recuperar` desde la misma IP responde `429 DEMASIADAS_PETICIONES`.
+- [x] El backend no arranca si falta `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` o `APP_URL`.
+- [x] Con una cuenta de Ethereal configurada, una solicitud real deja en el log un enlace de vista previa de Ethereal, y el correo se ve en la bandeja de esa cuenta.
+- [x] Ningún asunto ni cuerpo de correo está escrito en `src/` fuera de la migración `0007_plantillas_notificacion`.
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta las variables nuevas, cómo usar Ethereal en desarrollo y que las plantillas viven en la base.
 
 ## Decisiones
 
