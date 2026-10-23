@@ -99,6 +99,18 @@ describe('router', () => {
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(auth.verificar.titulo)
   })
 
+  it('/recuperar carga sin sesión (SPEC 17)', () => {
+    const router = renderRuta('/recuperar', null)
+    expect(router.state.location.pathname).toBe('/recuperar')
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(auth.recuperar.titulo)
+  })
+
+  it('/restablecer carga sin sesión (SPEC 17)', () => {
+    const router = renderRuta('/restablecer?token=abc', null)
+    expect(router.state.location.pathname).toBe('/restablecer')
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(auth.restablecer.titulo)
+  })
+
   it('una ruta inexistente muestra la página 404', () => {
     renderRuta('/no-existe', null)
     expect(tituloActual()).toBe(comun.errores.noEncontrado.titulo)

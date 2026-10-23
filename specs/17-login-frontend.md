@@ -1,6 +1,6 @@
 # SPEC 17 — Sesión y login en el frontend
 
-> **Estado:** Aprobado
+> **Estado:** Impleamentado
 > **Depende de:** SPEC 06, SPEC 08, SPEC 09, SPEC 16
 > **Fecha:** 2026-10-22
 > **Objetivo:** Conectar la SPA con la autenticación de SPEC 08 mediante un formulario de login, una sesión real que sobrevive a recargar, renovación automática del token coordinada entre pestañas, cierre de sesión, y las pantallas `/recuperar` y `/restablecer` de SPEC 09.
@@ -225,24 +225,24 @@ frontend/
 
 ## Criterios de aceptación
 
-- [ ] `vecino@vozmuni.test` inicia sesión en `/login` y llega a `/tickets`, y `administrador@vozmuni.test` llega a `/admin`.
-- [ ] Al abrir `/tickets/nueva` sin sesión, el usuario va a `/login`, y después de iniciar sesión vuelve a `/tickets/nueva`. Un `desde` externo (`//…` o `http…`) se ignora.
-- [ ] Recargar la página con una sesión activa la conserva sin pasar por `/login`, y mientras se recupera no hay redirección.
-- [ ] El `refreshToken` está en `localStorage['vozmuni.refreshToken']`, y el `accessToken` no está en `localStorage`, en `sessionStorage` ni en cookies.
-- [ ] Con el token de acceso vencido, la siguiente petición se renueva y se reintenta una sola vez sin que el usuario lo note. Si la renovación falla, la sesión se cierra y se va a `/login`.
-- [ ] Varias peticiones que reciben `401` al mismo tiempo en una pestaña generan una sola llamada a `/auth/refresh`.
-- [ ] Con dos pestañas abiertas que necesitan renovar a la vez, solo una llama a `/auth/refresh`, la otra usa el token ya renovado, y el backend no revoca las sesiones del usuario.
-- [ ] Cerrar sesión en una pestaña lleva a las demás a `/login`, e iniciar sesión en una recupera la sesión en las demás.
-- [ ] "Cerrar sesión" llama a `/auth/logout`, borra el token de renovación, la sesión y la caché de datos, y lleva a `/login`, aunque la llamada falle por la red.
-- [ ] Un rol que no está en `ROLES` no crea sesión.
-- [ ] `/login` muestra un mensaje traducido distinto para credenciales inválidas, cuenta bloqueada, correo no verificado (con un enlace a `/registro`), demasiadas peticiones y red no disponible.
-- [ ] `/recuperar` muestra siempre el mismo mensaje después de enviar.
-- [ ] `/restablecer?token=…` valida la política de RNF-08 y la confirmación en el cliente, inicia sesión con la respuesta y lleva al inicio del rol. Con un enlace inválido muestra un enlace a `/recuperar`. Funciona con enlaces de recuperación y de invitación.
-- [ ] Los formularios tienen etiquetas asociadas, `autocomplete` correcto, errores anunciados con `role="alert"`, foco en el primer error y botón deshabilitado mientras envían.
-- [ ] A 360 px de ancho, `/login`, `/recuperar` y `/restablecer` no producen scroll horizontal.
-- [ ] Ningún texto visible de las páginas nuevas o modificadas está fijo en un componente.
-- [ ] En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta dónde vive cada token y la regla de renovar solo con `renovar()`.
+- [x] `vecino@vozmuni.test` inicia sesión en `/login` y llega a `/tickets`, y `administrador@vozmuni.test` llega a `/admin`.
+- [x] Al abrir `/tickets/nueva` sin sesión, el usuario va a `/login`, y después de iniciar sesión vuelve a `/tickets/nueva`. Un `desde` externo (`//…` o `http…`) se ignora.
+- [x] Recargar la página con una sesión activa la conserva sin pasar por `/login`, y mientras se recupera no hay redirección.
+- [x] El `refreshToken` está en `localStorage['vozmuni.refreshToken']`, y el `accessToken` no está en `localStorage`, en `sessionStorage` ni en cookies.
+- [x] Con el token de acceso vencido, la siguiente petición se renueva y se reintenta una sola vez sin que el usuario lo note. Si la renovación falla, la sesión se cierra y se va a `/login`.
+- [x] Varias peticiones que reciben `401` al mismo tiempo en una pestaña generan una sola llamada a `/auth/refresh`.
+- [ ] Con dos pestañas abiertas que necesitan renovar a la vez, solo una llama a `/auth/refresh`, la otra usa el token ya renovado, y el backend no revoca las sesiones del usuario. **No se cumple siempre:** en la verificación falló 1 de cada ~25 renovaciones simultáneas por la propagación asíncrona de `localStorage` en Chromium. Riesgo aceptado, ver la tabla de Riesgos.
+- [x] Cerrar sesión en una pestaña lleva a las demás a `/login`, e iniciar sesión en una recupera la sesión en las demás.
+- [x] "Cerrar sesión" llama a `/auth/logout`, borra el token de renovación, la sesión y la caché de datos, y lleva a `/login`, aunque la llamada falle por la red.
+- [x] Un rol que no está en `ROLES` no crea sesión.
+- [x] `/login` muestra un mensaje traducido distinto para credenciales inválidas, cuenta bloqueada, correo no verificado (con un enlace a `/registro`), demasiadas peticiones y red no disponible.
+- [x] `/recuperar` muestra siempre el mismo mensaje después de enviar.
+- [x] `/restablecer?token=…` valida la política de RNF-08 y la confirmación en el cliente, inicia sesión con la respuesta y lleva al inicio del rol. Con un enlace inválido muestra un enlace a `/recuperar`. Funciona con enlaces de recuperación y de invitación.
+- [x] Los formularios tienen etiquetas asociadas, `autocomplete` correcto, errores anunciados con `role="alert"`, foco en el primer error y botón deshabilitado mientras envían.
+- [x] A 360 px de ancho, `/login`, `/recuperar` y `/restablecer` no producen scroll horizontal.
+- [x] Ningún texto visible de las páginas nuevas o modificadas está fijo en un componente.
+- [x] En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta dónde vive cada token y la regla de renovar solo con `renovar()`.
 
 ## Decisiones
 
@@ -270,6 +270,7 @@ frontend/
 | --- | --- |
 | Un XSS lee el `refreshToken` de `localStorage` | La app no usa `dangerouslySetInnerHTML` y React escapa el contenido. La rotación y la revocación por reuso (SPEC 08) cortan la sesión robada en cuanto la víctima renueva. La spec de despliegue debe agregar una Content Security Policy. |
 | Un navegador sin `navigator.locks` renueva en dos pestañas a la vez y el backend revoca todas las sesiones | Los navegadores actuales lo soportan. Sin él, el usuario vuelve a iniciar sesión, que es un efecto molesto pero seguro. |
+| **Aceptado (encontrado al implementar):** en Chromium, `localStorage` se propaga entre pestañas de forma asíncrona. Con el lock tomado, una pestaña puede releer todavía el token que otra acaba de rotar, presentarlo, y el backend revoca todas las sesiones. En la verificación ocurrió 1 de cada ~25 renovaciones **simultáneas** de dos pestañas | Es raro: las renovaciones ocurren cada 15 minutos y tienen que coincidir. El efecto es el mismo que la fila anterior: el usuario vuelve a iniciar sesión en todas sus pestañas. Si se quiere eliminar, una spec futura puede leer y escribir el token dentro del lock en IndexedDB, que sí es consistente entre pestañas. |
 | `localStorage` bloqueado (modo privado estricto) | Las lecturas y escrituras van en `try/catch`. La sesión funciona, pero dura solo mientras la pestaña esté abierta. |
 | Un `401` por un motivo distinto del vencimiento (usuario desactivado) dispara una renovación inútil | La renovación también falla, y se cierra la sesión. Es el comportamiento correcto. |
 | Depende de SPEC 08, 09 y 16, que siguen en Borrador | Se implementa después de ellas. Si cambian sus endpoints o códigos, se revisa esta antes de aprobarla. |

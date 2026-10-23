@@ -8,7 +8,8 @@
     "tickets": "Quejas",
     "nuevoTicket": "Nueva queja",
     "reportes": "Reportes",
-    "admin": "Administración"
+    "admin": "Administración",
+    "cerrarSesion": "Cerrar sesión"
   },
   "errores": {
     "noAutorizado": {
@@ -23,5 +24,8 @@
   },
   "placeholder": {
     "proximamente": "Esta pantalla estará disponible próximamente."
+  },
+  "sesion": {
+    "cargando": "Cargando la sesión…"
   }
 }

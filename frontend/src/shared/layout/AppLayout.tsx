@@ -1,5 +1,6 @@
 import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
@@ -12,7 +13,7 @@ import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
 import { RUTAS_PROTEGIDAS } from '../auth/rutas'
-import { useSession } from '../auth/session'
+import { useCerrarSesion, useSession } from '../auth/session'
 
 const ANCHO_MENU = 240
 
@@ -24,6 +25,7 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const { t } = useTranslation('comun')
   const session = useSession()
+  const cerrarSesion = useCerrarSesion()
   const [menuAbierto, setMenuAbierto] = useState(false)
 
   const rutasDelMenu = RUTAS_PROTEGIDAS.filter(
@@ -64,9 +66,14 @@ export function AppLayout({ children }: AppLayoutProps) {
               <path d="M3 18h18v-2H3zm0-5h18v-2H3zm0-7v2h18V6z" />
             </SvgIcon>
           </IconButton>
-          <Typography variant="h6" component="div" noWrap>
+          <Typography variant="h6" component="div" noWrap sx={{ flexGrow: 1 }}>
             {t('app.titulo')}
           </Typography>
+          {session && (
+            <Button color="inherit" onClick={() => void cerrarSesion()} sx={{ flexShrink: 0 }}>
+              {t('menu.cerrarSesion')}
+            </Button>
+          )}
         </Toolbar>
       </AppBar>
 

@@ -6,10 +6,23 @@ type TokenProvider = () => string | null
 
 let tokenProvider: TokenProvider = () => null
 
+// Devuelve true si consiguió un token nuevo y la petición puede repetirse (SPEC 17).
+type UnauthorizedHandler = () => Promise<boolean>
+
+let unauthorizedHandler: UnauthorizedHandler = async () => false
+
 // La spec de autenticación conecta aquí la fuente real del token.
 export function setTokenProvider(fn: TokenProvider): void {
   tokenProvider = fn
 }
+
+// AuthProvider conecta aquí la renovación de la sesión.
+export function setUnauthorizedHandler(fn: UnauthorizedHandler): void {
+  unauthorizedHandler = fn
+}
+
+// /auth/* (login, refresh, logout, …) nunca dispara la renovación: evita bucles.
+const esRutaDeAuth = (path: string) => path.startsWith('/auth/')
 
 export interface HttpClient {
   get<T>(path: string): Promise<T>
@@ -33,7 +46,27 @@ async function codigoDeError(response: Response): Promise<string> {
 }
 
 export function createHttpClient(baseUrl: string): HttpClient {
+  // Ante un 401 pide una renovación y repite la petición una sola vez, con el token nuevo.
+  // Si no hay renovación o el reintento falla con 401, se lanza el error original.
   async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    try {
+      return await enviar<T>(method, path, body)
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 401 || esRutaDeAuth(path)) {
+        throw error
+      }
+      if (!(await unauthorizedHandler())) {
+        throw error
+      }
+      try {
+        return await enviar<T>(method, path, body)
+      } catch (reintento) {
+        throw reintento instanceof ApiError && reintento.status === 401 ? error : reintento
+      }
+    }
+  }
+
+  async function enviar<T>(method: string, path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = {
       Accept: 'application/json',
       'X-Request-Id': crypto.randomUUID(),
