@@ -43,6 +43,7 @@ describe('Límites del municipio y coordenadas de la queja (SPEC 15)', () => {
           email: `${rol}@mapa.test`,
           rol_id: rolId,
           password_hash: hash,
+          correo_verificado_en: new Date(),
           dependencia_id: rol === 'tecnico' ? dependencia.id : null,
         })
         .returning('id');

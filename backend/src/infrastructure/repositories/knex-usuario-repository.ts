@@ -18,6 +18,7 @@ interface FilaUsuario {
   password_hash: string | null;
   intentos_fallidos: number;
   bloqueado_hasta: Date | null;
+  correo_verificado_en: Date | null;
   permisos: Permisos;
 }
 
@@ -36,6 +37,7 @@ export class KnexUsuarioRepository implements UsuarioRepository {
         'u.password_hash',
         'u.intentos_fallidos',
         'u.bloqueado_hasta',
+        'u.correo_verificado_en',
         'r.permisos',
       );
   }
@@ -56,6 +58,7 @@ export class KnexUsuarioRepository implements UsuarioRepository {
       activo: fila.activo,
       passwordHash: fila.password_hash,
       bloqueo: { intentosFallidos: fila.intentos_fallidos, bloqueadoHasta: fila.bloqueado_hasta },
+      correoVerificado: fila.correo_verificado_en !== null,
     };
   }
 
@@ -69,6 +72,10 @@ export class KnexUsuarioRepository implements UsuarioRepository {
     await this.db('usuarios')
       .where({ id: usuarioId })
       .update({ password_hash: passwordHash, intentos_fallidos: 0, bloqueado_hasta: null });
+  }
+
+  async marcarCorreoVerificado(usuarioId: number, ahora: Date): Promise<void> {
+    await this.db('usuarios').where({ id: usuarioId }).whereNull('correo_verificado_en').update({ correo_verificado_en: ahora });
   }
 
   async emailDe(usuarioId: number): Promise<string | null> {

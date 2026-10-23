@@ -89,7 +89,7 @@ describe('API de administración de usuarios /api/v1/admin/usuarios', () => {
   async function crearUsuario(email: string, rol: string, cambios: Record<string, unknown> = {}): Promise<number> {
     const { id: rolId } = await db('roles').where({ nombre: rol }).first('id');
     const [fila] = await db('usuarios')
-      .insert({ nombre: email.split('@')[0], email, rol_id: rolId, password_hash: passwordHash, ...cambios })
+      .insert({ nombre: email.split('@')[0], email, rol_id: rolId, password_hash: passwordHash, correo_verificado_en: new Date(), ...cambios })
       .returning('id');
     return Number(fila.id);
   }

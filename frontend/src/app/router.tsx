@@ -2,6 +2,8 @@ import type { ComponentType } from 'react'
 import { Navigate, type RouteObject } from 'react-router'
 import { AdminPage } from '../features/admin/pages/AdminPage'
 import { LoginPage } from '../features/auth/pages/LoginPage'
+import { RegistroPage } from '../features/auth/pages/RegistroPage'
+import { VerificarPage } from '../features/auth/pages/VerificarPage'
 import { ReportesPage } from '../features/reportes/pages/ReportesPage'
 import { ConsultaPage } from '../features/tickets/pages/ConsultaPage'
 import { NuevoTicketPage } from '../features/tickets/pages/NuevoTicketPage'
@@ -47,6 +49,8 @@ const rutasProtegidas: RouteObject[] = RUTAS_PROTEGIDAS.map((ruta) => {
 
 export const rutasApp: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
+  { path: '/registro', element: <RegistroPage /> },
+  { path: '/verificar', element: <VerificarPage /> },
   { path: '/consulta', element: <ConsultaPage /> },
   { path: '/403', element: <NoAutorizadoPage /> },
   {

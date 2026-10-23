@@ -83,6 +83,7 @@ describe('Campos adicionales por categoría (SPEC 14)', () => {
         email: `${rol}@campos.test`,
         rol_id: rolId,
         password_hash: hash,
+        correo_verificado_en: new Date(),
         dependencia_id: rol === 'tecnico' ? activa : null,
       });
       tokens[rol] = (await request(app).post('/api/v1/auth/login').send({ email: `${rol}@campos.test`, password: PASSWORD })).body.accessToken;

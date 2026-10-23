@@ -8,6 +8,7 @@ import { ConsultaTicketsService } from './application/services/consulta-tickets.
 import { EnvioCorreo } from './application/services/envio-correo';
 import { HealthService } from './application/services/health.service';
 import { RecuperacionService } from './application/services/recuperacion.service';
+import { RegistroVecinosService } from './application/services/registro-vecinos.service';
 import { RegistroTicketsService } from './application/services/registro-tickets.service';
 import { UsuariosService } from './application/services/usuarios.service';
 import { VecinosService } from './application/services/vecinos.service';
@@ -53,6 +54,7 @@ export interface Container {
   catalogosService: CatalogosService;
   camposExtraService: CamposExtraService;
   parametrosService: ParametrosService;
+  registroVecinosService: RegistroVecinosService;
   dispose(): Promise<void>;
 }
 
@@ -118,6 +120,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     catalogosService: new CatalogosService(catalogo),
     camposExtraService: new CamposExtraService(transaccion),
     parametrosService: parametros,
+    registroVecinosService: new RegistroVecinosService(transaccion, correo, hasher, tokens, clock, env.APP_URL),
     dispose: () => db.destroy(),
   };
 }

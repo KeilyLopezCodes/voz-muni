@@ -264,3 +264,24 @@ describe('Ampliaciones de SPEC 10', () => {
     await expect(e.servicio.restablecer('invitacion', NUEVA)).resolves.toMatchObject({ usuario: { id: 1 } });
   });
 });
+
+describe('Verificación de correo al restablecer (SPEC 16)', () => {
+  it('restablecer con un enlace de recuperación o invitación marca el correo como verificado', async () => {
+    for (const tipo of ['recuperacion', 'invitacion'] as const) {
+      const e = crearEscenario([usuario({ correoVerificado: false })]);
+      await e.restablecimientos.crear(1, 'sha:enlace', tipo, e.reloj.actual);
+
+      await e.servicio.restablecer('enlace', NUEVA);
+
+      expect(e.usuarios.filas[0].correoVerificado).toBe(true);
+    }
+  });
+
+  it('un token de verificación no sirve en restablecer', async () => {
+    const e = crearEscenario([usuario({ correoVerificado: false })]);
+    await e.restablecimientos.crear(1, 'sha:verificar', 'verificacion', e.reloj.actual);
+
+    await expect(e.servicio.restablecer('verificar', NUEVA)).rejects.toMatchObject({ codigo: 'TOKEN_RECUPERACION_INVALIDO' });
+    expect(e.usuarios.filas[0]).toMatchObject({ correoVerificado: false, passwordHash: 'hash:Desarrollo2026' });
+  });
+});

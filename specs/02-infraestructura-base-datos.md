@@ -233,7 +233,7 @@ Durante la definición de esta spec se encontró que la sección 6 del documento
 | RF-41 | Catálogo de motivos de rechazo |
 | RF-33 | Administración de las plantillas de notificación. La tabla `plantillas_notificacion` ya existe desde SPEC 09. |
 | Sección 3 | Plazo de confirmación de 5 días hábiles como parámetro. La tabla genérica `parametros` ya existe desde SPEC 15. |
-| RF-01 | Verificación de correo. Los tokens de renovación y los intentos fallidos de inicio de sesión (RF-02, RNF-09) quedan resueltos en SPEC 08, y la recuperación de contraseña (RF-03) en SPEC 09. |
+| RF-01, RF-02, RF-03, RNF-09 | Resuelto: tokens de renovación e intentos fallidos en SPEC 08, recuperación de contraseña en SPEC 09 y verificación de correo (`usuarios.correo_verificado_en`) en SPEC 16. |
 
 ## Riesgos
 

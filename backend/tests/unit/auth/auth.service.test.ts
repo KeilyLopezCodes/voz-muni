@@ -205,3 +205,22 @@ describe('AutorizacionService.usuarioAutenticado', () => {
     await expect(autorizacion.usuarioAutenticado(accessToken)).rejects.toMatchObject({ codigo: 'TOKEN_INVALIDO' });
   });
 });
+
+describe('AuthService.login con el correo sin verificar (SPEC 16)', () => {
+  it('con la contraseña correcta → CORREO_NO_VERIFICADO, sin tokens y con el contador reiniciado', async () => {
+    const { auth, usuarios, sesiones } = crearEscenario([
+      usuario({ correoVerificado: false, bloqueo: { intentosFallidos: 3, bloqueadoHasta: null } }),
+    ]);
+
+    await expect(auth.login('ana@vozmuni.test', PASSWORD)).rejects.toMatchObject({ codigo: 'CORREO_NO_VERIFICADO' });
+
+    expect(sesiones.filas).toEqual([]);
+    expect(usuarios.filas[0].bloqueo).toEqual({ intentosFallidos: 0, bloqueadoHasta: null });
+  });
+
+  it('con la contraseña incorrecta → CREDENCIALES_INVALIDAS, como siempre', async () => {
+    const { auth } = crearEscenario([usuario({ correoVerificado: false })]);
+
+    await expect(auth.login('ana@vozmuni.test', 'otra')).rejects.toMatchObject({ codigo: 'CREDENCIALES_INVALIDAS' });
+  });
+});

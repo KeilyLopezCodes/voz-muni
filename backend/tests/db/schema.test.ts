@@ -50,6 +50,7 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['activo', 'boolean'],
     ['intentos_fallidos', 'integer'],
     ['bloqueado_hasta', 'timestamp with time zone'],
+    ['correo_verificado_en', 'timestamp with time zone'],
   ],
   sesiones: [
     ['id', 'bigint'],
@@ -353,6 +354,50 @@ describe('Esquema de base de datos', () => {
     });
   });
 
+  describe('migración 0015_verificacion_correo', () => {
+    it('carga las 3 plantillas del registro', async () => {
+      const claves = await db('plantillas_notificacion')
+        .whereIn('clave', ['verificacion_correo', 'cuenta_existente', 'registro_no_completado'])
+        .orderBy('id')
+        .pluck('clave');
+
+      expect(claves).toEqual(['verificacion_correo', 'cuenta_existente', 'registro_no_completado']);
+    });
+
+    it('verifica a quien ya tenía contraseña, y revertirla restaura el CHECK de tipo', async () => {
+      await db.migrate.down({ name: '0015_verificacion_correo.js' });
+      const { id: rolId } = await db('roles').where({ nombre: 'vecino' }).first('id');
+      const ids: string[] = [];
+      try {
+        const usuarios = await db('usuarios')
+          .insert([
+            { nombre: 'Con clave', email: 'conclave@x.gt', rol_id: rolId, password_hash: 'hash' },
+            { nombre: 'Sin clave', email: 'sinclave@x.gt', rol_id: rolId },
+          ])
+          .returning('id');
+        ids.push(...usuarios.map((u) => u.id));
+        // Con la migración revertida, el CHECK vuelve a no aceptar 'verificacion'.
+        await expect(
+          db('restablecimientos').insert({
+            usuario_id: ids[0],
+            token_hash: 'f'.repeat(64),
+            expira_en: '2026-10-23T00:30:00Z',
+            tipo: 'verificacion',
+          }),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+
+        await db.migrate.latest();
+
+        const filas = await db('usuarios').whereIn('id', ids).orderBy('id').select('correo_verificado_en');
+        expect(filas[0].correo_verificado_en).toBeInstanceOf(Date);
+        expect(filas[1].correo_verificado_en).toBeNull();
+      } finally {
+        await db.migrate.latest();
+        await db('usuarios').whereIn('id', ids).delete();
+      }
+    });
+  });
+
   describe('restablecimientos', () => {
     it('dos filas no pueden tener el mismo token_hash', () =>
       withRollback(async (trx) => {
@@ -361,6 +406,20 @@ describe('Esquema de base de datos', () => {
         const fila = { usuario_id: usuario.id, token_hash: 'b'.repeat(64), expira_en: '2026-10-23T00:30:00Z' };
         await trx('restablecimientos').insert(fila);
         await expect(trx('restablecimientos').insert(fila)).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
+      }));
+
+    it('acepta tipo = verificacion (SPEC 16)', () =>
+      withRollback(async (trx) => {
+        const rolId = await insertRol(trx);
+        const [usuario] = await trx('usuarios').insert({ nombre: 'Ana', email: 'ana@x.gt', rol_id: rolId }).returning('id');
+        await expect(
+          trx('restablecimientos').insert({
+            usuario_id: usuario.id,
+            token_hash: 'e'.repeat(64),
+            expira_en: '2026-10-23T00:30:00Z',
+            tipo: 'verificacion',
+          }),
+        ).resolves.toBeDefined();
       }));
 
     it('tipo vale recuperacion por defecto y rechaza otros valores', () =>
@@ -394,7 +453,7 @@ describe('Esquema de base de datos', () => {
       } finally {
         await db.migrate.latest();
       }
-      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '6' }]);
+      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '9' }]);
     });
   });
 

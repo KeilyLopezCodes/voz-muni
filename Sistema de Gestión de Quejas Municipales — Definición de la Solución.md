@@ -279,7 +279,7 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 
 | Tabla | Columnas principales |
 | --- | --- |
-| usuarios | id, nombre, email, telefono, dpi, password\_hash, rol\_id, dependencia\_id, activo, intentos\_fallidos, bloqueado\_hasta |
+| usuarios | id, nombre, email, telefono, dpi, password\_hash, rol\_id, dependencia\_id, activo, intentos\_fallidos, bloqueado\_hasta, correo\_verificado\_en (sin verificar no se inicia sesión) |
 | sesiones | id, usuario\_id, token\_hash (SHA-256 del token de renovación, único), expira\_en, revocada\_en, reemplazada\_por, creado\_en |
 | roles | id, nombre, permisos (jsonb) |
 | dependencias | id, nombre, coordinador\_id, activa |
@@ -297,7 +297,7 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | plantillas\_notificacion | id, clave (única), asunto, cuerpo\_texto, cuerpo\_html, actualizado\_en |
 | parametros | clave (PK), valor (jsonb), actualizado\_en: parámetros municipales que configura el administrador, como `limites_municipio` |
 | correlativos | anio (PK), ultimo: último correlativo del año (en America/Guatemala) para el número Q-AAAA-NNNNNN |
-| restablecimientos | id, usuario\_id, token\_hash (SHA-256 del token, único), tipo (recuperacion, invitacion), expira\_en, usado\_en, invalidado\_en, creado\_en |
+| restablecimientos | id, usuario\_id, token\_hash (SHA-256 del token, único), tipo (recuperacion, invitacion, verificacion), expira\_en, usado\_en, invalidado\_en, creado\_en |
 
 Índices clave: `tickets(estado, dependencia_id)`, `tickets(asignado_a, estado)`, `tickets(vence_resolucion)` para las tareas de SLA y `tickets(numero)` para la consulta pública.
 
@@ -316,7 +316,8 @@ Campos adicionales por categoría (RF-09):
 
 | Método y ruta | Uso | Roles |
 | --- | --- | --- |
-| POST /api/v1/auth/register, /login, /refresh, /logout | Registro, inicio, renovación y cierre de sesión | Público |
+| POST /api/v1/auth/registro, /login, /refresh, /logout | Registro del vecino, inicio, renovación y cierre de sesión | Público |
+| POST /api/v1/auth/verificar | Verificar el correo con el enlace de registro | Público |
 | GET /api/v1/auth/sesion | Usuario de la sesión y permisos de su rol | Autenticado |
 | POST /api/v1/auth/recuperar, /restablecer | Pedir el enlace de recuperación y definir la contraseña nueva | Público |
 | GET /api/v1/vecinos | Buscar un vecino por correo, teléfono o DPI exactos, con el contacto enmascarado | Receptor, Supervisor |

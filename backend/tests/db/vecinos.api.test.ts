@@ -69,6 +69,7 @@ describe('API de alta de vecino en ventanilla POST /api/v1/vecinos', () => {
         email: `${rol}@ventanilla.test`,
         rol_id: rolId,
         password_hash: hash,
+        correo_verificado_en: new Date(),
         dependencia_id: dependenciaId,
       });
       const res = await request(app).post('/api/v1/auth/login').send({ email: `${rol}@ventanilla.test`, password: PASSWORD });

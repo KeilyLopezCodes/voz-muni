@@ -78,7 +78,7 @@ describe('API de registro de quejas /api/v1/tickets y /api/v1/vecinos', () => {
     for (const [nombre, rol, extra] of usuarios) {
       const { id: rolId } = await db('roles').where({ nombre: rol }).first('id');
       const [fila] = await db('usuarios')
-        .insert({ nombre: `Usuario ${nombre}`, rol_id: rolId, password_hash: hash, ...extra })
+        .insert({ nombre: `Usuario ${nombre}`, rol_id: rolId, password_hash: hash, correo_verificado_en: new Date(), ...extra })
         .returning('id');
       ids[nombre] = Number(fila.id);
       if (extra.email && extra.activo !== false) {

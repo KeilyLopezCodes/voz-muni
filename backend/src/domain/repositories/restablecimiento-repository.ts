@@ -12,6 +12,11 @@ export interface RestablecimientoRepository {
   invalidarPendientes(usuarioId: number, ahora: Date): Promise<void>;
   // expira_en = ahora + VIGENCIA_RESTABLECIMIENTO_MS[tipo].
   crear(usuarioId: number, tokenHash: string, tipo: TipoRestablecimiento, ahora: Date): Promise<void>;
-  buscarVigente(tokenHash: string, ahora: Date): Promise<RestablecimientoVigente | null>;
+  // Solo si su tipo es uno de `tipos`: un token de verificación no sirve en /auth/restablecer, ni al revés (SPEC 16).
+  buscarVigente(
+    tokenHash: string,
+    ahora: Date,
+    tipos: readonly TipoRestablecimiento[],
+  ): Promise<RestablecimientoVigente | null>;
   marcarUsado(id: number, ahora: Date): Promise<void>;
 }

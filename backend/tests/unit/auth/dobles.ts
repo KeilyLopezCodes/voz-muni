@@ -19,6 +19,11 @@ import type {
 import type { CriterioVecino, Vecino, VecinoRepository } from '../../../src/domain/repositories/vecino-repository';
 import type { RolInterno } from '../../../src/domain/usuarios/usuario-interno';
 import type { DatosVecinoNuevo } from '../../../src/domain/usuarios/vecino';
+import type {
+  DatosCuentaVecino,
+  RegistroVecinoRepository,
+} from '../../../src/domain/repositories/registro-vecino-repository';
+import type { UsuarioParaRegistro } from '../../../src/domain/usuarios/registro-vecino';
 import type { PasswordHasher } from '../../../src/domain/auth/password-hasher';
 import type { Permisos } from '../../../src/domain/auth/permisos';
 import type { Rol } from '../../../src/domain/auth/roles';
@@ -51,6 +56,7 @@ export interface UsuarioFalso {
   passwordHash: string | null;
   bloqueo: EstadoBloqueo;
   permisos: Permisos;
+  correoVerificado: boolean;
 }
 
 export class UsuariosEnMemoria implements UsuarioRepository {
@@ -78,6 +84,10 @@ export class UsuariosEnMemoria implements UsuarioRepository {
 
   async emailDe(usuarioId: number): Promise<string | null> {
     return this.filas.find((fila) => fila.id === usuarioId)?.email ?? null;
+  }
+
+  async marcarCorreoVerificado(usuarioId: number): Promise<void> {
+    this.filas.find((fila) => fila.id === usuarioId)!.correoVerificado = true;
   }
 }
 
@@ -189,6 +199,7 @@ export function usuario(cambios: Partial<UsuarioFalso> = {}): UsuarioFalso {
     passwordHash: `hash:${PASSWORD}`,
     bloqueo: { intentosFallidos: 0, bloqueadoHasta: null },
     permisos: { 'tickets.ver': 'dependencia' },
+    correoVerificado: true,
     ...cambios,
   };
 }
@@ -243,6 +254,7 @@ export class VecinosEnMemoria implements VecinoRepository {
       passwordHash: null,
       bloqueo: { intentosFallidos: 0, bloqueadoHasta: null },
       permisos: { 'tickets.crear': 'propia', 'tickets.ver': 'propia' },
+      correoVerificado: false,
     });
     return { id };
   }
@@ -294,6 +306,7 @@ export class UsuariosAdminEnMemoria implements UsuarioAdminRepository {
       passwordHash: null,
       bloqueo: { intentosFallidos: 0, bloqueadoHasta: null },
       permisos: PERMISOS_POR_ROL[nuevo.rol] ?? {},
+      correoVerificado: false,
     };
     this.usuarios.filas.push(fila);
     return this.aInterno(fila);
@@ -351,9 +364,18 @@ export class RestablecimientosEnMemoria implements RestablecimientoRepository {
     });
   }
 
-  async buscarVigente(tokenHash: string, ahora: Date): Promise<RestablecimientoVigente | null> {
+  async buscarVigente(
+    tokenHash: string,
+    ahora: Date,
+    tipos: readonly TipoRestablecimiento[],
+  ): Promise<RestablecimientoVigente | null> {
     const r = this.filas.find(
-      (f) => f.tokenHash === tokenHash && !f.usadoEn && !f.invalidadoEn && f.expiraEn.getTime() > ahora.getTime(),
+      (f) =>
+        f.tokenHash === tokenHash &&
+        tipos.includes(f.tipo) &&
+        !f.usadoEn &&
+        !f.invalidadoEn &&
+        f.expiraEn.getTime() > ahora.getTime(),
     );
     return r ? { id: r.id, usuarioId: r.usuarioId, tipo: r.tipo } : null;
   }
@@ -372,6 +394,9 @@ export class PlantillasEnMemoria implements PlantillaRepository {
       ['invitacion_usuario', 'Invitación', '{{nombre}} ({{rol}}): {{enlace}}', '<a href="{{enlace}}">{{nombre}}</a>'],
       ['cuenta_desactivada', 'Desactivada', '{{nombre}}', '<p>{{nombre}}</p>'],
       ['invitacion_vecino', 'Portal', '{{nombre}}: {{enlace}}', '<a href="{{enlace}}">{{nombre}}</a>'],
+      ['verificacion_correo', 'Verifica', '{{nombre}}: {{enlace}}', '<a href="{{enlace}}">{{nombre}}</a>'],
+      ['cuenta_existente', 'Ya existe', 'Ya tienes cuenta', '<p>Ya tienes cuenta</p>'],
+      ['registro_no_completado', 'No completado', 'No pudimos', '<p>No pudimos</p>'],
     ].map(([clave, asunto, cuerpoTexto, cuerpoHtml]) => [clave, { clave, asunto, cuerpoTexto, cuerpoHtml }]),
   );
 
@@ -404,3 +429,46 @@ export class TransaccionEnMemoria implements Transaccion {
 
 // Los correos que salen sin esperar: deja correr las promesas pendientes.
 export const correosPendientes = () => new Promise((resolver) => setImmediate(resolver));
+
+// Registro propio del vecino (SPEC 16) sobre las mismas filas de UsuariosEnMemoria.
+export class RegistroVecinosEnMemoria implements RegistroVecinoRepository {
+  constructor(private readonly usuarios: UsuariosEnMemoria) {}
+
+  private aRegistro(u: UsuarioFalso | undefined): UsuarioParaRegistro | null {
+    return u
+      ? { id: u.id, rol: u.rol, activo: u.activo, tienePassword: u.passwordHash !== null, verificado: u.correoVerificado }
+      : null;
+  }
+
+  async buscarPorCorreo(email: string): Promise<UsuarioParaRegistro | null> {
+    return this.aRegistro(this.usuarios.filas.find((u) => u.email?.toLowerCase() === email.toLowerCase()));
+  }
+
+  async buscarPorDpi(dpi: string): Promise<UsuarioParaRegistro | null> {
+    return this.aRegistro(this.usuarios.filas.find((u) => u.dpi === dpi));
+  }
+
+  async crear(datos: DatosCuentaVecino): Promise<{ id: number }> {
+    const id = Math.max(0, ...this.usuarios.filas.map((u) => u.id)) + 1;
+    this.usuarios.filas.push({
+      id,
+      nombre: datos.nombre,
+      email: datos.email,
+      telefono: datos.telefono,
+      dpi: datos.dpi,
+      rol: 'vecino',
+      dependenciaId: null,
+      activo: true,
+      passwordHash: datos.passwordHash,
+      bloqueo: { intentosFallidos: 0, bloqueadoHasta: null },
+      permisos: { 'tickets.crear': 'propia', 'tickets.ver': 'propia' },
+      correoVerificado: false,
+    });
+    return { id };
+  }
+
+  async reemplazarPendiente(usuarioId: number, datos: Omit<DatosCuentaVecino, 'email'>): Promise<void> {
+    const u = this.usuarios.filas.find((fila) => fila.id === usuarioId)!;
+    Object.assign(u, { nombre: datos.nombre, dpi: datos.dpi, telefono: datos.telefono, passwordHash: datos.passwordHash });
+  }
+}

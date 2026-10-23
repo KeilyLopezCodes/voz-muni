@@ -52,6 +52,11 @@ export class AuthService {
       await this.usuarios.guardarBloqueo(usuario.id, registrarExito());
     }
 
+    // Solo con la contraseña correcta: quien no la conoce no sabe si la cuenta está verificada (SPEC 16).
+    if (!usuario.correoVerificado) {
+      throw new ErrorDeAplicacion('CORREO_NO_VERIFICADO', 'Confirma tu correo con el enlace que te enviamos antes de iniciar sesión');
+    }
+
     const datos: UsuarioSesion = {
       id: usuario.id,
       nombre: usuario.nombre,

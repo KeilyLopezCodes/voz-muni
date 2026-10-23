@@ -21,7 +21,13 @@ export class EnvioCorreo {
   }
 
   // Devuelve false si falla. El fallo queda en el log con el usuario_id y nunca con el contenido (que puede llevar un token).
-  async intentar(clave: string, para: string, variables: Record<string, string>, usuarioId: number): Promise<boolean> {
+  // usuarioId es null cuando el destinatario no tiene cuenta (p. ej. un registro que no se completó, SPEC 16).
+  async intentar(
+    clave: string,
+    para: string,
+    variables: Record<string, string>,
+    usuarioId: number | null,
+  ): Promise<boolean> {
     try {
       await this.enviar(clave, para, variables);
       return true;
@@ -33,7 +39,7 @@ export class EnvioCorreo {
   }
 
   // Sale sin bloquear al que llama: la respuesta HTTP no espera al SMTP.
-  sinEsperar(clave: string, para: string, variables: Record<string, string>, usuarioId: number): void {
+  sinEsperar(clave: string, para: string, variables: Record<string, string>, usuarioId: number | null): void {
     void this.intentar(clave, para, variables, usuarioId);
   }
 }

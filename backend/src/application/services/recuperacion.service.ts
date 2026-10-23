@@ -1,6 +1,6 @@
 import type { PasswordHasher } from '../../domain/auth/password-hasher';
 import { validarPassword } from '../../domain/auth/politica-password';
-import type { TokenService } from '../../domain/auth/token-service';
+import type { TipoRestablecimiento, TokenService } from '../../domain/auth/token-service';
 import type { Clock } from '../../domain/health/clock';
 import type { RestablecimientoRepository } from '../../domain/repositories/restablecimiento-repository';
 import type { Transaccion } from '../../domain/repositories/transaccion';
@@ -11,6 +11,9 @@ import { abrirSesion } from './emision-sesion';
 import type { EnvioCorreo } from './envio-correo';
 
 const TOKEN_INVALIDO = 'El enlace de recuperación no existe, venció o ya se usó';
+
+// Un token de verificación (SPEC 16) no sirve para definir contraseña.
+const TIPOS_RESTABLECER: readonly TipoRestablecimiento[] = ['recuperacion', 'invitacion'];
 
 // Recuperación de contraseña por correo (RF-03).
 export class RecuperacionService {
@@ -53,7 +56,7 @@ export class RecuperacionService {
 
     const tokenHash = this.tokens.hashRenovacion(token);
     const ahora = this.clock.now();
-    const vigente = await this.restablecimientos.buscarVigente(tokenHash, ahora);
+    const vigente = await this.restablecimientos.buscarVigente(tokenHash, ahora, TIPOS_RESTABLECER);
     const usuario = vigente ? await this.usuarios.buscarActivo(vigente.usuarioId) : null;
     if (!vigente || !usuario) {
       throw new ErrorDeAplicacion('TOKEN_RECUPERACION_INVALIDO', TOKEN_INVALIDO);
@@ -70,11 +73,13 @@ export class RecuperacionService {
 
     const respuesta = await this.transaccion.ejecutar(async (repos) => {
       // Otra petición pudo usar el mismo token mientras se calculaba el hash.
-      const sigueVigente = await repos.restablecimientos.buscarVigente(tokenHash, ahora);
+      const sigueVigente = await repos.restablecimientos.buscarVigente(tokenHash, ahora, TIPOS_RESTABLECER);
       if (!sigueVigente) {
         throw new ErrorDeAplicacion('TOKEN_RECUPERACION_INVALIDO', TOKEN_INVALIDO);
       }
       await repos.usuarios.cambiarPassword(usuario.id, passwordHash);
+      // El enlace llegó al correo: el buzón es del usuario (SPEC 16).
+      await repos.usuarios.marcarCorreoVerificado(usuario.id, ahora);
       await repos.restablecimientos.marcarUsado(sigueVigente.id, ahora);
       // La única sesión viva queda siendo la nueva.
       await repos.sesiones.revocarTodasDelUsuario(usuario.id, ahora);

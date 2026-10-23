@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repository contains the project foundations. There is no business logic yet.
 
-- `backend/`: the layered backend skeleton with `GET /health` and the layer dependency rules (SPEC 01), plus PostgreSQL 17 in docker-compose, Knex wiring, config validated with Zod, and `/health` reporting the database state (SPEC 02), plus the 14 tables of section 6 as Knex migrations, the insert-only `bitacora` trigger (SPEC 03), fictional development catalogs loaded with `seed:dev` (SPEC 05), and login, token renewal, logout, lockout, the `autenticar` / `requierePermiso` middlewares, the global error handler and the 6 roles with their permission matrix (SPEC 08), password recovery by email with Nodemailer and templates stored in the database (SPEC 09), internal user management by the administrator under `/api/v1/admin/usuarios` (SPEC 10), the per-resource scope filters for tickets, reports and the audit log with read-only repositories (SPEC 11), complaint registration with `POST /api/v1/tickets` and the neighbor lookup `GET /api/v1/vecinos` (SPEC 12), the walk-in neighbor sign-up `POST /api/v1/vecinos` (SPEC 13), and per-category extra fields with `GET /api/v1/categorias`, `GET /api/v1/zonas` and `PUT /api/v1/admin/categorias/:id/campos-extra` (SPEC 14), and optional complaint coordinates validated against the municipality bounding box stored in the generic `parametros` table (SPEC 15).
-- `frontend/`: the React + Vite SPA scaffold (SPEC 06), with the shared HTTP client, the role-based route guards, the MUI layout, the Spanish translation files and the feature-boundary rules. The pages are placeholders, and there is no login yet, so the browser session is always `null`.
+- `backend/`: the layered backend skeleton with `GET /health` and the layer dependency rules (SPEC 01), plus PostgreSQL 17 in docker-compose, Knex wiring, config validated with Zod, and `/health` reporting the database state (SPEC 02), plus the 14 tables of section 6 as Knex migrations, the insert-only `bitacora` trigger (SPEC 03), fictional development catalogs loaded with `seed:dev` (SPEC 05), and login, token renewal, logout, lockout, the `autenticar` / `requierePermiso` middlewares, the global error handler and the 6 roles with their permission matrix (SPEC 08), password recovery by email with Nodemailer and templates stored in the database (SPEC 09), internal user management by the administrator under `/api/v1/admin/usuarios` (SPEC 10), the per-resource scope filters for tickets, reports and the audit log with read-only repositories (SPEC 11), complaint registration with `POST /api/v1/tickets` and the neighbor lookup `GET /api/v1/vecinos` (SPEC 12), the walk-in neighbor sign-up `POST /api/v1/vecinos` (SPEC 13), and per-category extra fields with `GET /api/v1/categorias`, `GET /api/v1/zonas` and `PUT /api/v1/admin/categorias/:id/campos-extra` (SPEC 14), and optional complaint coordinates validated against the municipality bounding box stored in the generic `parametros` table (SPEC 15), and neighbor self-registration with email verification through `POST /api/v1/auth/registro` and `POST /api/v1/auth/verificar` (SPEC 16).
+- `frontend/`: the React + Vite SPA scaffold (SPEC 06), with the shared HTTP client, the role-based route guards, the MUI layout, the Spanish translation files and the feature-boundary rules. The pages are placeholders, and there is no login yet, so the browser session is always `null`. The public `/registro` and `/verificar` pages (SPEC 16) are real, with React Hook Form.
 
 It also contains:
 
@@ -32,7 +32,7 @@ Backend (run from `backend/`):
   - `PORT`: defaults to 3000.
   - `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`: required. `SMTP_PORT` defaults to 587 and `SMTP_SECURE` to `false` (STARTTLS).
   - `MAIL_FROM`: required, `Nombre <correo>` or just an address.
-  - `APP_URL`: required, the frontend URL without a trailing slash. Recovery links point to `APP_URL/restablecer?token=…`.
+  - `APP_URL`: required, the frontend URL without a trailing slash. Recovery and invitation links point to `APP_URL/restablecer?token=…`, and verification links to `APP_URL/verificar?token=…`.
   - `RECUPERACION_LIMITE_POR_VENTANA`: requests per IP to `/api/v1/auth/recuperar` every 15 minutes. Defaults to 5.
 - Email in development (SPEC 09): create a free Ethereal account at `https://ethereal.email/create` and copy its user and password into `SMTP_USER` / `SMTP_PASS` with `SMTP_HOST=smtp.ethereal.email`. Ethereal never delivers to real inboxes. After each send the backend logs a preview link (`vista previa en https://ethereal.email/message/…`), and every message is also in that account's inbox at `https://ethereal.email/messages`. Tests never use SMTP: they inject an in-memory `EnviadorCorreo` through `buildContainer(env, { enviadorCorreo })`.
 - `npm run typecheck`: type-check `src/` and `tests/` without emitting.
@@ -139,6 +139,20 @@ These points are spread across the definition document. Follow them when writing
   - Changing the role or dependency, or deactivating, revokes the user's sessions. An administrator cannot deactivate or demote themselves, and no operation may leave 0 active administrators (counted with `FOR UPDATE`).
   - Users are never deleted: they are deactivated.
   - Domain rules live in `domain/usuarios/usuario-interno.ts`. Operations that touch several tables use the `Transaccion` port.
+- **Neighbor self-registration (SPEC 16).** Both endpoints are public:
+  - `POST /api/v1/auth/registro` takes `{ nombre, dpi, email, telefono?, password }` (Zod `strict`). Invalid data answers `400` with the field's code (`NOMBRE_INVALIDO`, `DPI_INVALIDO`, `EMAIL_INVALIDO`, `TELEFONO_INVALIDO`, `POLITICA_PASSWORD`, `VALIDACION`). Valid data **always** answers `202 { mensaje }`, before sending any email, so the response never reveals whether the email or DPI exist. `decidirCasoRegistro` (`domain/usuarios/registro-vecino.ts`) picks the case inside a transaction: a new email creates an unverified neighbor and sends `verificacion_correo`; an unverified registration with the same email is replaced and gets a new link; an existing account gets `cuenta_existente`; a DPI owned by another user gets `registro_no_completado`; an inactive user gets nothing.
+  - `POST /api/v1/auth/verificar { token }` marks `usuarios.correo_verificado_en` and consumes the link, or answers `400 TOKEN_VERIFICACION_INVALIDO`. It does not log in.
+  - Login without a verified email is refused: with the correct password it answers `403 CORREO_NO_VERIFICADO` and issues no tokens; with a wrong password it stays `401 CREDENCIALES_INVALIDAS`, so the status is not revealed. Internal users, walk-in neighbors and `seed:dev` users are verified by migration 0015, the seed or their invitation.
+  - Any email link that is used proves the mailbox: `/auth/restablecer` (recovery or invitation) also sets `correo_verificado_en`.
+  - Link types in `restablecimientos.tipo` (`VIGENCIA_RESTABLECIMIENTO_MS` in `domain/auth/token-service.ts`). A token only works in its own endpoint:
+
+    | `tipo` | Valid for | Created by | Consumed by |
+    | --- | --- | --- | --- |
+    | `recuperacion` | 30 min | `/auth/recuperar` (SPEC 09) | `/auth/restablecer` |
+    | `invitacion` | 24 h | admin users (SPEC 10), walk-in neighbors (SPEC 13) | `/auth/restablecer` |
+    | `verificacion` | 24 h | `/auth/registro` (SPEC 16) | `/auth/verificar` |
+
+  - There is no rate limit on registration yet (an explicit decision in SPEC 16); add one before exposing the portal.
 - **Cross-cutting conventions:**
   - API routes start with `/api/v1` and are documented in OpenAPI 3.
   - Ticket numbers use the format `Q-AAAA-NNNNNN`.

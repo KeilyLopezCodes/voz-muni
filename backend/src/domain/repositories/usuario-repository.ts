@@ -11,6 +11,7 @@ export interface UsuarioConCredenciales {
   activo: boolean;
   passwordHash: string | null;
   bloqueo: EstadoBloqueo;
+  correoVerificado: boolean; // sin verificar no se inicia sesión (SPEC 16)
 }
 
 // Usuario activo con los permisos actuales de su rol.
@@ -28,6 +29,8 @@ export interface UsuarioRepository {
   guardarBloqueo(usuarioId: number, estado: EstadoBloqueo): Promise<void>;
   // Guarda el hash nuevo y limpia intentos fallidos y bloqueo.
   cambiarPassword(usuarioId: number, passwordHash: string): Promise<void>;
+  // correo_verificado_en = ahora, solo si era null: abrir un enlace enviado al correo prueba que el buzón es del usuario.
+  marcarCorreoVerificado(usuarioId: number, ahora: Date): Promise<void>;
   // null si no existe o está inactivo.
   buscarActivo(usuarioId: number): Promise<UsuarioActivo | null>;
   // null si no existe o no tiene correo.

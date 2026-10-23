@@ -34,6 +34,8 @@ export type CodigoError =
   | 'UBICACION_NO_CONFIGURADA'
   | 'UBICACION_FUERA_DEL_MUNICIPIO'
   | 'LIMITES_INVALIDOS'
+  | 'TOKEN_VERIFICACION_INVALIDO'
+  | 'CORREO_NO_VERIFICADO'
   | 'NO_AUTENTICADO'
   | 'TOKEN_INVALIDO'
   | 'CREDENCIALES_INVALIDAS'
@@ -69,6 +71,7 @@ const CODIGOS_DE_REGLA: readonly CodigoError[] = [
   'UBICACION_NO_CONFIGURADA',
   'UBICACION_FUERA_DEL_MUNICIPIO',
   'LIMITES_INVALIDOS',
+  'POLITICA_PASSWORD',
 ];
 
 // Error esperado de un caso de uso. El mensaje es para desarrolladores, no para la UI.

@@ -69,7 +69,7 @@ describe('API de recuperación /api/v1/auth/recuperar y /restablecer', () => {
   async function crearUsuario(email: string, cambios: Record<string, unknown> = {}): Promise<number> {
     const { id: rolId } = await db('roles').where({ nombre: 'vecino' }).first('id');
     const [fila] = await db('usuarios')
-      .insert({ nombre: 'Ana Vecina', email, rol_id: rolId, password_hash: passwordHash, ...cambios })
+      .insert({ nombre: 'Ana Vecina', email, rol_id: rolId, password_hash: passwordHash, correo_verificado_en: new Date(), ...cambios })
       .returning('id');
     return Number(fila.id);
   }
