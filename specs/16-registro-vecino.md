@@ -1,6 +1,6 @@
 # SPEC 16 — Registro de vecino con verificación de correo
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 06, SPEC 08, SPEC 09, SPEC 10, SPEC 13
 > **Fecha:** 2026-10-22
 > **Objetivo:** Permitir que un vecino cree su cuenta en el portal con nombre, DPI, correo, teléfono opcional y contraseña, y la active con un enlace de verificación de 24 h enviado a su correo, sin revelar qué correos o DPI ya están registrados, con las pantallas `/registro` y `/verificar`.

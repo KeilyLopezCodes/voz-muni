@@ -1,6 +1,6 @@
 # SPEC 17 — Sesión y login en el frontend
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 06, SPEC 08, SPEC 09, SPEC 16
 > **Fecha:** 2026-10-22
 > **Objetivo:** Conectar la SPA con la autenticación de SPEC 08 mediante un formulario de login, una sesión real que sobrevive a recargar, renovación automática del token coordinada entre pestañas, cierre de sesión, y las pantallas `/recuperar` y `/restablecer` de SPEC 09.
