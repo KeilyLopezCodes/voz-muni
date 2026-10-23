@@ -65,6 +65,17 @@ export class KnexUsuarioRepository implements UsuarioRepository {
       .update({ intentos_fallidos: estado.intentosFallidos, bloqueado_hasta: estado.bloqueadoHasta });
   }
 
+  async cambiarPassword(usuarioId: number, passwordHash: string): Promise<void> {
+    await this.db('usuarios')
+      .where({ id: usuarioId })
+      .update({ password_hash: passwordHash, intentos_fallidos: 0, bloqueado_hasta: null });
+  }
+
+  async emailDe(usuarioId: number): Promise<string | null> {
+    const fila: { email: string | null } | undefined = await this.db('usuarios').where({ id: usuarioId }).first('email');
+    return fila?.email ?? null;
+  }
+
   async buscarActivo(usuarioId: number): Promise<UsuarioActivo | null> {
     const fila: FilaUsuario | undefined = await this.consulta()
       .where({ 'u.id': usuarioId, 'u.activo': true })

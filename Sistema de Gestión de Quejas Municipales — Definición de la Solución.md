@@ -294,6 +294,8 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | notificaciones | id, usuario\_id, ticket\_id, tipo, leida, creado\_en |
 | calendario\_laboral | fecha, es\_habil, descripcion |
 | bitacora | id, usuario\_id, accion, entidad, entidad\_id, detalle (jsonb), ip, creado\_en |
+| plantillas\_notificacion | id, clave (única), asunto, cuerpo\_texto, cuerpo\_html, actualizado\_en |
+| restablecimientos | id, usuario\_id, token\_hash (SHA-256 del token de recuperación, único), expira\_en, usado\_en, invalidado\_en, creado\_en |
 
 Índices clave: `tickets(estado, dependencia_id)`, `tickets(asignado_a, estado)`, `tickets(vence_resolucion)` para las tareas de SLA y `tickets(numero)` para la consulta pública.
 
@@ -303,6 +305,7 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | --- | --- | --- |
 | POST /api/v1/auth/register, /login, /refresh, /logout | Registro, inicio, renovación y cierre de sesión | Público |
 | GET /api/v1/auth/sesion | Usuario de la sesión y permisos de su rol | Autenticado |
+| POST /api/v1/auth/recuperar, /restablecer | Pedir el enlace de recuperación y definir la contraseña nueva | Público |
 | GET /api/v1/public/tickets/:numero | Consulta de estado con dato de contacto | Público |
 | POST /api/v1/tickets | Registrar queja | Vecino, Receptor, Supervisor |
 | GET /api/v1/tickets | Listado filtrado y paginado, limitado por rol | Internos, Vecino |

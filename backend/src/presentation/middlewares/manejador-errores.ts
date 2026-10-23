@@ -4,6 +4,8 @@ import { type CodigoError, ErrorDeAplicacion } from '../../application/errors/er
 
 const STATUS_POR_CODIGO: Record<CodigoError, number> = {
   VALIDACION: 400,
+  POLITICA_PASSWORD: 400,
+  TOKEN_RECUPERACION_INVALIDO: 400,
   NO_AUTENTICADO: 401,
   TOKEN_INVALIDO: 401,
   CREDENCIALES_INVALIDAS: 401,
