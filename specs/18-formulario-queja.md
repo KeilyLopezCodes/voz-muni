@@ -1,6 +1,6 @@
 # SPEC 18 — Formulario de registro de queja
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 12, SPEC 13, SPEC 14, SPEC 15, SPEC 16, SPEC 17
 > **Fecha:** 2026-10-22
 > **Objetivo:** Reemplazar el placeholder de `/tickets/nueva` por un formulario por pasos, usable desde 360 px, con el que el vecino registra su queja y el receptor o supervisor la registra a nombre de un vecino, con campos adicionales por categoría y mapa opcional, verificado con pruebas e2e de Playwright.
