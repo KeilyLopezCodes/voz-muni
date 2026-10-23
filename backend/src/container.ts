@@ -3,6 +3,7 @@ import { AuthService } from './application/services/auth.service';
 import { AutorizacionService } from './application/services/autorizacion.service';
 import { CamposExtraService } from './application/services/campos-extra.service';
 import { CatalogosService } from './application/services/catalogos.service';
+import { ParametrosService } from './application/services/parametros.service';
 import { ConsultaTicketsService } from './application/services/consulta-tickets.service';
 import { EnvioCorreo } from './application/services/envio-correo';
 import { HealthService } from './application/services/health.service';
@@ -22,6 +23,7 @@ import { KnexDatabaseHealthCheck } from './infrastructure/database/knex-database
 import { NodemailerEnviadorCorreo } from './infrastructure/mail/nodemailer-enviador-correo';
 import { KnexBitacoraLecturaRepository } from './infrastructure/repositories/knex-bitacora-lectura-repository';
 import { KnexCatalogoLecturaRepository } from './infrastructure/repositories/knex-catalogo-lectura-repository';
+import { KnexParametroRepository } from './infrastructure/repositories/knex-parametro-repository';
 import { KnexPlantillaRepository } from './infrastructure/repositories/knex-plantilla-repository';
 import { KnexRegistroTicketRepository } from './infrastructure/repositories/knex-registro-ticket-repository';
 import { KnexReporteLecturaRepository } from './infrastructure/repositories/knex-reporte-lectura-repository';
@@ -50,6 +52,7 @@ export interface Container {
   vecinosService: VecinosService;
   catalogosService: CatalogosService;
   camposExtraService: CamposExtraService;
+  parametrosService: ParametrosService;
   dispose(): Promise<void>;
 }
 
@@ -79,6 +82,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
   const transaccion = new KnexTransaccion(db);
   const vecinos = new KnexVecinoRepository(db);
   const catalogo = new KnexCatalogoLecturaRepository(db);
+  const parametros = new ParametrosService(new KnexParametroRepository(db));
   const correo = new EnvioCorreo(new KnexPlantillaRepository(db), enviadorCorreo, (mensaje) => console.error(mensaje));
   return {
     port: env.PORT,
@@ -106,12 +110,14 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
       catalogo,
       vecinos,
       correo,
+      parametros,
       clock,
       env.APP_URL,
     ),
     vecinosService: new VecinosService(vecinos, transaccion, correo, tokens, clock, env.APP_URL),
     catalogosService: new CatalogosService(catalogo),
     camposExtraService: new CamposExtraService(transaccion),
+    parametrosService: parametros,
     dispose: () => db.destroy(),
   };
 }

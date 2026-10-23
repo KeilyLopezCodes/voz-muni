@@ -295,10 +295,16 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | calendario\_laboral | fecha, es\_habil, descripcion |
 | bitacora | id, usuario\_id, accion, entidad, entidad\_id, detalle (jsonb), ip, creado\_en, dependencia\_id (para la bitácora por dependencia; nulo en acciones sin dependencia) |
 | plantillas\_notificacion | id, clave (única), asunto, cuerpo\_texto, cuerpo\_html, actualizado\_en |
+| parametros | clave (PK), valor (jsonb), actualizado\_en: parámetros municipales que configura el administrador, como `limites_municipio` |
 | correlativos | anio (PK), ultimo: último correlativo del año (en America/Guatemala) para el número Q-AAAA-NNNNNN |
 | restablecimientos | id, usuario\_id, token\_hash (SHA-256 del token, único), tipo (recuperacion, invitacion), expira\_en, usado\_en, invalidado\_en, creado\_en |
 
 Índices clave: `tickets(estado, dependencia_id)`, `tickets(asignado_a, estado)`, `tickets(vence_resolucion)` para las tareas de SLA y `tickets(numero)` para la consulta pública.
+
+Ubicación de la queja (RF-10):
+
+- `tickets.lat` y `tickets.lng` van juntas o ninguna (CHECK `tickets_ubicacion_completa`).
+- Solo se aceptan si caen dentro de la caja del municipio, guardada en `parametros` con la clave `limites_municipio` y la forma `{ latMin, latMax, lngMin, lngMax }`. Sin esa caja configurada no se aceptan coordenadas.
 
 Campos adicionales por categoría (RF-09):
 
@@ -335,5 +341,7 @@ Campos adicionales por categoría (RF-09):
 | POST /api/v1/admin/usuarios/:id/desbloqueo | Quitar el bloqueo por intentos fallidos | Admin |
 | GET /api/v1/categorias | Categorías activas (con dependencia activa) y sus campos adicionales, para el formulario | Vecino, Receptor, Supervisor |
 | GET /api/v1/zonas | Zonas para el formulario | Vecino, Receptor, Supervisor |
+| GET /api/v1/parametros/limites-municipio | Caja geográfica del municipio para el mapa del formulario | Vecino, Receptor, Supervisor |
+| PUT /api/v1/admin/parametros/limites-municipio | Configurar la caja geográfica del municipio | Admin |
 | PUT /api/v1/admin/categorias/:id/campos-extra | Reemplazar los campos adicionales de una categoría | Admin |
 | /api/v1/admin/\* | CRUD de catálogos | Admin |

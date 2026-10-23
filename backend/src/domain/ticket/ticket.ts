@@ -1,5 +1,6 @@
 import { InvalidTransitionError } from '../errors/invalid-transition-error';
 import { ReglaDeNegocioError } from '../errors/regla-de-negocio-error';
+import type { Ubicacion } from '../ubicacion/limites-municipio';
 import { CANALES, type Canal } from './canal';
 import type { ContextoTransicion } from './contexto-transicion';
 import { esFinal, type EstadoTicket } from './estado-ticket';
@@ -34,6 +35,7 @@ export interface DatosRegistro {
   titulo: string;
   descripcion: string;
   direccion: string;
+  ubicacion?: Ubicacion | null; // ya validada contra los límites del municipio (SPEC 15)
 }
 
 export interface TicketRegistrado {

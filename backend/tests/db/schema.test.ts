@@ -137,6 +137,11 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['creado_en', 'timestamp with time zone'],
     ['dependencia_id', 'bigint'],
   ],
+  parametros: [
+    ['clave', 'text'],
+    ['valor', 'jsonb'],
+    ['actualizado_en', 'timestamp with time zone'],
+  ],
   correlativos: [
     ['anio', 'smallint'],
     ['ultimo', 'integer'],
@@ -299,6 +304,19 @@ describe('Esquema de base de datos', () => {
       }));
   });
 
+  describe('parametros', () => {
+    it('la migración no carga limites_municipio', async () => {
+      expect(await db('parametros').select('clave')).toEqual([]);
+    });
+
+    it('rechaza una clave con mayúsculas', () =>
+      withRollback(async (trx) => {
+        await expect(trx('parametros').insert({ clave: 'LimitesMunicipio', valor: {} })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }));
+  });
+
   describe('correlativos', () => {
     it('rechaza ultimo = 1000000', () =>
       withRollback(async (trx) => {
@@ -453,6 +471,19 @@ describe('Esquema de base de datos', () => {
         await expect(
           insertTicket(trx, { titulo: 't'.repeat(150), descripcion: 'd'.repeat(4000) }),
         ).resolves.toEqual(expect.any(String));
+      }));
+
+    it('lat y lng van juntas o ninguna (tickets_ubicacion_completa)', () =>
+      withRollback(async (trx) => {
+        await expect(insertTicket(trx, { lat: 14.6 })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'tickets_ubicacion_completa',
+        });
+      }));
+
+    it('acepta un ticket con ambas coordenadas', () =>
+      withRollback(async (trx) => {
+        await expect(insertTicket(trx, { lat: 14.6, lng: -90.5 })).resolves.toEqual(expect.any(String));
       }));
 
     it('rechaza un canal fuera de la lista', () =>
@@ -680,7 +711,7 @@ describe('Esquema de base de datos', () => {
         .where({ table_schema: 'public' })
         .whereIn('table_name', Object.keys(expectedColumns));
       expect(tables).toEqual([]);
-      expect(Object.keys(expectedColumns)).toHaveLength(18);
+      expect(Object.keys(expectedColumns)).toHaveLength(19);
 
       const tipos = await db('pg_type').select('typname').where({ typname: 'estado_ticket' });
       expect(tipos).toEqual([]);

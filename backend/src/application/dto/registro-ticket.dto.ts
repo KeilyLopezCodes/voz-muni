@@ -10,6 +10,8 @@ export interface DatosRegistroTicket {
   solicitanteId?: number;
   canal?: Canal;
   datosExtra?: unknown; // se valida contra los campos de la categoría (SPEC 14)
+  lat?: number; // juntas o ninguna, dentro de los límites del municipio (SPEC 15)
+  lng?: number;
 }
 
 export interface TicketCreadoDto {

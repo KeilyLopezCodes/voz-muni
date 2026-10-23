@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { CANALES } from '../../domain/ticket/canal';
 
-// strict(): lat, lng, prioridad, estado y cualquier otro campo responden VALIDACION.
+// strict(): prioridad, estado y cualquier otro campo responden VALIDACION.
+// lat y lng deben ser números JSON (un string responde VALIDACION); sus reglas las aplica el dominio (SPEC 15).
 // datosExtra lo valida el dominio contra los campos de la categoría (DATOS_EXTRA_INVALIDOS, SPEC 14).
 // Los rangos de título, descripción y dirección los valida el dominio (TITULO_INVALIDO, …); aquí solo
 // se pone un tope contra cuerpos enormes. Quién envía solicitanteId y canal lo decide el servicio según el alcance.
@@ -15,5 +16,7 @@ export const registroTicketSchema = z
     solicitanteId: z.number().int().positive().optional(),
     canal: z.enum(CANALES).optional(),
     datosExtra: z.unknown().optional(),
+    lat: z.number().optional(),
+    lng: z.number().optional(),
   })
   .strict();

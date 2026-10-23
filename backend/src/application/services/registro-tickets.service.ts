@@ -6,10 +6,12 @@ import type { RegistroTicketRepository } from '../../domain/repositories/registr
 import type { VecinoRepository } from '../../domain/repositories/vecino-repository';
 import { type Canal, CANALES_INTERNOS } from '../../domain/ticket/canal';
 import { Ticket } from '../../domain/ticket/ticket';
+import { validarUbicacion } from '../../domain/ubicacion/limites-municipio';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { DatosRegistroTicket, TicketCreadoDto } from '../dto/registro-ticket.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 import type { EnvioCorreo } from './envio-correo';
+import type { ParametrosService } from './parametros.service';
 
 // Registro de quejas (RF-06, RF-08). El alcance de tickets.crear decide quién es el solicitante y el canal.
 export class RegistroTicketsService {
@@ -18,6 +20,7 @@ export class RegistroTicketsService {
     private readonly catalogo: CatalogoLecturaRepository,
     private readonly vecinos: VecinoRepository,
     private readonly correo: EnvioCorreo,
+    private readonly parametros: ParametrosService,
     private readonly clock: Clock,
     private readonly appUrl: string, // APP_URL, sin barra final
   ) {}
@@ -36,6 +39,10 @@ export class RegistroTicketsService {
       if (!(await this.catalogo.zonaExiste(datos.zonaId))) {
         throw new ErrorDeAplicacion('ZONA_INVALIDA', `La zona ${datos.zonaId} no existe`);
       }
+      // Los límites solo se leen si vino alguna coordenada; sin coordenadas la queja se registra igual.
+      const conCoordenadas = datos.lat !== undefined || datos.lng !== undefined;
+      const limites = conCoordenadas ? await this.parametros.obtenerLimites() : null;
+      const ubicacion = validarUbicacion(limites, datos.lat, datos.lng);
 
       const ahora = this.clock.now();
       // registrado_por siempre es el usuario autenticado (SPEC 11): el vecino para sí, o el receptor de ventanilla.
@@ -49,6 +56,7 @@ export class RegistroTicketsService {
           titulo: datos.titulo,
           descripcion: datos.descripcion,
           direccion: datos.direccion,
+          ubicacion,
         },
         { actorId: usuario.id, ahora },
       );
