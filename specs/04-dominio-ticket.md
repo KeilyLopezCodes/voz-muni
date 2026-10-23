@@ -1,6 +1,6 @@
 # SPEC 04 — Dominio del ticket: estados y transiciones
 
-> **Estado:** Borrador
+> **Estado:**  Aprobado
 > **Depende de:** SPEC 01
 > **Fecha:** 2026-10-22
 > **Objetivo:** Modelar en `domain/ticket` una entidad `Ticket` inmutable que aplica la máquina de estados de la sección 3 del documento de definición, con sus reglas de datos obligatorios, sin depender de Express ni de la base de datos.
