@@ -1,5 +1,7 @@
 import request from 'supertest';
 import { createApp } from '../../src/app';
+import type { AuthService } from '../../src/application/services/auth.service';
+import type { AutorizacionService } from '../../src/application/services/autorizacion.service';
 import { HealthService } from '../../src/application/services/health.service';
 import type { Container } from '../../src/container';
 import type { Clock } from '../../src/domain/health/clock';
@@ -13,7 +15,11 @@ function buildTestContainer(databaseUp: boolean): Container {
   const databaseHealthCheck: DatabaseHealthCheck = { isUp: async () => databaseUp };
   return {
     port: 0,
+    loginLimitePorVentana: 10,
     healthService: new HealthService(clock, databaseHealthCheck),
+    // /health no los usa.
+    authService: {} as AuthService,
+    autorizacionService: {} as AutorizacionService,
     dispose: async () => {},
   };
 }

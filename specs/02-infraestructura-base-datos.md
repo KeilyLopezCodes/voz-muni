@@ -233,7 +233,7 @@ Durante la definición de esta spec se encontró que la sección 6 del documento
 | RF-41 | Catálogo de motivos de rechazo |
 | RF-33 | Tabla de plantillas de notificación |
 | Sección 3 | Parámetros configurables (plazo de confirmación de 5 días hábiles) |
-| RF-01, RF-02, RF-03, RNF-09 | Verificación de correo, tokens de renovación, recuperación de contraseña e intentos fallidos de inicio de sesión |
+| RF-01, RF-03 | Verificación de correo y recuperación de contraseña. Los tokens de renovación y los intentos fallidos de inicio de sesión (RF-02, RNF-09) quedan resueltos en SPEC 08. |
 
 ## Riesgos
 

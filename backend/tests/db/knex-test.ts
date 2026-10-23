@@ -10,6 +10,18 @@ if (!databaseUrlTest) {
 // Migraciones y seeds compilados: se prueba el mismo artefacto que corre en producción.
 const distDatabaseDir = path.resolve(__dirname, '../../dist/infrastructure/database');
 
+// Deja la base sin esquema. Antes borra sesiones y usuarios, porque el down de 0006_roles
+// falla a propósito si algún usuario tiene uno de los 6 roles (ON DELETE RESTRICT).
+export async function reiniciarEsquema(db: Knex): Promise<void> {
+  if (await db.schema.hasTable('sesiones')) {
+    await db('sesiones').delete();
+  }
+  if (await db.schema.hasTable('usuarios')) {
+    await db('usuarios').delete();
+  }
+  await db.migrate.rollback(undefined, true);
+}
+
 export function createTestKnex(): Knex {
   const config = buildKnexConfig(databaseUrlTest!);
   return knex({

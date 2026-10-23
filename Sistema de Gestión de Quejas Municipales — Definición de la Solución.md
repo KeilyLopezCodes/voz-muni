@@ -279,7 +279,8 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 
 | Tabla | Columnas principales |
 | --- | --- |
-| usuarios | id, nombre, email, telefono, dpi, password\_hash, rol\_id, dependencia\_id, activo |
+| usuarios | id, nombre, email, telefono, dpi, password\_hash, rol\_id, dependencia\_id, activo, intentos\_fallidos, bloqueado\_hasta |
+| sesiones | id, usuario\_id, token\_hash (SHA-256 del token de renovación, único), expira\_en, revocada\_en, reemplazada\_por, creado\_en |
 | roles | id, nombre, permisos (jsonb) |
 | dependencias | id, nombre, coordinador\_id, activa |
 | categorias | id, nombre, dependencia\_id, campos\_extra (jsonb), activa |
@@ -300,7 +301,8 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 
 | Método y ruta | Uso | Roles |
 | --- | --- | --- |
-| POST /api/v1/auth/register, /login, /refresh | Registro y sesión | Público |
+| POST /api/v1/auth/register, /login, /refresh, /logout | Registro, inicio, renovación y cierre de sesión | Público |
+| GET /api/v1/auth/sesion | Usuario de la sesión y permisos de su rol | Autenticado |
 | GET /api/v1/public/tickets/:numero | Consulta de estado con dato de contacto | Público |
 | POST /api/v1/tickets | Registrar queja | Vecino, Receptor, Supervisor |
 | GET /api/v1/tickets | Listado filtrado y paginado, limitado por rol | Internos, Vecino |

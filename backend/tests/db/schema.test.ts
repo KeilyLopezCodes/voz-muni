@@ -1,5 +1,5 @@
 import type { Knex } from 'knex';
-import { createTestKnex } from './knex-test';
+import { createTestKnex, reiniciarEsquema } from './knex-test';
 
 // Columnas esperadas por tabla, en orden, con su tipo en information_schema.
 const expectedColumns: Record<string, [string, string][]> = {
@@ -48,6 +48,17 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['rol_id', 'bigint'],
     ['dependencia_id', 'bigint'],
     ['activo', 'boolean'],
+    ['intentos_fallidos', 'integer'],
+    ['bloqueado_hasta', 'timestamp with time zone'],
+  ],
+  sesiones: [
+    ['id', 'bigint'],
+    ['usuario_id', 'bigint'],
+    ['token_hash', 'text'],
+    ['expira_en', 'timestamp with time zone'],
+    ['revocada_en', 'timestamp with time zone'],
+    ['reemplazada_por', 'bigint'],
+    ['creado_en', 'timestamp with time zone'],
   ],
   tickets: [
     ['id', 'bigint'],
@@ -134,7 +145,7 @@ describe('Esquema de base de datos', () => {
 
   beforeAll(async () => {
     db = createTestKnex();
-    await db.migrate.rollback(undefined, true);
+    await reiniciarEsquema(db);
     await db.migrate.latest();
   });
 
@@ -215,6 +226,34 @@ describe('Esquema de base de datos', () => {
         await expect(trx('dependencias').where({ id: dependencia.id }).delete()).rejects.toMatchObject({
           code: FOREIGN_KEY_VIOLATION,
         });
+      }));
+  });
+
+  describe('autenticación', () => {
+    it('rechaza intentos_fallidos negativo', () =>
+      withRollback(async (trx) => {
+        const rolId = await insertRol(trx);
+        await expect(
+          trx('usuarios').insert({ nombre: 'Ana', email: 'ana@x.gt', rol_id: rolId, intentos_fallidos: -1 }),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+
+    it('un usuario nuevo empieza sin intentos fallidos ni bloqueo', () =>
+      withRollback(async (trx) => {
+        const rolId = await insertRol(trx);
+        const [usuario] = await trx('usuarios')
+          .insert({ nombre: 'Ana', email: 'ana@x.gt', rol_id: rolId })
+          .returning(['intentos_fallidos', 'bloqueado_hasta']);
+        expect(usuario).toEqual({ intentos_fallidos: 0, bloqueado_hasta: null });
+      }));
+
+    it('dos sesiones no pueden tener el mismo token_hash', () =>
+      withRollback(async (trx) => {
+        const rolId = await insertRol(trx);
+        const [usuario] = await trx('usuarios').insert({ nombre: 'Ana', email: 'ana@x.gt', rol_id: rolId }).returning('id');
+        const sesion = { usuario_id: usuario.id, token_hash: 'a'.repeat(64), expira_en: '2026-10-29T00:00:00Z' };
+        await trx('sesiones').insert(sesion);
+        await expect(trx('sesiones').insert(sesion)).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
       }));
   });
 
@@ -318,12 +357,69 @@ describe('Esquema de base de datos', () => {
       }));
   });
 
-  describe('seed 01_roles', () => {
-    it('ejecutado dos veces deja exactamente los 6 roles', async () => {
-      await db.seed.run();
-      await db.seed.run();
-      const roles: { nombre: string }[] = await db('roles').select('nombre').orderBy('id');
-      expect(roles.map((rol) => rol.nombre)).toEqual([
+  describe('migración 0006_roles', () => {
+    // Matriz de SPEC 08, escrita aparte de la migración para que la prueba no la copie.
+    const MATRIZ: Record<string, Record<string, string>> = {
+      vecino: {
+        'tickets.crear': 'propia',
+        'tickets.ver': 'propia',
+        'tickets.cambiar_estado': 'propia',
+        'comentarios.publico': 'si',
+      },
+      receptor: {
+        'tickets.crear': 'a_nombre_de_vecino',
+        'tickets.ver': 'registradas',
+        'tickets.clasificar': 'todas',
+        'comentarios.publico': 'si',
+        'comentarios.interno': 'si',
+      },
+      tecnico: {
+        'tickets.ver': 'asignadas',
+        'tickets.trasladar': 'solicitar',
+        'tickets.cambiar_estado': 'asignadas',
+        'comentarios.publico': 'si',
+        'comentarios.interno': 'si',
+        'reportes.ver': 'propia',
+      },
+      coordinador: {
+        'tickets.ver': 'dependencia',
+        'tickets.clasificar': 'todas',
+        'tickets.asignar': 'dependencia',
+        'tickets.trasladar': 'solicitar',
+        'tickets.cambiar_estado': 'dependencia',
+        'comentarios.publico': 'si',
+        'comentarios.interno': 'si',
+        'reportes.ver': 'dependencia',
+        'bitacora.ver': 'dependencia',
+      },
+      supervisor: {
+        'tickets.crear': 'todas',
+        'tickets.ver': 'todas',
+        'tickets.clasificar': 'todas',
+        'tickets.asignar': 'todas',
+        'tickets.trasladar': 'todas',
+        'tickets.cambiar_estado': 'todas',
+        'comentarios.publico': 'si',
+        'comentarios.interno': 'si',
+        'reportes.ver': 'todas',
+        'bitacora.ver': 'todas',
+      },
+      administrador: {
+        'tickets.ver': 'todas',
+        'reportes.ver': 'todas',
+        'admin.catalogos': 'si',
+        'bitacora.ver': 'todas',
+      },
+    };
+
+    async function permisosPorRol(): Promise<Record<string, unknown>> {
+      const roles: { nombre: string; permisos: unknown }[] = await db('roles').select('nombre', 'permisos').orderBy('id');
+      return Object.fromEntries(roles.map((rol) => [rol.nombre, rol.permisos]));
+    }
+
+    it('deja exactamente los 6 roles con la matriz de permisos', async () => {
+      expect(await permisosPorRol()).toEqual(MATRIZ);
+      expect(Object.keys(await permisosPorRol())).toEqual([
         'vecino',
         'receptor',
         'tecnico',
@@ -331,6 +427,29 @@ describe('Esquema de base de datos', () => {
         'supervisor',
         'administrador',
       ]);
+    });
+
+    it('carga la matriz en roles que ya existían con permisos vacíos, sin duplicarlos', async () => {
+      await db.migrate.down();
+      await db('roles').insert(Object.keys(MATRIZ).map((nombre) => ({ nombre, permisos: {} })));
+      await db.migrate.latest();
+
+      expect(await permisosPorRol()).toEqual(MATRIZ);
+    });
+
+    it('el down falla si un usuario tiene uno de esos roles', async () => {
+      const { id: rolId } = await db('roles').where({ nombre: 'vecino' }).first('id');
+      const [usuario] = await db('usuarios').insert({ nombre: 'Vecino', telefono: '55550000', rol_id: rolId }).returning('id');
+      try {
+        await expect(db.migrate.down()).rejects.toMatchObject({ code: FOREIGN_KEY_VIOLATION });
+        expect(await permisosPorRol()).toEqual(MATRIZ);
+      } finally {
+        await db('usuarios').where({ id: usuario.id }).delete();
+      }
+    });
+
+    it('seed.run() termina sin error con la carpeta seeds/ vacía', async () => {
+      await expect(db.seed.run()).resolves.toEqual([[]]);
     });
   });
 
@@ -344,7 +463,7 @@ describe('Esquema de base de datos', () => {
         .where({ table_schema: 'public' })
         .whereIn('table_name', Object.keys(expectedColumns));
       expect(tables).toEqual([]);
-      expect(Object.keys(expectedColumns)).toHaveLength(14);
+      expect(Object.keys(expectedColumns)).toHaveLength(15);
 
       const tipos = await db('pg_type').select('typname').where({ typname: 'estado_ticket' });
       expect(tipos).toEqual([]);

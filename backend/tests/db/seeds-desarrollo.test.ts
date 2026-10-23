@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { Knex } from 'knex';
-import { createTestKnex } from './knex-test';
+import { createTestKnex, reiniciarEsquema } from './knex-test';
 
 // Seeds de desarrollo compilados, como los ejecuta `npm run seed:dev`.
 const seedsDesarrolloDir = path.resolve(__dirname, '../../dist/infrastructure/database/seeds-desarrollo');
@@ -10,7 +10,7 @@ describe('Seeds de desarrollo (seed:dev)', () => {
 
   beforeAll(async () => {
     db = createTestKnex();
-    await db.migrate.rollback(undefined, true);
+    await reiniciarEsquema(db);
     await db.migrate.latest();
     // Dos ejecuciones: la segunda no debe fallar ni duplicar filas.
     await db.seed.run({ directory: seedsDesarrolloDir });
