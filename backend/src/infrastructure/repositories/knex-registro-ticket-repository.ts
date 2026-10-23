@@ -40,9 +40,11 @@ export class KnexRegistroTicketRepository implements RegistroTicketRepository {
           titulo: datos.titulo,
           descripcion: datos.descripcion,
           direccion: datos.direccion,
+          lat: datos.ubicacion?.lat ?? null,
+          lng: datos.ubicacion?.lng ?? null,
           estado,
           creado_en: creadoEn,
-          // dependencia, técnico, prioridad, ubicación y vencimientos se definen después (RF-10, RF-12, RF-26).
+          // dependencia, técnico, prioridad y vencimientos se definen después (RF-12, RF-26).
           datos_extra: JSON.stringify(datosExtra),
           escalado: false,
         })

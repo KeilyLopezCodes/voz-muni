@@ -231,8 +231,9 @@ describe('Campos adicionales por categoría (SPEC 14)', () => {
       ]);
     });
 
-    it('lat, lng, prioridad y estado siguen rechazados', async () => {
-      for (const extra of [{ lat: 14.6 }, { lng: -90.5 }, { prioridad: 'alta' }, { estado: 'asignada' }]) {
+    // lat y lng se aceptan desde SPEC 15; prioridad y estado siguen rechazados.
+    it('prioridad y estado siguen rechazados', async () => {
+      for (const extra of [{ prioridad: 'alta' }, { estado: 'asignada' }]) {
         const res = await request(app)
           .post('/api/v1/tickets')
           .set('Authorization', `Bearer ${tokens.vecino}`)

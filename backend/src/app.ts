@@ -3,6 +3,7 @@ import type { Container } from './container';
 import { AuthController } from './presentation/controllers/auth.controller';
 import { CamposExtraController } from './presentation/controllers/campos-extra.controller';
 import { CatalogosController } from './presentation/controllers/catalogos.controller';
+import { ParametrosController } from './presentation/controllers/parametros.controller';
 import { HealthController } from './presentation/controllers/health.controller';
 import { RecuperacionController } from './presentation/controllers/recuperacion.controller';
 import { TicketsController } from './presentation/controllers/tickets.controller';
@@ -15,6 +16,7 @@ import { manejadorErrores, rutaNoEncontrada } from './presentation/middlewares/m
 import { authRoutes } from './presentation/routes/auth.routes';
 import { camposExtraRoutes } from './presentation/routes/campos-extra.routes';
 import { catalogosRoutes } from './presentation/routes/catalogos.routes';
+import { parametrosRoutes } from './presentation/routes/parametros.routes';
 import { healthRoutes } from './presentation/routes/health.routes';
 import { recuperacionRoutes } from './presentation/routes/recuperacion.routes';
 import { ticketsRoutes } from './presentation/routes/tickets.routes';
@@ -59,6 +61,10 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1/admin/categorias',
     camposExtraRoutes(new CamposExtraController(container.camposExtraService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1',
+    parametrosRoutes(new ParametrosController(container.parametrosService), autenticar(container.autorizacionService)),
   );
   app.use('/api/v1', rutaNoEncontrada);
   app.use(manejadorErrores);

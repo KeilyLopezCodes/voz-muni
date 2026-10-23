@@ -1,6 +1,8 @@
 import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { EnvioCorreo } from '../../../src/application/services/envio-correo';
+import { ParametrosService } from '../../../src/application/services/parametros.service';
 import { RegistroTicketsService } from '../../../src/application/services/registro-tickets.service';
+import type { ParametroRepository } from '../../../src/domain/repositories/parametro-repository';
 import type { CatalogoLecturaRepository } from '../../../src/domain/repositories/catalogo-lectura-repository';
 import type { CampoExtra } from '../../../src/domain/categorias/campo-extra';
 import type { DatosExtra } from '../../../src/domain/categorias/datos-extra';
@@ -93,8 +95,23 @@ const cuerpo = {
   direccion: '5a avenida 3-20, zona 1',
 };
 
+class ParametrosEnMemoria implements ParametroRepository {
+  readonly valores = new Map<string, unknown>();
+  lecturas = 0;
+
+  async obtener(clave: string): Promise<unknown | null> {
+    this.lecturas += 1;
+    return this.valores.get(clave) ?? null;
+  }
+
+  async guardar(clave: string, valor: unknown): Promise<void> {
+    this.valores.set(clave, valor);
+  }
+}
+
 function crear() {
   const registros = new RegistrosEnMemoria();
+  const parametros = new ParametrosEnMemoria();
   const catalogo = new CatalogoFalso();
   const enviador = new EnviadorEnMemoria();
   const errores: string[] = [];
@@ -104,10 +121,11 @@ function crear() {
     catalogo,
     new VecinosEnMemoria([VECINO, SIN_CORREO]),
     new EnvioCorreo(new PlantillasEnMemoriaConQueja(), enviador, (mensaje) => errores.push(mensaje)),
+    new ParametrosService(parametros),
     reloj,
     'http://localhost:5173',
   );
-  return { servicio, registros, catalogo, enviador, errores, reloj };
+  return { servicio, registros, catalogo, enviador, errores, reloj, parametros };
 }
 
 // Agrega queja_registrada a las plantillas de prueba.
@@ -286,5 +304,69 @@ describe('RegistroTicketsService.registrar con datosExtra (SPEC 14)', () => {
     await e.servicio.registrar(vecino, 'propia', { ...cuerpo, datosExtra: { contador: '1234', desde: '2026-10-22' } });
 
     expect(e.registros.datosExtra[0]).toMatchObject({ desde: '2026-10-22' });
+  });
+});
+
+describe('RegistroTicketsService.registrar con coordenadas (SPEC 15)', () => {
+  // Caja de prueba: dato de la prueba, no configuración del sistema.
+  const CAJA = { latMin: 14.55, latMax: 14.7, lngMin: -90.6, lngMax: -90.45 };
+
+  it('con límites configurados y un punto dentro guarda las coordenadas redondeadas', async () => {
+    const e = crear();
+    e.parametros.valores.set('limites_municipio', CAJA);
+
+    await e.servicio.registrar(vecino, 'propia', { ...cuerpo, lat: 14.6012345, lng: -90.5 });
+
+    expect(e.registros.registrados[0].datos.ubicacion).toEqual({ lat: 14.601235, lng: -90.5 });
+  });
+
+  it('sin límites y con coordenadas lanza UBICACION_NO_CONFIGURADA y no registra', async () => {
+    const e = crear();
+
+    await expect(e.servicio.registrar(vecino, 'propia', { ...cuerpo, lat: 14.6, lng: -90.5 })).rejects.toMatchObject({
+      name: 'ErrorDeAplicacion',
+      codigo: 'UBICACION_NO_CONFIGURADA',
+    });
+    expect(e.registros.registrados).toEqual([]);
+  });
+
+  it('un punto fuera de la caja → UBICACION_FUERA_DEL_MUNICIPIO, y una sola coordenada → UBICACION_INCOMPLETA', async () => {
+    const e = crear();
+    e.parametros.valores.set('limites_municipio', CAJA);
+
+    await expect(e.servicio.registrar(vecino, 'propia', { ...cuerpo, lat: 15, lng: -90.5 })).rejects.toMatchObject({
+      codigo: 'UBICACION_FUERA_DEL_MUNICIPIO',
+    });
+    await expect(e.servicio.registrar(vecino, 'propia', { ...cuerpo, lat: 14.6 })).rejects.toMatchObject({
+      codigo: 'UBICACION_INCOMPLETA',
+    });
+    expect(e.registros.registrados).toEqual([]);
+  });
+
+  it('sin coordenadas registra igual con o sin límites, y no lee los límites', async () => {
+    const sinLimites = crear();
+    await sinLimites.servicio.registrar(vecino, 'propia', cuerpo);
+    expect(sinLimites.registros.registrados[0].datos.ubicacion).toBeNull();
+    expect(sinLimites.parametros.lecturas).toBe(0);
+
+    const conLimites = crear();
+    conLimites.parametros.valores.set('limites_municipio', CAJA);
+    await conLimites.servicio.registrar(vecino, 'propia', cuerpo);
+    expect(conLimites.registros.registrados[0].datos.ubicacion).toBeNull();
+  });
+
+  it('el receptor también envía coordenadas', async () => {
+    const e = crear();
+    e.parametros.valores.set('limites_municipio', CAJA);
+
+    await e.servicio.registrar(receptor, 'a_nombre_de_vecino', {
+      ...cuerpo,
+      solicitanteId: 10,
+      canal: 'telefono',
+      lat: 14.6,
+      lng: -90.5,
+    });
+
+    expect(e.registros.registrados[0].datos.ubicacion).toEqual({ lat: 14.6, lng: -90.5 });
   });
 });
