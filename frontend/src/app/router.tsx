@@ -11,6 +11,7 @@ import { ConsultaPage } from '../features/tickets/pages/ConsultaPage'
 import { NuevoTicketPage } from '../features/tickets/pages/NuevoTicketPage'
 import { TicketsPage } from '../features/tickets/pages/TicketsPage'
 import { AsignacionPage } from '../features/tickets/asignacion/AsignacionPage'
+import { TrasladosPage } from '../features/tickets/traslados/TrasladosPage'
 import { TriagePage } from '../features/tickets/triage/TriagePage'
 import { inicioPorRol } from '../shared/auth/inicio-por-rol'
 import { RequireRole } from '../shared/auth/RequireRole'
@@ -27,6 +28,7 @@ const PAGINAS: Record<string, ComponentType> = {
   '/tickets/nueva': NuevoTicketPage,
   '/triage': TriagePage,
   '/asignacion': AsignacionPage,
+  '/traslados': TrasladosPage,
   '/reportes': ReportesPage,
   '/admin': AdminPage,
 }

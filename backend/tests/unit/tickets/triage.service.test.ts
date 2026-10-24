@@ -103,6 +103,7 @@ class BandejaFalsa implements TriageLecturaRepository {
       datosExtra: {},
       ubicacion: null,
       solicitanteNombre: 'Ana López',
+      trasladoReciente: null,
       creadoEn: AHORA,
     };
     return { datos: [ticket], pagina, tamano, total: 1 } satisfies Pagina<TicketTriage>;

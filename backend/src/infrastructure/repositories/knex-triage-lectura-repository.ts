@@ -27,6 +27,9 @@ interface FilaTriage {
   lat: string | null;
   lng: string | null;
   solicitante_nombre: string;
+  traslado_origen: string | null;
+  traslado_sugerida: string | null;
+  traslado_motivo: string | null;
   creado_en: Date;
 }
 
@@ -48,8 +51,23 @@ const COLUMNAS = [
   't.lat',
   't.lng',
   'u.nombre as solicitante_nombre',
+  'tr.origen as traslado_origen',
+  'tr.sugerida as traslado_sugerida',
+  'tr.motivo as traslado_motivo',
   't.creado_en',
 ];
+
+// Último traslado aprobado de cada queja (SPEC 21). La bandeja solo muestra nueva y en_revision, que es donde
+// queda una queja después de un traslado.
+const TRASLADO_RECIENTE = `LEFT JOIN LATERAL (
+  SELECT o.nombre AS origen, sg.nombre AS sugerida, st.motivo
+  FROM solicitudes_traslado st
+  JOIN dependencias o ON o.id = st.dependencia_origen_id
+  LEFT JOIN dependencias sg ON sg.id = st.dependencia_sugerida_id
+  WHERE st.ticket_id = t.id AND st.estado = 'aprobada'
+  ORDER BY st.resuelto_en DESC, st.id DESC
+  LIMIT 1
+) tr ON true`;
 
 function aTicketTriage(fila: FilaTriage): TicketTriage {
   return {
@@ -66,6 +84,14 @@ function aTicketTriage(fila: FilaTriage): TicketTriage {
     // El CHECK tickets_ubicacion_completa garantiza que vienen las dos o ninguna.
     ubicacion: fila.lat === null || fila.lng === null ? null : { lat: Number(fila.lat), lng: Number(fila.lng) },
     solicitanteNombre: fila.solicitante_nombre,
+    trasladoReciente:
+      fila.traslado_origen === null
+        ? null
+        : {
+            dependenciaOrigen: fila.traslado_origen,
+            dependenciaSugerida: fila.traslado_sugerida,
+            motivo: fila.traslado_motivo ?? '',
+          },
     creadoEn: fila.creado_en,
   };
 }
@@ -93,6 +119,7 @@ export class KnexTriageLecturaRepository implements TriageLecturaRepository {
       .join('categorias as c', 'c.id', 't.categoria_id')
       .join('zonas as z', 'z.id', 't.zona_id')
       .join('usuarios as u', 'u.id', 't.solicitante_id')
+      .joinRaw(TRASLADO_RECIENTE)
       .select(COLUMNAS)
       .orderBy([
         { column: 't.creado_en', order: 'asc' },

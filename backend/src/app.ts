@@ -10,6 +10,7 @@ import { RecuperacionController } from './presentation/controllers/recuperacion.
 import { RegistroController } from './presentation/controllers/registro.controller';
 import { TicketsController } from './presentation/controllers/tickets.controller';
 import { TransicionesController } from './presentation/controllers/transiciones.controller';
+import { TrasladosController } from './presentation/controllers/traslados.controller';
 import { UsuariosController } from './presentation/controllers/usuarios.controller';
 import { VecinosController } from './presentation/controllers/vecinos.controller';
 import { autenticar } from './presentation/middlewares/autenticar';
@@ -26,6 +27,7 @@ import { recuperacionRoutes } from './presentation/routes/recuperacion.routes';
 import { registroRoutes } from './presentation/routes/registro.routes';
 import { ticketsRoutes } from './presentation/routes/tickets.routes';
 import { transicionesRoutes } from './presentation/routes/transiciones.routes';
+import { trasladosRoutes } from './presentation/routes/traslados.routes';
 import { usuariosRoutes } from './presentation/routes/usuarios.routes';
 import { vecinosRoutes } from './presentation/routes/vecinos.routes';
 
@@ -64,6 +66,10 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1',
     asignacionRoutes(new AsignacionController(container.asignacionService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1',
+    trasladosRoutes(new TrasladosController(container.trasladosService), autenticar(container.autorizacionService)),
   );
   app.use(
     '/api/v1/vecinos',

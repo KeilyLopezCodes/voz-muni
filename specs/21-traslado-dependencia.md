@@ -1,6 +1,6 @@
 # SPEC 21 — Solicitud y aprobación de traslado entre dependencias
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 04, SPEC 08, SPEC 11, SPEC 17, SPEC 19, SPEC 20
 > **Fecha:** 2026-10-22
 > **Objetivo:** Permitir que el técnico asignado o el coordinador soliciten con motivo el traslado de una queja a otra dependencia, que el supervisor la apruebe (la queja vuelve a `en_revision`), la rechace con motivo o la traslade directamente, guardando cada solicitud en la tabla `solicitudes_traslado`, con una bandeja `/traslados` para el supervisor.
@@ -280,22 +280,22 @@ frontend/
 
 ## Criterios de aceptación
 
-- [ ] La sección 6 del documento de definición incluye `solicitudes_traslado` y los 6 endpoints, y el vacío de RF-15 figura como resuelto.
-- [ ] `npm run migrate:latest` crea `solicitudes_traslado`, la base impide una segunda solicitud pendiente para la misma queja, y un rollback completo no deja ninguna de las 21 tablas.
-- [ ] El técnico asignado (sobre sus quejas) y el coordinador (sobre las de su dependencia) crean una solicitud pendiente con motivo y una dependencia sugerida opcional, solo si la queja está en `asignada` o `en_proceso`. La queja no cambia mientras está pendiente.
-- [ ] Una segunda solicitud para la misma queja con otra pendiente responde `409 TRASLADO_PENDIENTE`.
-- [ ] El supervisor ve las solicitudes en `GET /api/v1/traslados`, de la más antigua primero, filtradas por estado y paginadas, y ningún otro rol puede verlas.
-- [ ] Aprobar deja la solicitud `aprobada` y la queja en `en_revision`, con `dependencia_id` y `asignado_a` en `null` y una fila de `ticket_historial` con el motivo de la solicitud.
-- [ ] Una queja trasladada aparece en `GET /tickets/triage` con `trasladoReciente`, que muestra el origen, la sugerencia y el motivo.
-- [ ] Aprobar una solicitud cuya queja ya no está en `asignada` ni `en_proceso` la deja `sin_efecto` y responde `409 TRASLADO_SIN_EFECTO`, y la queja no cambia.
-- [ ] Rechazar exige motivo y no cambia la queja. Retirar solo lo puede hacer quien la solicitó. Resolver una solicitud que no está pendiente responde `409 TRASLADO_YA_RESUELTO`.
-- [ ] El supervisor traslada directamente una queja en `asignada` o `en_proceso`: queda en `en_revision`, con una solicitud `aprobada` a su nombre.
-- [ ] Un usuario fuera del alcance de la queja recibe `404`, y los roles sin `tickets.trasladar` reciben `403`.
-- [ ] En el frontend, solo el supervisor ve "Traslados" en el menú. `/traslados` permite aprobar (con confirmación) y rechazar (con motivo).
-- [ ] En `/asignacion`, el coordinador puede solicitar un traslado con motivo y sugerencia, y el supervisor puede trasladar directamente.
-- [ ] A 360 px de ancho, las pantallas nuevas y los paneles modificados no producen scroll horizontal, y ningún texto de la interfaz está fijo en un componente.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta `solicitudes_traslado`, sus estados y quién decide.
+- [x] La sección 6 del documento de definición incluye `solicitudes_traslado` y los 6 endpoints, y el vacío de RF-15 figura como resuelto.
+- [x] `npm run migrate:latest` crea `solicitudes_traslado`, la base impide una segunda solicitud pendiente para la misma queja, y un rollback completo no deja ninguna de las 21 tablas.
+- [x] El técnico asignado (sobre sus quejas) y el coordinador (sobre las de su dependencia) crean una solicitud pendiente con motivo y una dependencia sugerida opcional, solo si la queja está en `asignada` o `en_proceso`. La queja no cambia mientras está pendiente.
+- [x] Una segunda solicitud para la misma queja con otra pendiente responde `409 TRASLADO_PENDIENTE`.
+- [x] El supervisor ve las solicitudes en `GET /api/v1/traslados`, de la más antigua primero, filtradas por estado y paginadas, y ningún otro rol puede verlas.
+- [x] Aprobar deja la solicitud `aprobada` y la queja en `en_revision`, con `dependencia_id` y `asignado_a` en `null` y una fila de `ticket_historial` con el motivo de la solicitud.
+- [x] Una queja trasladada aparece en `GET /tickets/triage` con `trasladoReciente`, que muestra el origen, la sugerencia y el motivo.
+- [x] Aprobar una solicitud cuya queja ya no está en `asignada` ni `en_proceso` la deja `sin_efecto` y responde `409 TRASLADO_SIN_EFECTO`, y la queja no cambia.
+- [x] Rechazar exige motivo y no cambia la queja. Retirar solo lo puede hacer quien la solicitó. Resolver una solicitud que no está pendiente responde `409 TRASLADO_YA_RESUELTO`.
+- [x] El supervisor traslada directamente una queja en `asignada` o `en_proceso`: queda en `en_revision`, con una solicitud `aprobada` a su nombre.
+- [x] Un usuario fuera del alcance de la queja recibe `404`, y los roles sin `tickets.trasladar` reciben `403`.
+- [x] En el frontend, solo el supervisor ve "Traslados" en el menú. `/traslados` permite aprobar (con confirmación) y rechazar (con motivo).
+- [x] En `/asignacion`, el coordinador puede solicitar un traslado con motivo y sugerencia, y el supervisor puede trasladar directamente.
+- [ ] A 360 px de ancho, las pantallas nuevas y los paneles modificados no producen scroll horizontal, y ningún texto de la interfaz está fijo en un componente. (pendiente de comprobar a 360 px en el navegador: Chromium de Playwright no está instalado; los textos sí están todos en las traducciones)
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta `solicitudes_traslado`, sus estados y quién decide.
 
 ## Decisiones
 

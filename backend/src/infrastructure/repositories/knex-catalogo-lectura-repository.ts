@@ -3,6 +3,7 @@ import type { CampoExtra } from '../../domain/categorias/campo-extra';
 import type {
   CatalogoLecturaRepository,
   CategoriaConDependencia,
+  DependenciaActiva,
   Zona,
 } from '../../domain/repositories/catalogo-lectura-repository';
 
@@ -39,6 +40,14 @@ export class KnexCatalogoLecturaRepository implements CatalogoLecturaRepository 
       camposExtra: fila.campos_extra,
       dependencia: { id: Number(fila.dependencia_id), nombre: fila.dependencia_nombre },
     }));
+  }
+
+  async listarDependenciasActivas(): Promise<DependenciaActiva[]> {
+    const filas: { id: string; nombre: string }[] = await this.db('dependencias')
+      .where({ activa: true })
+      .select('id', 'nombre')
+      .orderBy([{ column: 'nombre' }, { column: 'id' }]);
+    return filas.map((fila) => ({ id: Number(fila.id), nombre: fila.nombre }));
   }
 
   async listarZonas(): Promise<Zona[]> {

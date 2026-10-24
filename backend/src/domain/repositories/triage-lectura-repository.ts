@@ -20,6 +20,8 @@ export interface TicketTriage {
   datosExtra: DatosExtra;
   ubicacion: { lat: number; lng: number } | null;
   solicitanteNombre: string;
+  // El último traslado aprobado (SPEC 21), para que el supervisor vea de dónde viene y a dónde se sugirió.
+  trasladoReciente: { dependenciaOrigen: string; dependenciaSugerida: string | null; motivo: string } | null;
   creadoEn: Date;
 }
 

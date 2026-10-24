@@ -228,7 +228,7 @@ Durante la definición de esta spec se encontró que la sección 6 del documento
 | --- | --- |
 | RF-06 | Resuelto en SPEC 12: `tickets.titulo` y `tickets.descripcion`. |
 | RF-08 | Resuelto en SPEC 12: tabla `correlativos` con el correlativo anual de `Q-AAAA-NNNNNN`. |
-| RF-15 | Tabla de solicitudes de traslado con aprobación |
+| RF-15 | Resuelto en SPEC 21: tabla `solicitudes_traslado` con sus estados y como máximo una pendiente por queja. |
 | RF-17 | Referencia de la queja duplicada a la original |
 | RF-41 | Catálogo de motivos de rechazo |
 | RF-33 | Administración de las plantillas de notificación. La tabla `plantillas_notificacion` ya existe desde SPEC 09. |

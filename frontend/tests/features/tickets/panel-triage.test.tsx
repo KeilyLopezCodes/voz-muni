@@ -157,3 +157,21 @@ describe('PanelTriage', () => {
     expect(onTerminar).not.toHaveBeenCalled()
   })
 })
+
+describe('PanelTriage: traslado reciente (SPEC 21)', () => {
+  it('muestra de dónde viene, la sugerencia y el motivo del último traslado aprobado', () => {
+    montar(
+      queja({
+        estado: 'en_revision',
+        trasladoReciente: { dependenciaOrigen: 'Dirección de Obras', dependenciaSugerida: 'Agua Potable', motivo: 'Es una fuga' },
+      }),
+    )
+
+    expect(screen.getByText('Trasladada desde Dirección de Obras. Sugerencia: Agua Potable. Motivo: Es una fuga')).toBeInTheDocument()
+  })
+
+  it('sin sugerencia dice "ninguna", y sin traslado no muestra nada', () => {
+    montar(queja({ estado: 'en_revision', trasladoReciente: { dependenciaOrigen: 'Obras', dependenciaSugerida: null, motivo: 'X' } }))
+    expect(screen.getByText('Trasladada desde Obras. Sugerencia: ninguna. Motivo: X')).toBeInTheDocument()
+  })
+})

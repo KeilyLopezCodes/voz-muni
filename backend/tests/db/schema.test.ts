@@ -104,6 +104,19 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['motivo', 'text'],
     ['creado_en', 'timestamp with time zone'],
   ],
+  solicitudes_traslado: [
+    ['id', 'bigint'],
+    ['ticket_id', 'bigint'],
+    ['solicitado_por', 'bigint'],
+    ['dependencia_origen_id', 'bigint'],
+    ['dependencia_sugerida_id', 'bigint'],
+    ['motivo', 'text'],
+    ['estado', 'text'],
+    ['resuelto_por', 'bigint'],
+    ['motivo_resolucion', 'text'],
+    ['creado_en', 'timestamp with time zone'],
+    ['resuelto_en', 'timestamp with time zone'],
+  ],
   comentarios: [
     ['id', 'bigint'],
     ['ticket_id', 'bigint'],
@@ -737,6 +750,69 @@ describe('Esquema de base de datos', () => {
       }));
   });
 
+  describe('solicitudes_traslado (0018)', () => {
+    // Un ticket con su dependencia y el usuario solicitante; devuelve los ids.
+    async function preparar(trx: Knex.Transaction) {
+      const ticketId = await insertTicket(trx);
+      const { categoria_id: categoriaId, solicitante_id: usuarioId } = await trx('tickets').where({ id: ticketId }).first();
+      const { dependencia_id: origen } = await trx('categorias').where({ id: categoriaId }).first('dependencia_id');
+      const [otra] = await trx('dependencias').insert({ nombre: 'Otra dependencia' }).returning('id');
+      return { ticketId, usuarioId, origen, otra: otra.id };
+    }
+
+    const solicitud = (p: Awaited<ReturnType<typeof preparar>>, cambios: Record<string, unknown> = {}) => ({
+      ticket_id: p.ticketId,
+      solicitado_por: p.usuarioId,
+      dependencia_origen_id: p.origen,
+      motivo: 'No es de esta dependencia',
+      ...cambios,
+    });
+
+    it.each([
+      ['solicitudes_traslado_una_pendiente', '(ticket_id) WHERE (estado = '],
+      ['solicitudes_traslado_estado_creado_en_idx', '(estado, creado_en)'],
+    ])('existe el índice %s', async (nombre, definicion) => {
+      const indice = await db('pg_indexes').where({ schemaname: 'public', indexname: nombre }).first('tablename', 'indexdef');
+      expect(indice.tablename).toBe('solicitudes_traslado');
+      expect(indice.indexdef).toContain(definicion);
+    });
+
+    it('estado vale pendiente por defecto', () =>
+      withRollback(async (trx) => {
+        const p = await preparar(trx);
+        const [fila] = await trx('solicitudes_traslado').insert(solicitud(p)).returning('estado');
+        expect(fila.estado).toBe('pendiente');
+      }));
+
+    it('una segunda pendiente para el mismo ticket viola el índice único parcial; con otro estado se acepta', () =>
+      withRollback(async (trx) => {
+        const p = await preparar(trx);
+        await trx('solicitudes_traslado').insert(solicitud(p));
+        await trx('solicitudes_traslado').insert(solicitud(p, { estado: 'rechazada' }));
+        await expect(trx('solicitudes_traslado').insert(solicitud(p))).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
+      }));
+
+    it.each<[string, (p: Awaited<ReturnType<typeof preparar>>) => Record<string, unknown>]>([
+      ['la sugerida igual a la de origen', (p) => ({ dependencia_sugerida_id: p.origen })],
+      ['un motivo vacío', () => ({ motivo: '' })],
+      ['un motivo de 1001 caracteres', () => ({ motivo: 'a'.repeat(1001) })],
+      ['un estado desconocido', () => ({ estado: 'en_curso' })],
+    ])('rechaza %s', (_caso, cambios) =>
+      withRollback(async (trx) => {
+        const p = await preparar(trx);
+        await expect(trx('solicitudes_traslado').insert(solicitud(p, cambios(p)))).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }),
+    );
+
+    it('acepta una sugerida distinta de la de origen', () =>
+      withRollback(async (trx) => {
+        const p = await preparar(trx);
+        await trx('solicitudes_traslado').insert(solicitud(p, { dependencia_sugerida_id: p.otra }));
+      }));
+  });
+
   describe('migración 0006_roles', () => {
     // Matriz de SPEC 08, escrita aparte de la migración para que la prueba no la copie.
     const MATRIZ: Record<string, Record<string, string>> = {
@@ -911,7 +987,7 @@ describe('Esquema de base de datos', () => {
         .where({ table_schema: 'public' })
         .whereIn('table_name', Object.keys(expectedColumns));
       expect(tables).toEqual([]);
-      expect(Object.keys(expectedColumns)).toHaveLength(20);
+      expect(Object.keys(expectedColumns)).toHaveLength(21);
 
       const tipos = await db('pg_type').select('typname').where({ typname: 'estado_ticket' });
       expect(tipos).toEqual([]);

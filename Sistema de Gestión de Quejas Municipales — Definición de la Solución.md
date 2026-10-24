@@ -289,6 +289,7 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | tickets | id, numero (único), titulo, descripcion, solicitante\_id, categoria\_id, dependencia\_id, asignado\_a, estado, prioridad, canal, zona\_id, direccion, lat, lng, datos\_extra (jsonb), vence\_respuesta, vence\_resolucion, escalado, creado\_en, resuelto\_en, cerrado\_en, registrado\_por (usuario que la registró: el propio vecino o el receptor de ventanilla) |
 | ticket\_historial | id, ticket\_id, estado\_anterior, estado\_nuevo, usuario\_id, motivo, creado\_en |
 | ticket\_asignaciones | id, ticket\_id, tecnico\_anterior (nulo en la primera asignación), tecnico\_nuevo, asignado\_por, motivo, creado\_en. Solo de inserción; registra cada asignación y reasignación de técnico para la línea de tiempo |
+| solicitudes\_traslado | id, ticket\_id, solicitado\_por, dependencia\_origen\_id, dependencia\_sugerida\_id (opcional), motivo, estado (pendiente, aprobada, rechazada, retirada, sin\_efecto), resuelto\_por, motivo\_resolucion, creado\_en, resuelto\_en. Como máximo una pendiente por queja |
 | comentarios | id, ticket\_id, autor\_id, cuerpo, es\_interno, creado\_en |
 | adjuntos | id, ticket\_id, comentario\_id, nombre, ruta, tipo\_mime, tamano\_bytes |
 | encuestas | id, ticket\_id, calificacion, comentario, creado\_en |
@@ -332,7 +333,12 @@ Campos adicionales por categoría (RF-09):
 | GET /api/v1/tickets/por-asignar | Bandeja de quejas sin técnico (o abiertas), por prioridad y antigüedad | Coordinador, Supervisor |
 | PATCH /api/v1/tickets/:id/asignacion | Asignar o reasignar técnico. Cuerpo `{ tecnicoId, motivo? }`; el motivo es obligatorio al reasignar | Coordinador, Supervisor |
 | GET /api/v1/dependencias/:id/tecnicos | Técnicos activos de la dependencia con su carga de quejas abiertas | Coordinador, Supervisor |
-| POST /api/v1/tickets/:id/traslados | Solicitar o aprobar traslado | Técnico, Coordinador, Supervisor |
+| POST /api/v1/tickets/:id/traslados | El técnico asignado o el coordinador solicitan el traslado (`{ motivo, dependenciaSugeridaId? }`); el supervisor traslada directamente | Técnico, Coordinador, Supervisor |
+| GET /api/v1/traslados | Bandeja de solicitudes de traslado, por estado | Supervisor |
+| POST /api/v1/traslados/:id/aprobacion | Aprobar: la queja vuelve a En revisión sin dependencia ni técnico | Supervisor |
+| POST /api/v1/traslados/:id/rechazo | Rechazar con motivo | Supervisor |
+| POST /api/v1/traslados/:id/retiro | Retirar la solicitud propia | Quien la solicitó |
+| GET /api/v1/dependencias | Dependencias activas, para sugerir el destino de un traslado | Técnico, Coordinador, Supervisor |
 | POST /api/v1/tickets/:id/comentarios | Comentario público o nota interna | Según matriz de permisos |
 | POST /api/v1/tickets/:id/adjuntos | Subir archivo | Vecino, internos |
 | POST /api/v1/tickets/:id/encuesta | Calificar la atención | Vecino |

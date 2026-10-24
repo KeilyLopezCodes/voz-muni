@@ -41,6 +41,7 @@ export async function reiniciarEsquema(db: Knex): Promise<void> {
   }
   // Primero las tablas que apuntan a usuarios. La bitácora no se puede vaciar: el rollback la elimina.
   const tablas = [
+    'solicitudes_traslado',
     'ticket_historial',
     'comentarios',
     'adjuntos',

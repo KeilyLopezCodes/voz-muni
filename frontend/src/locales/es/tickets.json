@@ -211,7 +211,9 @@
       "sinUbicacion": "Sin punto en el mapa",
       "datosExtra": "Datos adicionales",
       "si": "Sí",
-      "no": "No"
+      "no": "No",
+      "trasladoReciente": "Trasladada desde {{origen}}. Sugerencia: {{sugerida}}. Motivo: {{motivo}}",
+      "sinSugerencia": "ninguna"
     },
     "acciones": {
       "tomar": "Tomar",
@@ -286,6 +288,82 @@
       "TECNICO_NO_ELEGIBLE": "Ese técnico ya no está disponible",
       "red": "No pudimos conectar con el servidor. Intenta de nuevo.",
       "generico": "No pudimos asignar el técnico. Intenta de nuevo."
+    }
+  },
+  "traslados": {
+    "titulo": "Traslados",
+    "filtro": {
+      "etiqueta": "Mostrar",
+      "pendiente": "Pendientes",
+      "aprobada": "Aprobadas",
+      "rechazada": "Rechazadas",
+      "retirada": "Retiradas",
+      "sin_efecto": "Sin efecto"
+    },
+    "estados": {
+      "pendiente": "Pendiente",
+      "aprobada": "Aprobada",
+      "rechazada": "Rechazada",
+      "retirada": "Retirada",
+      "sin_efecto": "Sin efecto"
+    },
+    "roles": {
+      "vecino": "Vecino",
+      "receptor": "Receptor",
+      "tecnico": "Técnico",
+      "coordinador": "Coordinador",
+      "supervisor": "Supervisor",
+      "administrador": "Administrador"
+    },
+    "origen": "Desde: {{dependencia}}",
+    "sugerida": "Sugerencia: {{dependencia}}",
+    "sinSugerencia": "Sin dependencia sugerida",
+    "solicitadoPor": "Pide: {{nombre}} ({{rol}})",
+    "motivo": "Motivo: {{motivo}}",
+    "motivoResolucion": "Motivo del rechazo: {{motivo}}",
+    "cargando": "Cargando…",
+    "vacia": "No hay solicitudes en esta vista.",
+    "errorCarga": "No pudimos cargar las solicitudes.",
+    "reintentar": "Reintentar",
+    "paginacion": "Páginas de la bandeja",
+    "acciones": {
+      "aprobar": "Aprobar",
+      "rechazar": "Rechazar",
+      "enviando": "Enviando…",
+      "cancelar": "Cancelar",
+      "confirmarTitulo": "¿Aprobar el traslado?",
+      "confirmarTexto": "La queja {{numero}} volverá a revisión sin dependencia ni técnico.",
+      "confirmar": "Sí, aprobar",
+      "motivoRechazo": "Motivo del rechazo",
+      "motivoRequerido": "Escribe el motivo (hasta 1000 caracteres).",
+      "confirmarRechazo": "Rechazar solicitud"
+    },
+    "avisos": {
+      "aprobada": "Traslado aprobado: la queja volvió a revisión",
+      "rechazada": "Solicitud rechazada",
+      "yaResuelta": "La solicitud ya fue resuelta",
+      "sinEfecto": "La queja cambió de estado; la solicitud quedó sin efecto"
+    },
+    "errores": {
+      "red": "No pudimos conectar con el servidor. Intenta de nuevo.",
+      "generico": "No pudimos completar la acción. Intenta de nuevo."
+    },
+    "panel": {
+      "solicitar": "Solicitar traslado",
+      "trasladar": "Trasladar",
+      "motivo": "Motivo del traslado",
+      "motivoRequerido": "Escribe el motivo (hasta 1000 caracteres).",
+      "sugerida": "Dependencia sugerida (opcional)",
+      "ninguna": "Sin sugerencia",
+      "enviar": "Enviar solicitud",
+      "confirmarTitulo": "¿Trasladar la queja?",
+      "confirmarTexto": "La queja {{numero}} volverá a revisión sin dependencia ni técnico.",
+      "confirmar": "Sí, trasladar",
+      "cancelar": "Cancelar",
+      "solicitada": "Solicitud de traslado enviada",
+      "trasladada": "Queja trasladada: volvió a revisión",
+      "pendiente": "Ya hay una solicitud pendiente",
+      "cambioEstado": "La queja cambió de estado y ya no se puede trasladar"
     }
   }
 }

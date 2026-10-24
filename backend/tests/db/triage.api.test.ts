@@ -82,6 +82,7 @@ describe('Triage del supervisor (SPEC 19)', () => {
   });
 
   beforeEach(async () => {
+    await db('solicitudes_traslado').delete();
     await db('ticket_historial').delete();
     await db('tickets').delete();
     enviador.enviados.length = 0;
@@ -299,6 +300,7 @@ describe('Triage del supervisor (SPEC 19)', () => {
       datosExtra: {},
       ubicacion: null,
       solicitanteNombre: 'Ana López',
+      trasladoReciente: null,
       creadoEn: expect.stringMatching(/Z$/),
     });
     const texto = JSON.stringify(todas.body);
@@ -313,6 +315,34 @@ describe('Triage del supervisor (SPEC 19)', () => {
     const pagina2 = await bandeja('?pagina=2&tamano=2');
     expect(pagina2.body).toMatchObject({ pagina: 2, tamano: 2, total: 3 });
     expect(pagina2.body.datos.map((t: { id: number }) => t.id)).toEqual([tercera]);
+  });
+
+  it('una queja trasladada muestra el último traslado aprobado en trasladoReciente (SPEC 21)', async () => {
+    const id = await nuevaQueja('Queja trasladada');
+    const solicitud = (cambios: object) => ({
+      ticket_id: id,
+      solicitado_por: ids.coordinador,
+      dependencia_origen_id: ids.obras,
+      motivo: 'Motivo viejo',
+      estado: 'aprobada',
+      resuelto_por: ids.supervisor,
+      ...cambios,
+    });
+    await db('solicitudes_traslado').insert([
+      solicitud({ resuelto_en: new Date(Date.now() - 3600_000) }),
+      solicitud({ dependencia_sugerida_id: ids.servicios, motivo: 'Es de alumbrado', resuelto_en: new Date() }),
+      solicitud({ estado: 'rechazada', motivo: 'Rechazada no cuenta', resuelto_en: new Date(Date.now() + 1000) }),
+    ]);
+    const otra = await nuevaQueja('Queja sin traslado');
+
+    const datos = (await bandeja()).body.datos as { id: number; trasladoReciente: unknown }[];
+
+    expect(datos.find((t) => t.id === id)!.trasladoReciente).toEqual({
+      dependenciaOrigen: 'Dirección de Obras',
+      dependenciaSugerida: 'Servicios Públicos',
+      motivo: 'Es de alumbrado',
+    });
+    expect(datos.find((t) => t.id === otra)!.trasladoReciente).toBeNull();
   });
 
   it.each(['?estado=asignada', '?tamano=51', '?pagina=0', '?otro=1'])('GET /tickets/triage%s → 400', async (query) => {

@@ -25,6 +25,8 @@ export interface TicketTriage {
   datosExtra: Record<string, ValorExtra>
   ubicacion: { lat: number; lng: number } | null
   solicitanteNombre: string
+  // Último traslado aprobado (SPEC 21): de dónde viene y a dónde se sugirió.
+  trasladoReciente: { dependenciaOrigen: string; dependenciaSugerida: string | null; motivo: string } | null
   creadoEn: string // ISO 8601 en UTC
 }
 

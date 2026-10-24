@@ -38,6 +38,10 @@ export type CodigoError =
   | 'LIMITES_INVALIDOS'
   | 'TECNICO_NO_ELEGIBLE'
   | 'TECNICO_SIN_CAMBIO'
+  | 'MOTIVO_REQUERIDO'
+  | 'TRASLADO_PENDIENTE'
+  | 'TRASLADO_YA_RESUELTO'
+  | 'TRASLADO_SIN_EFECTO'
   | 'NO_AUTENTICADO'
   | 'TOKEN_INVALIDO'
   | 'CREDENCIALES_INVALIDAS'
@@ -76,6 +80,8 @@ const CODIGOS_DE_REGLA: readonly CodigoError[] = [
   'LIMITES_INVALIDOS',
   'TECNICO_NO_ELEGIBLE',
   'TECNICO_SIN_CAMBIO',
+  'TRASLADO_PENDIENTE',
+  'TRASLADO_YA_RESUELTO',
 ];
 
 // Error esperado de un caso de uso. El mensaje es para desarrolladores, no para la UI.

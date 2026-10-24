@@ -16,6 +16,7 @@ export function queja(cambios: Partial<TicketTriage> = {}): TicketTriage {
     datosExtra: { numero_poste: 'P-123', hay_cables: true, campo_viejo: 'valor' },
     ubicacion: { lat: 14.6, lng: -90.5 },
     solicitanteNombre: 'Ana López',
+    trasladoReciente: null,
     creadoEn: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
     ...cambios,
   }

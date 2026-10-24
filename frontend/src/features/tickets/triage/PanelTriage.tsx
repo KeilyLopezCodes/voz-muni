@@ -106,6 +106,15 @@ function ContenidoPanel({ ticket, onTerminar }: { ticket: TicketTriage; onTermin
   return (
     <Stack spacing={2}>
       <Detalle ticket={ticket} camposExtra={camposExtra} />
+      {ticket.trasladoReciente && (
+        <Alert severity="info">
+          {t('triage.panel.trasladoReciente', {
+            origen: ticket.trasladoReciente.dependenciaOrigen,
+            sugerida: ticket.trasladoReciente.dependenciaSugerida ?? t('triage.panel.sinSugerencia'),
+            motivo: ticket.trasladoReciente.motivo,
+          })}
+        </Alert>
+      )}
       <Divider />
       {error && (
         <Alert severity="error" role="alert">

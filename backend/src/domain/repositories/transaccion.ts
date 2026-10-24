@@ -4,6 +4,7 @@ import type { RegistroVecinoRepository } from './registro-vecino-repository';
 import type { RestablecimientoRepository } from './restablecimiento-repository';
 import type { SesionRepository } from './sesion-repository';
 import type { TicketEscrituraRepository } from './ticket-escritura-repository';
+import type { TrasladoRepository } from './traslado-repository';
 import type { UsuarioAdminRepository } from './usuario-admin-repository';
 import type { UsuarioRepository } from './usuario-repository';
 import type { VecinoRepository } from './vecino-repository';
@@ -19,6 +20,7 @@ export interface ReposTransaccionales {
   registroVecinos: RegistroVecinoRepository;
   ticketsEscritura: TicketEscrituraRepository;
   asignaciones: AsignacionRepository;
+  traslados: TrasladoRepository;
 }
 
 // Puerto: ejecuta `trabajo` en una transacción; si lanza, no queda nada escrito.

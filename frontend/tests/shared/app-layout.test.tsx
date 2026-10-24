@@ -17,7 +17,7 @@ const MENU_ESPERADO: Record<Rol, string[]> = {
   receptor: ['/tickets', '/tickets/nueva'],
   tecnico: ['/tickets', '/reportes'],
   coordinador: ['/tickets', '/asignacion', '/reportes'],
-  supervisor: ['/tickets', '/tickets/nueva', '/triage', '/asignacion', '/reportes'],
+  supervisor: ['/tickets', '/tickets/nueva', '/triage', '/asignacion', '/traslados', '/reportes'],
   administrador: ['/tickets', '/reportes', '/admin'],
 }
 

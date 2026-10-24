@@ -11,6 +11,7 @@ import { HealthService } from './application/services/health.service';
 import { RecuperacionService } from './application/services/recuperacion.service';
 import { RegistroTicketsService } from './application/services/registro-tickets.service';
 import { RegistroVecinosService } from './application/services/registro-vecinos.service';
+import { TrasladosService } from './application/services/traslados.service';
 import { TriageService } from './application/services/triage.service';
 import { UsuariosService } from './application/services/usuarios.service';
 import { VecinosService } from './application/services/vecinos.service';
@@ -61,6 +62,7 @@ export interface Container {
   parametrosService: ParametrosService;
   triageService: TriageService;
   asignacionService: AsignacionService;
+  trasladosService: TrasladosService;
   dispose(): Promise<void>;
 }
 
@@ -129,6 +131,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     parametrosService: parametros,
     triageService: new TriageService(transaccion, new KnexTriageLecturaRepository(db), correo, clock, env.APP_URL),
     asignacionService: new AsignacionService(transaccion, new KnexPorAsignarLecturaRepository(db), clock),
+    trasladosService: new TrasladosService(transaccion, catalogo, clock),
     dispose: () => db.destroy(),
   };
 }
