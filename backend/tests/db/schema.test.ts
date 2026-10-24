@@ -134,6 +134,10 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['ruta', 'text'],
     ['tipo_mime', 'text'],
     ['tamano_bytes', 'integer'],
+    ['subido_por', 'bigint'],
+    ['creado_en', 'timestamp with time zone'],
+    ['interno', 'boolean'],
+    ['origen', 'text'],
   ],
   encuestas: [
     ['id', 'bigint'],
@@ -593,6 +597,65 @@ describe('Esquema de base de datos', () => {
     it('rechaza un canal fuera de la lista', () =>
       withRollback(async (trx) => {
         await expect(insertTicket(trx, { canal: 'whatsapp' })).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+  });
+
+  describe('adjuntos (0020)', () => {
+    async function insertAdjunto(trx: Knex.Transaction, cambios: Record<string, unknown> = {}) {
+      const ticketId = await insertTicket(trx);
+      const { solicitante_id: autorId } = await trx('tickets').where({ id: ticketId }).first('solicitante_id');
+      return trx('adjuntos')
+        .insert({
+          ticket_id: ticketId,
+          nombre: 'foto.jpg',
+          ruta: 'ab/ab000000-0000-4000-8000-000000000000',
+          tipo_mime: 'image/jpeg',
+          tamano_bytes: 1024,
+          subido_por: autorId,
+          origen: 'registro',
+          ...cambios,
+        })
+        .returning(['id', 'ticket_id', 'subido_por', 'creado_en', 'interno']);
+    }
+
+    it('acepta un adjunto de registro público con creado_en e interno por defecto', () =>
+      withRollback(async (trx) => {
+        const [fila] = await insertAdjunto(trx);
+        expect(fila.interno).toBe(false);
+        expect(fila.creado_en).toBeInstanceOf(Date);
+      }));
+
+    it.each([
+      ['un adjunto de registro interno', { interno: true }],
+      ['10485761 bytes', { tamano_bytes: 10485761 }],
+      ['un origen desconocido', { origen: 'vecino' }],
+      ['un nombre vacío', { nombre: '' }],
+      ['un nombre de 256 caracteres', { nombre: 'a'.repeat(256) }],
+    ])('rechaza %s', (_caso, cambios) =>
+      withRollback(async (trx) => {
+        await expect(insertAdjunto(trx, cambios)).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }),
+    );
+
+    it('acepta 10485760 bytes y una evidencia interna de atención', () =>
+      withRollback(async (trx) => {
+        await insertAdjunto(trx, { tamano_bytes: 10485760, origen: 'atencion', interno: true });
+      }));
+
+    it('una ruta repetida viola UNIQUE', () =>
+      withRollback(async (trx) => {
+        const [fila] = await insertAdjunto(trx);
+        await expect(
+          trx('adjuntos').insert({
+            ticket_id: fila.ticket_id,
+            nombre: 'otra.jpg',
+            ruta: 'ab/ab000000-0000-4000-8000-000000000000',
+            tipo_mime: 'image/jpeg',
+            tamano_bytes: 10,
+            subido_por: fila.subido_por,
+            origen: 'atencion',
+          }),
+        ).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
       }));
   });
 

@@ -1,5 +1,6 @@
 import express, { type Express } from 'express';
 import type { Container } from './container';
+import { AdjuntosController } from './presentation/controllers/adjuntos.controller';
 import { AsignacionController } from './presentation/controllers/asignacion.controller';
 import { AuthController } from './presentation/controllers/auth.controller';
 import { CamposExtraController } from './presentation/controllers/campos-extra.controller';
@@ -18,6 +19,7 @@ import { autenticar } from './presentation/middlewares/autenticar';
 import { limiteLogin } from './presentation/middlewares/limite-login';
 import { limiteRecuperacion } from './presentation/middlewares/limite-recuperacion';
 import { manejadorErrores, rutaNoEncontrada } from './presentation/middlewares/manejador-errores';
+import { adjuntosRoutes } from './presentation/routes/adjuntos.routes';
 import { asignacionRoutes } from './presentation/routes/asignacion.routes';
 import { authRoutes } from './presentation/routes/auth.routes';
 import { camposExtraRoutes } from './presentation/routes/campos-extra.routes';
@@ -76,6 +78,10 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1/tickets',
     comentariosRoutes(new ComentariosController(container.comentariosService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1/tickets',
+    adjuntosRoutes(new AdjuntosController(container.adjuntosService), autenticar(container.autorizacionService)),
   );
   app.use(
     '/api/v1/vecinos',

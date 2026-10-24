@@ -22,6 +22,8 @@ export interface EstadoRegistro {
   zonaId: number | null
   direccion: string
   ubicacion: Punto | null
+  // Se suben después de crear la queja (SPEC 24); nunca forman parte del cuerpo de POST /tickets.
+  archivos: File[]
 }
 
 export const ESTADO_INICIAL: EstadoRegistro = {
@@ -34,6 +36,7 @@ export const ESTADO_INICIAL: EstadoRegistro = {
   zonaId: null,
   direccion: '',
   ubicacion: null,
+  archivos: [],
 }
 
 // Rangos de SPEC 12 (domain/ticket/ticket.ts), sobre el texto recortado y en caracteres.

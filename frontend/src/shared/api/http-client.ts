@@ -30,7 +30,15 @@ export interface HttpClient {
   put<T>(path: string, body: unknown): Promise<T>
   patch<T>(path: string, body: unknown): Promise<T>
   delete<T>(path: string): Promise<T>
+  // multipart/form-data: el navegador pone el Content-Type con su boundary (SPEC 24).
+  postForm<T>(path: string, form: FormData): Promise<T>
+  // El cuerpo como Blob, con el token y la renovación de siempre: para descargar archivos (SPEC 24).
+  descargar(path: string): Promise<Blob>
 }
+
+// JSON por defecto; FormData para subir archivos.
+type Cuerpo = { json: unknown } | { form: FormData }
+type Lectura = 'json' | 'blob'
 
 const esDetalle = (valor: unknown): valor is DetalleError =>
   typeof valor === 'object' &&
@@ -55,9 +63,9 @@ async function errorDeRespuesta(response: Response): Promise<ApiError> {
 export function createHttpClient(baseUrl: string): HttpClient {
   // Ante un 401 pide una renovación y repite la petición una sola vez, con el token nuevo.
   // Si no hay renovación o el reintento falla con 401, se lanza el error original.
-  async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  async function request<T>(method: string, path: string, cuerpo?: Cuerpo, lectura: Lectura = 'json'): Promise<T> {
     try {
-      return await enviar<T>(method, path, body)
+      return await enviar<T>(method, path, cuerpo, lectura)
     } catch (error) {
       if (!(error instanceof ApiError) || error.status !== 401 || esRutaDeAuth(path)) {
         throw error
@@ -66,19 +74,19 @@ export function createHttpClient(baseUrl: string): HttpClient {
         throw error
       }
       try {
-        return await enviar<T>(method, path, body)
+        return await enviar<T>(method, path, cuerpo, lectura)
       } catch (reintento) {
         throw reintento instanceof ApiError && reintento.status === 401 ? error : reintento
       }
     }
   }
 
-  async function enviar<T>(method: string, path: string, body?: unknown): Promise<T> {
+  async function enviar<T>(method: string, path: string, cuerpo: Cuerpo | undefined, lectura: Lectura): Promise<T> {
     const headers: Record<string, string> = {
-      Accept: 'application/json',
+      Accept: lectura === 'json' ? 'application/json' : '*/*',
       'X-Request-Id': crypto.randomUUID(),
     }
-    if (body !== undefined) {
+    if (cuerpo && 'json' in cuerpo) {
       headers['Content-Type'] = 'application/json'
     }
     const token = tokenProvider()
@@ -94,7 +102,7 @@ export function createHttpClient(baseUrl: string): HttpClient {
         response = await fetch(`${baseUrl}${path}`, {
           method,
           headers,
-          body: body === undefined ? undefined : JSON.stringify(body),
+          body: cuerpo === undefined ? undefined : 'json' in cuerpo ? JSON.stringify(cuerpo.json) : cuerpo.form,
           signal: controller.signal,
         })
       } catch {
@@ -109,7 +117,7 @@ export function createHttpClient(baseUrl: string): HttpClient {
       if (response.status === 204) {
         return undefined as T
       }
-      return (await response.json()) as T
+      return (lectura === 'blob' ? await response.blob() : await response.json()) as T
     } catch (error) {
       // El tiempo límite también cubre la lectura del cuerpo.
       if (!(error instanceof ApiError) && controller.signal.aborted) {
@@ -123,10 +131,12 @@ export function createHttpClient(baseUrl: string): HttpClient {
 
   return {
     get: (path) => request('GET', path),
-    post: (path, body) => request('POST', path, body),
-    put: (path, body) => request('PUT', path, body),
-    patch: (path, body) => request('PATCH', path, body),
+    post: (path, body) => request('POST', path, { json: body }),
+    put: (path, body) => request('PUT', path, { json: body }),
+    patch: (path, body) => request('PATCH', path, { json: body }),
     delete: (path) => request('DELETE', path),
+    postForm: (path, form) => request('POST', path, { form }),
+    descargar: (path) => request<Blob>('GET', path, undefined, 'blob'),
   }
 }
 

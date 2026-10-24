@@ -291,7 +291,7 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | ticket\_asignaciones | id, ticket\_id, tecnico\_anterior (nulo en la primera asignación), tecnico\_nuevo, asignado\_por, motivo, creado\_en. Solo de inserción; registra cada asignación y reasignación de técnico para la línea de tiempo |
 | solicitudes\_traslado | id, ticket\_id, solicitado\_por, dependencia\_origen\_id, dependencia\_sugerida\_id (opcional), motivo, estado (pendiente, aprobada, rechazada, retirada, sin\_efecto), resuelto\_por, motivo\_resolucion, creado\_en, resuelto\_en. Como máximo una pendiente por queja |
 | comentarios | id, ticket\_id, autor\_id, cuerpo (1 a 4000 caracteres), es\_interno, creado\_en, editado\_en (el autor puede editar durante 5 minutos; no se guardan versiones) |
-| adjuntos | id, ticket\_id, comentario\_id, nombre, ruta, tipo\_mime, tamano\_bytes |
+| adjuntos | id, ticket\_id, comentario\_id, nombre, ruta, tipo\_mime, tamano\_bytes (hasta 10 MB), subido\_por, creado\_en, interno, origen (registro o atencion; los del registro siempre son públicos) |
 | encuestas | id, ticket\_id, calificacion, comentario, creado\_en |
 | notificaciones | id, usuario\_id, ticket\_id, tipo, leida, creado\_en |
 | calendario\_laboral | fecha, es\_habil, descripcion |
@@ -342,7 +342,10 @@ Campos adicionales por categoría (RF-09):
 | POST /api/v1/tickets/:id/comentarios | Comentario público o nota interna (`{ cuerpo, interno }`). Un comentario público del solicitante en una queja En espera la devuelve a En proceso (RF-22) | Según matriz de permisos |
 | GET /api/v1/tickets/:id/comentarios | Hilo de comentarios; las notas internas solo para quien tiene `comentarios.interno` | Según visibilidad |
 | PATCH /api/v1/tickets/:id/comentarios/:comentarioId | El autor corrige el texto durante 5 minutos | Autor del comentario |
-| POST /api/v1/tickets/:id/adjuntos | Subir archivo | Vecino, internos |
+| POST /api/v1/tickets/:id/adjuntos | Subir de 1 a 5 archivos (multipart: `archivos`, `interno`). Origen `registro` (solicitante o quien registró, mientras la queja está en Nueva) u `atencion` (internos con permiso de comentar); hasta 5 por origen | Vecino, internos |
+| GET /api/v1/tickets/:id/adjuntos | Lista de adjuntos; los internos solo para quien tiene `comentarios.interno` | Según visibilidad |
+| GET /api/v1/tickets/:id/adjuntos/:adjuntoId/contenido | Descargar el archivo | Según visibilidad |
+| DELETE /api/v1/tickets/:id/adjuntos/:adjuntoId | El autor borra su adjunto durante 5 minutos | Autor del adjunto |
 | POST /api/v1/tickets/:id/encuesta | Calificar la atención | Vecino |
 | GET /api/v1/reportes/resumen | Indicadores del tablero | Coordinador, Supervisor, Admin |
 | GET /api/v1/admin/usuarios | Listado paginado de usuarios internos con filtros por rol, dependencia, estado y búsqueda | Admin |

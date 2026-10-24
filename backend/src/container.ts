@@ -1,4 +1,5 @@
 import knex from 'knex';
+import { AdjuntosService } from './application/services/adjuntos.service';
 import { AsignacionService } from './application/services/asignacion.service';
 import { AtencionService } from './application/services/atencion.service';
 import { AuthService } from './application/services/auth.service';
@@ -39,6 +40,8 @@ import { KnexRestablecimientoRepository } from './infrastructure/repositories/kn
 import { KnexSesionRepository } from './infrastructure/repositories/knex-sesion-repository';
 import { KnexTicketLecturaRepository } from './infrastructure/repositories/knex-ticket-lectura-repository';
 import { KnexTransaccion } from './infrastructure/repositories/knex-transaccion';
+import { DiscoAlmacenArchivos } from './infrastructure/storage/disco-almacen-archivos';
+import { ZipInspectorDocx } from './infrastructure/storage/zip-inspector-docx';
 import { KnexTriageLecturaRepository } from './infrastructure/repositories/knex-triage-lectura-repository';
 import { KnexUsuarioAdminRepository } from './infrastructure/repositories/knex-usuario-admin-repository';
 import { KnexUsuarioRepository } from './infrastructure/repositories/knex-usuario-repository';
@@ -68,6 +71,9 @@ export interface Container {
   trasladosService: TrasladosService;
   atencionService: AtencionService;
   comentariosService: ComentariosService;
+  adjuntosService: AdjuntosService;
+  // Crea ADJUNTOS_DIR si no existe; server.ts lo llama antes de escuchar.
+  prepararAlmacen(): Promise<void>;
   dispose(): Promise<void>;
 }
 
@@ -98,6 +104,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
   const vecinos = new KnexVecinoRepository(db);
   const catalogo = new KnexCatalogoLecturaRepository(db);
   const parametros = new ParametrosService(new KnexParametroRepository(db));
+  const almacen = new DiscoAlmacenArchivos(env.ADJUNTOS_DIR);
   const correo = new EnvioCorreo(new KnexPlantillaRepository(db), enviadorCorreo, (mensaje) => console.error(mensaje));
   return {
     port: env.PORT,
@@ -139,6 +146,15 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     trasladosService: new TrasladosService(transaccion, catalogo, clock),
     atencionService: new AtencionService(transaccion, new KnexAtencionLecturaRepository(db), clock),
     comentariosService: new ComentariosService(transaccion, new KnexTicketLecturaRepository(db), clock),
+    adjuntosService: new AdjuntosService(
+      transaccion,
+      new KnexTicketLecturaRepository(db),
+      almacen,
+      new ZipInspectorDocx(),
+      clock,
+      (mensaje) => console.error(mensaje),
+    ),
+    prepararAlmacen: () => almacen.preparar(),
     dispose: () => db.destroy(),
   };
 }

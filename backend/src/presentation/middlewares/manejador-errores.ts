@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
+import { MulterError } from 'multer';
 import { ZodError } from 'zod';
 import { type CodigoError, ErrorDeAplicacion } from '../../application/errors/error-de-aplicacion';
 import { InvalidTransitionError } from '../../domain/errors/invalid-transition-error';
@@ -48,6 +49,9 @@ const STATUS_POR_CODIGO: Record<CodigoError, number> = {
   CUERPO_INVALIDO: 400,
   QUEJA_FINALIZADA: 409,
   EDICION_VENCIDA: 409,
+  ADJUNTO_INVALIDO: 400,
+  ADJUNTOS_CERRADOS: 409,
+  LIMITE_ADJUNTOS: 409,
   NO_AUTENTICADO: 401,
   TOKEN_INVALIDO: 401,
   CREDENCIALES_INVALIDAS: 401,
@@ -81,6 +85,21 @@ export const manejadorErrores: ErrorRequestHandler = (error, _req, res, _next) =
   if (error instanceof ReglaDeNegocioError) {
     const detalles = error.detalles ? { detalles: error.detalles } : {};
     res.status(400).json({ codigo: error.codigo, mensaje: error.message, ...detalles });
+    return;
+  }
+
+  // Los límites de Multer en la subida de adjuntos (SPEC 24): un archivo de más de 10 MB es ADJUNTO_INVALIDO;
+  // demasiados archivos o un campo inesperado, VALIDACION.
+  if (error instanceof MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      res.status(400).json({
+        codigo: 'ADJUNTO_INVALIDO',
+        mensaje: 'El archivo supera los 10 MB',
+        detalles: [{ campo: error.field ?? 'archivos', problema: 'MUY_GRANDE' }],
+      });
+      return;
+    }
+    res.status(400).json({ codigo: 'VALIDACION', mensaje: `Subida inválida: ${error.code}` });
     return;
   }
 

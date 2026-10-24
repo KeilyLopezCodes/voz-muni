@@ -1,3 +1,4 @@
+import type { AdjuntoRepository } from './adjunto-repository';
 import type { AsignacionRepository } from './asignacion-repository';
 import type { CategoriaAdminRepository } from './categoria-admin-repository';
 import type { ComentarioRepository } from './comentario-repository';
@@ -23,6 +24,7 @@ export interface ReposTransaccionales {
   asignaciones: AsignacionRepository;
   traslados: TrasladoRepository;
   comentarios: ComentarioRepository;
+  adjuntos: AdjuntoRepository;
 }
 
 // Puerto: ejecuta `trabajo` en una transacción; si lanza, no queda nada escrito.

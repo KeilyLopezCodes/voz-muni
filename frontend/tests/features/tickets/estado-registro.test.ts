@@ -29,6 +29,7 @@ describe('ESTADO_INICIAL', () => {
       zonaId: null,
       direccion: '',
       ubicacion: null,
+      archivos: [],
     })
   })
 })

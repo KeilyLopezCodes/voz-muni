@@ -45,6 +45,9 @@ export type CodigoError =
   | 'CUERPO_INVALIDO'
   | 'QUEJA_FINALIZADA'
   | 'EDICION_VENCIDA'
+  | 'ADJUNTO_INVALIDO'
+  | 'ADJUNTOS_CERRADOS'
+  | 'LIMITE_ADJUNTOS'
   | 'NO_AUTENTICADO'
   | 'TOKEN_INVALIDO'
   | 'CREDENCIALES_INVALIDAS'
@@ -88,6 +91,9 @@ const CODIGOS_DE_REGLA: readonly CodigoError[] = [
   'CUERPO_INVALIDO',
   'QUEJA_FINALIZADA',
   'EDICION_VENCIDA',
+  'ADJUNTO_INVALIDO',
+  'ADJUNTOS_CERRADOS',
+  'LIMITE_ADJUNTOS',
 ];
 
 // Error esperado de un caso de uso. El mensaje es para desarrolladores, no para la UI.

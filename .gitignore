@@ -11,3 +11,6 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 .claude
+
+# Adjuntos guardados en desarrollo (SPEC 24)
+backend/almacen/

@@ -22,6 +22,7 @@ import {
   type TicketAtencion,
   transicionarAtencion,
 } from '../api/atencion-api'
+import { AdjuntosTicket } from '../adjuntos/AdjuntosTicket'
 import { HiloComentarios } from '../comentarios/HiloComentarios'
 import { SeccionTraslado } from '../traslados/SeccionTraslado'
 
@@ -175,6 +176,8 @@ function ContenidoPanel({ ticket, onTerminar }: { ticket: TicketAtencion; onTerm
           />
         </>
       )}
+      <Divider />
+      <AdjuntosTicket ticketId={ticket.id} estadoTicket={ticket.estado} />
       <Divider />
       <HiloComentarios ticketId={ticket.id} estadoTicket={ticket.estado} clavesBandeja={CLAVES_ATENCION.bandeja} />
     </Stack>

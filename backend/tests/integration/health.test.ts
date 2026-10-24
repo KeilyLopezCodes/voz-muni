@@ -15,6 +15,7 @@ import type { AsignacionService } from '../../src/application/services/asignacio
 import type { TrasladosService } from '../../src/application/services/traslados.service';
 import type { AtencionService } from '../../src/application/services/atencion.service';
 import type { ComentariosService } from '../../src/application/services/comentarios.service';
+import type { AdjuntosService } from '../../src/application/services/adjuntos.service';
 import type { ConsultaTicketsService } from '../../src/application/services/consulta-tickets.service';
 import type { BitacoraLecturaRepository } from '../../src/domain/repositories/bitacora-lectura-repository';
 import type { ReporteLecturaRepository } from '../../src/domain/repositories/reporte-lectura-repository';
@@ -53,6 +54,8 @@ function buildTestContainer(databaseUp: boolean): Container {
     trasladosService: {} as TrasladosService,
     atencionService: {} as AtencionService,
     comentariosService: {} as ComentariosService,
+    adjuntosService: {} as AdjuntosService,
+    prepararAlmacen: async () => {},
     dispose: async () => {},
   };
 }

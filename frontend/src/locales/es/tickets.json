@@ -42,7 +42,11 @@
       "copiaNoDisponible": "No pudimos copiar el número. Anótalo.",
       "correo": "Te enviamos el número a tu correo.",
       "verMisQuejas": "Ver mis quejas",
-      "registrarOtra": "Registrar otra"
+      "registrarOtra": "Registrar otra",
+      "falloSubida": "La queja se registró, pero no pudimos subir los archivos.",
+      "reintentar": "Reintentar",
+      "subiendo": "Subiendo…",
+      "subidos": "Archivos subidos."
     },
     "solicitante": {
       "buscarPor": "Buscar vecino por",
@@ -162,6 +166,15 @@
       "UBICACION_FUERA_DEL_MUNICIPIO": "El punto marcado está fuera del municipio.",
       "UBICACION_INCOMPLETA": "El punto marcado está incompleto. Márcalo de nuevo o quítalo.",
       "UBICACION_INVALIDA": "El punto marcado no es válido. Márcalo de nuevo o quítalo."
+    },
+    "archivos": {
+      "titulo": "Fotos o documentos (opcional)",
+      "agregar": "Agregar fotos o documentos",
+      "ayuda": "Hasta 5 archivos PDF, JPG, PNG o DOCX, de hasta 10 MB cada uno.",
+      "quitar": "Quitar",
+      "quitarArchivo": "Quitar {{nombre}}",
+      "ninguno": "Sin archivos",
+      "maximo": "Puedes adjuntar hasta 5 archivos."
     }
   },
   "consulta": {
@@ -461,6 +474,38 @@
       "coordinador": "Coordinador",
       "supervisor": "Supervisor",
       "administrador": "Administrador"
+    }
+  },
+  "adjuntos": {
+    "titulo": "Archivos adjuntos",
+    "cargando": "Cargando archivos…",
+    "errorCarga": "No pudimos cargar los archivos.",
+    "vacio": "Esta queja no tiene archivos.",
+    "interno": "Interno",
+    "publico": "Público",
+    "visibilidad": "Quién lo ve",
+    "ver": "Ver",
+    "descargar": "Descargar",
+    "borrar": "Borrar",
+    "subir": "Subir evidencia",
+    "subiendo": "Subiendo…",
+    "elegir": "Elegir archivos",
+    "cupo": "Te quedan {{restantes}} de {{maximo}}",
+    "problemas": {
+      "TIPO_NO_PERMITIDO": "{{nombre}}: solo se aceptan PDF, JPG, PNG o DOCX.",
+      "CONTENIDO_NO_COINCIDE": "{{nombre}}: el contenido no corresponde a su tipo.",
+      "MUY_GRANDE": "{{nombre}}: supera los 10 MB.",
+      "VACIO": "{{nombre}}: el archivo está vacío.",
+      "NOMBRE_INVALIDO": "{{nombre}}: el nombre del archivo no es válido."
+    },
+    "errores": {
+      "cupo": "Solo caben {{restantes}} archivos más.",
+      "cerrados": "Ya no se pueden agregar archivos al registro.",
+      "finalizada": "La queja ya terminó: solo se pueden subir archivos internos.",
+      "borradoVencido": "Ya no se puede borrar: pasaron más de 5 minutos.",
+      "descarga": "No pudimos descargar el archivo.",
+      "red": "No pudimos conectar con el servidor. Intenta de nuevo.",
+      "generico": "No pudimos completar la acción. Intenta de nuevo."
     }
   }
 }

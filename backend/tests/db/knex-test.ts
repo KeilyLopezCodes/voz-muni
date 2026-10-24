@@ -1,3 +1,4 @@
+import os from 'node:os';
 import path from 'node:path';
 import knex, { type Knex } from 'knex';
 import type { Env } from '../../src/infrastructure/config/env';
@@ -27,6 +28,8 @@ export function envDePrueba(cambios: Partial<Env> = {}): Env {
     MAIL_FROM: 'VozMuni <no-responder@vozmuni.test>',
     APP_URL: 'http://localhost:5173',
     RECUPERACION_LIMITE_POR_VENTANA: 1000,
+    // Los adjuntos de las pruebas van a una carpeta temporal, nunca a la del proyecto.
+    ADJUNTOS_DIR: path.join(os.tmpdir(), 'vozmuni-adjuntos-pruebas'),
     ...cambios,
   };
 }

@@ -25,6 +25,7 @@ import {
   listarTecnicos,
   type TicketPorAsignar,
 } from '../api/asignacion-api'
+import { AdjuntosTicket } from '../adjuntos/AdjuntosTicket'
 import { HiloComentarios } from '../comentarios/HiloComentarios'
 import { SeccionTraslado } from '../traslados/SeccionTraslado'
 
@@ -68,6 +69,8 @@ export function PanelAsignacion({ ticket, onCerrar, onTerminar }: PanelAsignacio
             clavesBandeja={CLAVES_ASIGNACION.bandeja}
             onTerminar={onTerminar}
           />
+          <Divider sx={{ my: 2 }} />
+          <AdjuntosTicket ticketId={ticket.id} estadoTicket={ticket.estado} />
           <Divider sx={{ my: 2 }} />
           <HiloComentarios ticketId={ticket.id} estadoTicket={ticket.estado} clavesBandeja={CLAVES_ASIGNACION.bandeja} />
         </Box>

@@ -26,6 +26,7 @@ import {
   type TicketTriage,
   transicionar,
 } from '../api/triage-api'
+import { AdjuntosTicket } from '../adjuntos/AdjuntosTicket'
 import { HiloComentarios } from '../comentarios/HiloComentarios'
 
 const MOTIVO_MAX = 1000
@@ -137,6 +138,8 @@ function ContenidoPanel({ ticket, onTerminar }: { ticket: TicketTriage; onTermin
           <Rechazar ticket={ticket} enviando={accion.isPending} onRechazar={ejecutar} />
         </>
       )}
+      <Divider />
+      <AdjuntosTicket ticketId={ticket.id} estadoTicket={ticket.estado} />
       <Divider />
       <HiloComentarios ticketId={ticket.id} estadoTicket={ticket.estado} clavesBandeja={CLAVES_TRIAGE.bandeja} />
     </Stack>
