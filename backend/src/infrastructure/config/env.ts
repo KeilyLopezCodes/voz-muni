@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import 'dotenv/config';
 
 export interface DatabaseEnv {
   DATABASE_URL: string;
