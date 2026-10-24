@@ -365,5 +365,71 @@
       "pendiente": "Ya hay una solicitud pendiente",
       "cambioEstado": "La queja cambió de estado y ya no se puede trasladar"
     }
+  },
+  "atencion": {
+    "titulo": "Atención",
+    "filtro": {
+      "etiqueta": "Mostrar",
+      "todas": "Todas",
+      "asignada": "Asignadas",
+      "en_proceso": "En proceso",
+      "en_espera": "En espera"
+    },
+    "estados": {
+      "asignada": "Asignada",
+      "en_proceso": "En proceso",
+      "en_espera": "En espera"
+    },
+    "tecnico": "Técnico: {{nombre}}",
+    "sinTecnico": "Sin técnico",
+    "trasladoPendiente": "Traslado pendiente",
+    "cargando": "Cargando…",
+    "vacia": "No tienes quejas por atender en esta vista.",
+    "errorCarga": "No pudimos cargar las quejas.",
+    "reintentar": "Reintentar",
+    "paginacion": "Páginas de la bandeja",
+    "abrir": "Atender la queja {{numero}}",
+    "panel": {
+      "titulo": "Queja {{numero}}",
+      "cerrar": "Cerrar",
+      "descripcion": "Descripción",
+      "direccion": "Dirección",
+      "zona": "Zona",
+      "categoria": "Categoría",
+      "ubicacion": "Ubicación",
+      "sinUbicacion": "Sin punto en el mapa",
+      "datosExtra": "Datos adicionales",
+      "si": "Sí",
+      "no": "No",
+      "informacionSolicitada": "Información solicitada: {{motivo}}"
+    },
+    "acciones": {
+      "iniciar": "Iniciar",
+      "sinTecnico": "Asigna un técnico primero",
+      "ponerEnEspera": "Poner en espera",
+      "motivoEspera": "¿Qué información falta?",
+      "motivoRequerido": "Escribe qué información falta (hasta 1000 caracteres).",
+      "confirmarEspera": "Poner en espera",
+      "reanudar": "Reanudar",
+      "resolver": "Resolver",
+      "descripcion": "Descripción de la solución",
+      "descripcionRequerida": "Describe la solución (hasta 4000 caracteres).",
+      "confirmarResolverTitulo": "¿Marcar la queja como resuelta?",
+      "confirmarResolverTexto": "La queja {{numero}} pasará a resuelta y el vecino podrá confirmar la solución.",
+      "confirmar": "Sí, resolver",
+      "cancelar": "Cancelar",
+      "enviando": "Enviando…"
+    },
+    "avisos": {
+      "iniciada": "Queja iniciada",
+      "enEspera": "Queja en espera",
+      "reanudada": "Queja reanudada",
+      "resuelta": "Queja resuelta",
+      "cambioEstado": "La queja cambió de estado"
+    },
+    "errores": {
+      "red": "No pudimos conectar con el servidor. Intenta de nuevo.",
+      "generico": "No pudimos completar la acción. Intenta de nuevo."
+    }
   }
 }

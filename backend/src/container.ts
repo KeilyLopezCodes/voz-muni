@@ -1,5 +1,6 @@
 import knex from 'knex';
 import { AsignacionService } from './application/services/asignacion.service';
+import { AtencionService } from './application/services/atencion.service';
 import { AuthService } from './application/services/auth.service';
 import { AutorizacionService } from './application/services/autorizacion.service';
 import { CamposExtraService } from './application/services/campos-extra.service';
@@ -25,6 +26,7 @@ import { type Env, loadEnv } from './infrastructure/config/env';
 import { buildKnexConfig } from './infrastructure/database/knex-config';
 import { KnexDatabaseHealthCheck } from './infrastructure/database/knex-database-health-check';
 import { NodemailerEnviadorCorreo } from './infrastructure/mail/nodemailer-enviador-correo';
+import { KnexAtencionLecturaRepository } from './infrastructure/repositories/knex-atencion-lectura-repository';
 import { KnexBitacoraLecturaRepository } from './infrastructure/repositories/knex-bitacora-lectura-repository';
 import { KnexCatalogoLecturaRepository } from './infrastructure/repositories/knex-catalogo-lectura-repository';
 import { KnexParametroRepository } from './infrastructure/repositories/knex-parametro-repository';
@@ -63,6 +65,7 @@ export interface Container {
   triageService: TriageService;
   asignacionService: AsignacionService;
   trasladosService: TrasladosService;
+  atencionService: AtencionService;
   dispose(): Promise<void>;
 }
 
@@ -132,6 +135,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     triageService: new TriageService(transaccion, new KnexTriageLecturaRepository(db), correo, clock, env.APP_URL),
     asignacionService: new AsignacionService(transaccion, new KnexPorAsignarLecturaRepository(db), clock),
     trasladosService: new TrasladosService(transaccion, catalogo, clock),
+    atencionService: new AtencionService(transaccion, new KnexAtencionLecturaRepository(db), clock),
     dispose: () => db.destroy(),
   };
 }

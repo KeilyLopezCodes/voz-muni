@@ -8,7 +8,7 @@ import type { EstadoTriage, TriageLecturaRepository } from '../../domain/reposit
 import type { ResultadoTransicion } from '../../domain/ticket/ticket';
 import { puedeTransicionar } from '../../domain/ticket/transiciones';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
-import type { ComandoTransicion, TicketTriageDto, TransicionDto } from '../dto/triage.dto';
+import type { ComandoTriage, TicketTriageDto, TransicionDto } from '../dto/triage.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 import type { EnvioCorreo } from './envio-correo';
 
@@ -30,7 +30,7 @@ export class TriageService {
     private readonly appUrl: string, // APP_URL, sin barra final
   ) {}
 
-  async transicionar(usuario: UsuarioAutenticado, id: number, comando: ComandoTransicion): Promise<TransicionDto> {
+  async transicionar(usuario: UsuarioAutenticado, id: number, comando: ComandoTriage): Promise<TransicionDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.triage');
     const hecha = await this.transaccion.ejecutar(async ({ ticketsEscritura }): Promise<TransicionHecha> => {
       // FOR UPDATE: un segundo supervisor espera aquí y luego ve el estado nuevo, así que recibe 409.
@@ -91,7 +91,7 @@ export class TriageService {
   }
 
   // Después del commit y sin esperar: la transición no depende del correo. Tomar no avisa.
-  private avisarSolicitante(comando: ComandoTransicion, { actual, resultado, dependenciaNombre }: TransicionHecha): void {
+  private avisarSolicitante(comando: ComandoTriage, { actual, resultado, dependenciaNombre }: TransicionHecha): void {
     const { solicitante } = actual;
     if (comando.accion === 'tomar' || !solicitante.email) {
       return;
