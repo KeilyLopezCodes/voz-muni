@@ -42,6 +42,8 @@ export interface TicketDetalleLectura {
   cerradoEn: Date | null;
   informacionSolicitada: string | null; // motivo de la última transición a en_espera, solo si está en espera
   resolucion: ResolucionLectura | null; // solo en resuelta o cerrada (SPEC 26)
+  confirmacionVenceEn: Date | null; // fin del plazo para confirmar o reabrir (SPEC 27)
+  reaperturas: number;
   solicitanteId: number;
 }
 

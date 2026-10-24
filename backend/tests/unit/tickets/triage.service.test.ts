@@ -62,6 +62,8 @@ class TicketsEnMemoria implements TicketEscrituraRepository {
         cerradoEn: null,
         resolucion: null,
         resueltoPor: null,
+        confirmacionVenceEn: null,
+        reaperturas: 0,
       }),
       titulo: 'Bache frente a la escuela',
       categoria: { id: 1, nombre: 'Baches' },

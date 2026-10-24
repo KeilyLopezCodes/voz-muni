@@ -1,9 +1,17 @@
+import { exigeMotivoAlConfirmar, puedeConfirmar } from '../../domain/atencion/acciones-confirmacion';
 import type { Accion } from '../../domain/auth/permisos';
 import { filtroTicketsParaAccion } from '../../domain/autorizacion/alcance-tickets';
-import type { Pagina, TicketLecturaRepository, TicketResumen } from '../../domain/repositories/ticket-lectura-repository';
+import type { Clock } from '../../domain/health/clock';
+import type {
+  Pagina,
+  TicketDetalleLectura,
+  TicketLecturaRepository,
+  TicketResumen,
+} from '../../domain/repositories/ticket-lectura-repository';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
-import type { TicketDetalleDto, TicketListadoDto } from '../dto/consulta-tickets.dto';
+import type { ConfirmacionDetalleDto, TicketDetalleDto, TicketListadoDto } from '../dto/consulta-tickets.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import type { PlazosConfirmacionService } from './plazos-confirmacion.service';
 
 const TAMANO_MAXIMO = 100;
 const TAMANO_MAXIMO_LISTADO = 50;
@@ -18,7 +26,11 @@ function validarPaginacion(pagina: number, tamano: number, maximo: number): void
 
 // Entrada recomendada para leer tickets o cargarlos antes de actuar sobre ellos (SPEC 11).
 export class ConsultaTicketsService {
-  constructor(private readonly tickets: TicketLecturaRepository) {}
+  constructor(
+    private readonly tickets: TicketLecturaRepository,
+    private readonly plazos: Pick<PlazosConfirmacionService, 'maxReaperturas'>,
+    private readonly clock: Clock,
+  ) {}
 
   listar(usuario: UsuarioAutenticado, pagina: number, tamano: number): Promise<Pagina<TicketResumen>> {
     validarPaginacion(pagina, tamano, TAMANO_MAXIMO);
@@ -53,7 +65,8 @@ export class ConsultaTicketsService {
     if (!ticket) {
       throw new ErrorDeAplicacion('NO_ENCONTRADO', `No existe el ticket ${id}`);
     }
-    const { solicitanteId, creadoEn, resueltoEn, cerradoEn, resolucion, ...resto } = ticket;
+    const { solicitanteId, creadoEn, resueltoEn, cerradoEn, resolucion, confirmacionVenceEn, reaperturas, ...resto } =
+      ticket;
     // Con el alcance propia (el vecino) no se expone quién resolvió, como el técnico en SPEC 25. Depende del
     // alcance, no del nombre del rol (SPEC 26).
     const verQuienResolvio = usuario.permisos['tickets.ver'] !== 'propia';
@@ -71,6 +84,30 @@ export class ConsultaTicketsService {
               resueltaEn: resolucion.resueltaEn.toISOString(),
               resueltaPor: verQuienResolvio ? resolucion.resueltaPor : null,
             },
+      confirmacion: await this.confirmacion(usuario, ticket),
+    };
+  }
+
+  // Solo en resuelta y con vencimiento (SPEC 27). El alcance que decide es el de tickets.cambiar_estado: el técnico,
+  // el receptor y el administrador ven el plazo sin poder actuar.
+  private async confirmacion(
+    usuario: UsuarioAutenticado,
+    { estado, confirmacionVenceEn, reaperturas }: TicketDetalleLectura,
+  ): Promise<ConfirmacionDetalleDto | null> {
+    if (estado !== 'resuelta' || confirmacionVenceEn === null) {
+      return null;
+    }
+    const alcance = usuario.permisos['tickets.cambiar_estado'];
+    const vencida = this.clock.now().getTime() > confirmacionVenceEn.getTime();
+    const reaperturasRestantes = Math.max(0, (await this.plazos.maxReaperturas()) - reaperturas);
+    const puede = puedeConfirmar(alcance) && !vencida;
+    return {
+      venceEn: confirmacionVenceEn.toISOString(),
+      vencida,
+      reaperturasRestantes,
+      puedeConfirmar: puede,
+      puedeReabrir: puede && reaperturasRestantes > 0,
+      exigeMotivoAlConfirmar: alcance === undefined || exigeMotivoAlConfirmar(alcance),
     };
   }
 }

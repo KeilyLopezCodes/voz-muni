@@ -47,7 +47,7 @@ describe('KnexParametroRepository y ParametrosService (SPEC 15)', () => {
     const despues = await db('parametros').where({ clave: 'limites_municipio' }).first('valor', 'actualizado_en');
     expect(despues.valor).toEqual(OTRA);
     expect(despues.actualizado_en.getTime()).toBeGreaterThanOrEqual(antes.actualizado_en.getTime());
-    expect(await db('parametros').count({ total: '*' })).toEqual([{ total: '1' }]);
+    expect(await db('parametros').where({ clave: 'limites_municipio' }).count({ total: '*' })).toEqual([{ total: '1' }]);
   });
 
   it('una caja inválida lanza LIMITES_INVALIDOS sin guardar', async () => {

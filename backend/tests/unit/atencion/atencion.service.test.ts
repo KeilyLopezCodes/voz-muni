@@ -16,6 +16,7 @@ import { type ResultadoTransicion, Ticket } from '../../../src/domain/ticket/tic
 import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
+const VENCE_CONFIRMACION = new Date('2026-10-31T05:59:59.999Z');
 
 const TECNICO: UsuarioAutenticado = {
   id: 30,
@@ -45,6 +46,8 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
         cerradoEn: null,
         resolucion: null,
         resueltoPor: null,
+        confirmacionVenceEn: null,
+        reaperturas: 0,
       }),
     );
   }
@@ -73,15 +76,21 @@ class BandejaFalsa implements AtencionLecturaRepository {
   }
 }
 
-function armar() {
+// El cálculo real del plazo (calendario y parámetros) se prueba en la base; aquí solo importa qué recibe.
+function armar(vencimiento: (ahora: Date) => Promise<Date> = async () => VENCE_CONFIRMACION) {
   const tickets = new TicketsEnMemoria();
   const bandeja = new BandejaFalsa();
+  const pedidos: Date[] = [];
   const servicio = new AtencionService(
     new TransaccionEnMemoria({ ticketsEscritura: tickets as unknown as TicketEscrituraRepository }),
     bandeja,
     new RelojFalso(AHORA),
+    (ahora) => {
+      pedidos.push(ahora);
+      return vencimiento(ahora);
+    },
   );
-  return { tickets, bandeja, servicio };
+  return { tickets, bandeja, servicio, pedidos };
 }
 
 function capturar(promesa: Promise<unknown>): Promise<unknown> {
@@ -164,6 +173,38 @@ describe('AtencionService', () => {
 
     expect(respuesta).toMatchObject({ estado: 'resuelta', resueltoEn: AHORA.toISOString() });
     expect(tickets.guardadas[0].historial).toMatchObject({ estadoNuevo: 'resuelta', motivo: 'Se cambió la lámpara' });
+  });
+
+  it('resolver guarda el plazo de confirmación calculado para el momento de la resolución (SPEC 27)', async () => {
+    const { tickets, servicio, pedidos } = armar();
+    tickets.agregar(1, 'en_proceso');
+
+    await servicio.transicionar(TECNICO, 1, { accion: 'resolver', descripcion: 'Hecho' });
+
+    expect(pedidos).toEqual([AHORA]);
+    expect(tickets.guardadas[0].ticket.confirmacionVenceEn).toEqual(VENCE_CONFIRMACION);
+  });
+
+  it('si el plazo no se puede calcular, resolver lanza el error y no guarda nada', async () => {
+    const { tickets, servicio } = armar(async () => {
+      throw new ReglaDeNegocioError('CALENDARIO_INCOMPLETO', 'Sin calendario');
+    });
+    tickets.agregar(1, 'en_proceso');
+
+    expect(await capturar(servicio.transicionar(TECNICO, 1, { accion: 'resolver', descripcion: 'Hecho' }))).toMatchObject({
+      codigo: 'CALENDARIO_INCOMPLETO',
+    });
+    expect(tickets.guardadas).toEqual([]);
+    expect(tickets.tickets.get(1)!.estado).toBe('en_proceso');
+  });
+
+  it('las demás acciones no piden el plazo', async () => {
+    const { tickets, servicio, pedidos } = armar();
+    tickets.agregar(1, 'asignada');
+
+    await servicio.transicionar(TECNICO, 1, { accion: 'iniciar' });
+
+    expect(pedidos).toEqual([]);
   });
 
   it.each<[EstadoTicket, Parameters<AtencionService['transicionar']>[2]]>([

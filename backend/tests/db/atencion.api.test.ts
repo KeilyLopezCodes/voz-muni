@@ -6,6 +6,8 @@ import { createApp } from '../../src/app';
 import { buildContainer, type Container } from '../../src/container';
 import type { EnviadorCorreo } from '../../src/domain/notificaciones/enviador-correo';
 import type { EstadoTicket } from '../../src/domain/ticket/estado-ticket';
+import { ASUETOS_2026_2027 } from '../../src/infrastructure/database/seed-helpers/asuetos-guatemala';
+import { generarCalendario } from '../../src/infrastructure/database/seed-helpers/calendario';
 import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
 
 const PASSWORD = 'Clave-de-prueba-1';
@@ -39,6 +41,8 @@ describe('Atención de la queja (SPEC 22)', () => {
     ids.fugas = Number(fugas.id);
     const [zona] = await db('zonas').insert({ nombre: 'Zona 1', tipo: 'zona' }).returning('id');
     ids.zona = Number(zona.id);
+    // El calendario de seed:dev: resolver calcula con él el plazo de confirmación (SPEC 27).
+    await db('calendario_laboral').insert(generarCalendario('2026-01-01', '2027-12-31', ASUETOS_2026_2027));
 
     const hash = await bcrypt.hash(PASSWORD, 4);
     const usuarios: [string, string, number | null][] = [
@@ -255,6 +259,64 @@ describe('Atención de la queja (SPEC 22)', () => {
     expect(await db('tickets').where({ id }).first('resolucion', 'resuelto_por')).toEqual({
       resolucion: 'Se rellenó el bache con asfalto',
       resuelto_por: tecnico,
+    });
+  });
+
+  describe('plazo de confirmación al resolver (SPEC 27)', () => {
+    const resolver = (id: number) => transicion(id, { accion: 'resolver', descripcion: 'Se rellenó el bache' });
+
+    it('guarda confirmacion_vence_en: fin del 5.º día hábil posterior, en Guatemala', async () => {
+      const id = await ticket({ estado: 'en_proceso' });
+
+      expect((await resolver(id)).status).toBe(200);
+
+      // La expectativa se calcula en SQL, sin el código del dominio.
+      const { rows } = await db.raw(
+        `SELECT t.confirmacion_vence_en AS guardado,
+                (SELECT (c.fecha + time '23:59:59.999') AT TIME ZONE 'America/Guatemala'
+                   FROM calendario_laboral c
+                  WHERE c.es_habil AND c.fecha > (t.resuelto_en AT TIME ZONE 'America/Guatemala')::date
+                  ORDER BY c.fecha OFFSET 4 LIMIT 1) AS esperado
+           FROM tickets t WHERE t.id = ?`,
+        [id],
+      );
+      expect(rows[0].guardado).toBeInstanceOf(Date);
+      expect(rows[0].guardado.toISOString()).toBe(rows[0].esperado.toISOString());
+      expect(rows[0].guardado.toISOString()).toMatch(/T05:59:59\.999Z$/);
+    });
+
+    it('con el calendario vacío responde 409 CALENDARIO_INCOMPLETO y la queja sigue en en_proceso', async () => {
+      const id = await ticket({ estado: 'en_proceso' });
+      const calendario = await db('calendario_laboral').select('*');
+      await db('calendario_laboral').delete();
+      try {
+        const res = await resolver(id);
+
+        expect(res.status).toBe(409);
+        expect(res.body.codigo).toBe('CALENDARIO_INCOMPLETO');
+      } finally {
+        await db('calendario_laboral').insert(calendario);
+      }
+      expect(await db('tickets').where({ id }).first('estado', 'resolucion', 'confirmacion_vence_en')).toEqual({
+        estado: 'en_proceso',
+        resolucion: null,
+        confirmacion_vence_en: null,
+      });
+      expect(await historial(id)).toEqual([]);
+    });
+
+    it.each([0, 31, 2.5, '5'])('con plazo_confirmacion_dias_habiles = %j responde 409 PARAMETRO_INVALIDO', async (valor) => {
+      const id = await ticket({ estado: 'en_proceso' });
+      await db('parametros').where({ clave: 'plazo_confirmacion_dias_habiles' }).update({ valor: JSON.stringify(valor) });
+      try {
+        const res = await resolver(id);
+
+        expect(res.status).toBe(409);
+        expect(res.body.codigo).toBe('PARAMETRO_INVALIDO');
+      } finally {
+        await db('parametros').where({ clave: 'plazo_confirmacion_dias_habiles' }).update({ valor: '5' });
+      }
+      expect((await db('tickets').where({ id }).first('estado')).estado).toBe('en_proceso');
     });
   });
 

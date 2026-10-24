@@ -41,6 +41,17 @@ export interface ResolucionDetalle {
   resueltaPor: { id: number; nombre: string } | null
 }
 
+// Plazo y acciones de confirmación (SPEC 27), solo en resuelta. Los permisos los calcula el backend con el alcance
+// del usuario: la interfaz solo decide qué botones mostrar.
+export interface ConfirmacionDetalle {
+  venceEn: string // ISO 8601 en UTC
+  vencida: boolean
+  reaperturasRestantes: number
+  puedeConfirmar: boolean
+  puedeReabrir: boolean
+  exigeMotivoAlConfirmar: boolean
+}
+
 // Sin datos del solicitante, prioridad, técnico, coordenadas ni datos adicionales.
 export interface TicketDetalle {
   id: number
@@ -58,6 +69,7 @@ export interface TicketDetalle {
   informacionSolicitada: string | null // lo que pidió la municipalidad, solo si está en espera
   esSolicitante: boolean
   resolucion: ResolucionDetalle | null
+  confirmacion: ConfirmacionDetalle | null
 }
 
 export const TAMANO_PAGINA = 20
@@ -74,4 +86,29 @@ export function listarTickets(pagina: number): Promise<PaginaTickets> {
 
 export function obtenerTicket(id: number): Promise<TicketDetalle> {
   return apiClient.get<TicketDetalle>(`/tickets/${id}`)
+}
+
+// Largo máximo de los motivos de confirmar y reabrir, igual que el validador del backend.
+export const MOTIVO_MAX = 1000
+
+export interface ConfirmacionHecha {
+  id: number
+  numero: string
+  estado: EstadoTicket
+  asignadoA: number | null
+  resueltoEn: string | null
+  cerradoEn: string | null
+  reaperturas: number
+}
+
+// Mismo endpoint de las transiciones (SPEC 19 y 22): el permiso depende de la acción.
+export function confirmarSolucion(id: number, motivo?: string): Promise<ConfirmacionHecha> {
+  return apiClient.post<ConfirmacionHecha>(
+    `/tickets/${id}/transiciones`,
+    motivo === undefined ? { accion: 'confirmar' } : { accion: 'confirmar', motivo },
+  )
+}
+
+export function reabrirQueja(id: number, motivo: string): Promise<ConfirmacionHecha> {
+  return apiClient.post<ConfirmacionHecha>(`/tickets/${id}/transiciones`, { accion: 'reabrir', motivo })
 }

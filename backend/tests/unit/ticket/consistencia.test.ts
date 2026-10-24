@@ -17,10 +17,10 @@ const METODOS: { nombre: string; desde: EstadoTicket[]; ejecutar: (t: Ticket) =>
   { nombre: 'iniciar', desde: ['asignada'], ejecutar: (t) => t.iniciar(vecino) },
   { nombre: 'ponerEnEspera', desde: ['en_proceso'], ejecutar: (t) => t.ponerEnEspera(vecino, 'motivo') },
   { nombre: 'reanudar', desde: ['en_espera'], ejecutar: (t) => t.reanudar(vecino) },
-  { nombre: 'resolver', desde: ['en_proceso'], ejecutar: (t) => t.resolver(vecino, 'hecho') },
+  { nombre: 'resolver', desde: ['en_proceso'], ejecutar: (t) => t.resolver(vecino, 'hecho', vigente) },
   { nombre: 'confirmarSolucion', desde: ['resuelta'], ejecutar: (t) => t.confirmarSolucion(vecino, vigente) },
   { nombre: 'cerrarPorVencimiento', desde: ['resuelta'], ejecutar: (t) => t.cerrarPorVencimiento(sistema, vencido) },
-  { nombre: 'reabrir', desde: ['resuelta'], ejecutar: (t) => t.reabrir(vecino, 'motivo', vigente) },
+  { nombre: 'reabrir', desde: ['resuelta'], ejecutar: (t) => t.reabrir(vecino, 'motivo', vigente, 2) },
   { nombre: 'trasladar', desde: ['asignada', 'en_proceso'], ejecutar: (t) => t.trasladar(vecino, 'motivo') },
 ];
 
@@ -37,6 +37,8 @@ function ticketEn(estado: EstadoTicket): Ticket {
     cerradoEn: null,
     resolucion: null,
     resueltoPor: null,
+    confirmacionVenceEn: null,
+    reaperturas: 0,
   });
 }
 

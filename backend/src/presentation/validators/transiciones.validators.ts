@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { ComandoAtencion } from '../../application/dto/atencion.dto';
+import type { ComandoConfirmacion } from '../../application/dto/confirmacion.dto';
 import type { ComandoTriage } from '../../application/dto/triage.dto';
 import { ESTADOS_ABIERTOS } from '../../domain/repositories/asignacion-repository';
 import type { Prioridad } from '../../domain/ticket/prioridad';
@@ -12,6 +13,8 @@ export const idTicketSchema = z.object({
 // responden VALIDACION. La prioridad y los textos en blanco los valida el dominio (PRIORIDAD_INVALIDA,
 // MOTIVO_REQUERIDO, DESCRIPCION_REQUERIDA); aquí solo el tipo y el largo máximo.
 // Triage (SPEC 19): tomar, aceptar y rechazar. Atención (SPEC 22): iniciar, poner_en_espera, reanudar y resolver.
+// Confirmación (SPEC 27): confirmar (motivo obligatorio para los internos, lo decide el servicio) y reabrir. El
+// motivo de reabrir es opcional aquí para que su ausencia responda MOTIVO_REQUERIDO desde el dominio.
 export const transicionSchema = z.discriminatedUnion('accion', [
   z.object({ accion: z.literal('tomar') }).strict(),
   z
@@ -29,7 +32,9 @@ export const transicionSchema = z.discriminatedUnion('accion', [
   z.object({ accion: z.literal('poner_en_espera'), motivo: z.string().max(1000) }).strict(),
   z.object({ accion: z.literal('reanudar') }).strict(),
   z.object({ accion: z.literal('resolver'), descripcion: z.string().max(4000) }).strict(),
-]) satisfies z.ZodType<ComandoTriage | ComandoAtencion>;
+  z.object({ accion: z.literal('confirmar'), motivo: z.string().max(1000).optional() }).strict(),
+  z.object({ accion: z.literal('reabrir'), motivo: z.string().max(1000).default('') }).strict(),
+]) satisfies z.ZodType<ComandoTriage | ComandoAtencion | ComandoConfirmacion>;
 
 // Sin `estado`, o con `todas`, la bandeja trae los tres estados abiertos.
 export const bandejaAtencionSchema = z

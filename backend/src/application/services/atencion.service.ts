@@ -9,8 +9,17 @@ import type { AtencionHechaDto, ComandoAtencion, TicketAtencionDto } from '../dt
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 
+// Fin del plazo para confirmar o reabrir una queja resuelta en `ahora` (SPEC 27). Lanza CALENDARIO_INCOMPLETO o
+// PARAMETRO_INVALIDO si no se puede calcular: nunca se inventa un plazo.
+export type CalcularVencimientoConfirmacion = (ahora: Date) => Promise<Date>;
+
 // Cada acción de atención es un método de dominio de SPEC 04.
-function aplicar(ticket: Ticket, ctx: ContextoTransicion, comando: ComandoAtencion): ResultadoTransicion {
+function aplicar(
+  ticket: Ticket,
+  ctx: ContextoTransicion,
+  comando: ComandoAtencion,
+  confirmacionVenceEn: Date | null,
+): ResultadoTransicion {
   switch (comando.accion) {
     case 'iniciar':
       return ticket.iniciar(ctx);
@@ -19,7 +28,7 @@ function aplicar(ticket: Ticket, ctx: ContextoTransicion, comando: ComandoAtenci
     case 'reanudar':
       return ticket.reanudar(ctx);
     case 'resolver':
-      return ticket.resolver(ctx, comando.descripcion);
+      return ticket.resolver(ctx, comando.descripcion, confirmacionVenceEn!);
   }
 }
 
@@ -32,6 +41,7 @@ export class AtencionService {
     private readonly transaccion: Transaccion,
     private readonly bandeja: AtencionLecturaRepository,
     private readonly clock: Clock,
+    private readonly vencimientoConfirmacion: CalcularVencimientoConfirmacion,
   ) {}
 
   transicionar(usuario: UsuarioAutenticado, id: number, comando: ComandoAtencion): Promise<AtencionHechaDto> {
@@ -42,7 +52,10 @@ export class AtencionService {
       if (!actual) {
         throw new ErrorDeAplicacion('NO_ENCONTRADO', `No existe el ticket ${id}`);
       }
-      const resultado = aplicar(actual.ticket, { actorId: usuario.id, ahora: this.clock.now() }, comando);
+      const ahora = this.clock.now();
+      // Solo resolver necesita el plazo de confirmación (SPEC 27). Si no se puede calcular, la queja no cambia.
+      const confirmacionVenceEn = comando.accion === 'resolver' ? await this.vencimientoConfirmacion(ahora) : null;
+      const resultado = aplicar(actual.ticket, { actorId: usuario.id, ahora }, comando, confirmacionVenceEn);
       await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id);
       const { ticket } = resultado;
       return {

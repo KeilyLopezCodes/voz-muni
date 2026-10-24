@@ -400,6 +400,8 @@ describe('Asignación de técnico (SPEC 20)', () => {
       cerradoEn: fila.cerrado_en,
       resolucion: null,
       resueltoPor: null,
+      confirmacionVenceEn: null,
+      reaperturas: 0,
     });
 
     expect(guardado.iniciar({ actorId: ids.tecnicoA1, ahora: new Date() }).ticket.estado).toBe('en_proceso');

@@ -1,6 +1,6 @@
 # SPEC 27 — Confirmar o reabrir la solución
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 04, SPEC 09, SPEC 11, SPEC 15, SPEC 19, SPEC 22, SPEC 25, SPEC 26
 > **Fecha:** 2026-10-23
 > **Objetivo:** Agregar a `POST /api/v1/tickets/:id/transiciones` las acciones `confirmar` y `reabrir` para quejas en `resuelta`, dentro de un plazo de días hábiles que se calcula al resolver y se guarda en `tickets.confirmacion_vence_en`, con un máximo configurable de reaperturas y los botones en `/tickets/:id`.
@@ -375,23 +375,23 @@ frontend/
 
 ## Criterios de aceptación
 
-- [ ] La migración `0022_confirmacion` agrega `tickets.confirmacion_vence_en` y `tickets.reaperturas`, los parámetros `plazo_confirmacion_dias_habiles = 5` y `max_reaperturas = 2`, y las plantillas `queja_cerrada` y `queja_reabierta`. Su `down` lo elimina todo.
-- [ ] `resolver` guarda en `confirmacion_vence_en` el fin (23:59:59.999 en `America/Guatemala`) del N-ésimo día hábil de `calendario_laboral` posterior al día de la resolución, con N leído de `parametros`.
-- [ ] Si el calendario no tiene suficientes días hábiles, `resolver` responde `409 CALENDARIO_INCOMPLETO` y la queja no cambia.
-- [ ] `confirmar` pasa la queja de `resuelta` a `cerrada`, fija `cerrado_en` y escribe una fila de `ticket_historial`.
-- [ ] `reabrir` pasa la queja de `resuelta` a `en_proceso` con el mismo técnico, suma 1 a `reaperturas`, limpia `confirmacion_vence_en`, `resuelto_en`, `resolucion` y `resuelto_por`, y guarda el motivo en el historial.
-- [ ] El vecino solicitante, el coordinador de la dependencia y el supervisor pueden confirmar y reabrir dentro de su alcance. Fuera de alcance reciben `404`. El técnico, el receptor y el administrador reciben `403`.
-- [ ] Reabrir sin motivo responde `400`. Confirmar sin motivo responde `400 MOTIVO_REQUERIDO` para el coordinador y el supervisor, y `200` para el vecino.
-- [ ] Con `ahora > confirmacion_vence_en`, las dos acciones responden `409 PLAZO_CONFIRMACION_VENCIDO`. En el instante exacto del vencimiento, funcionan.
-- [ ] Con `reaperturas >= max_reaperturas`, `reabrir` responde `409 LIMITE_REAPERTURAS` para todos los roles.
-- [ ] Al confirmar, el solicitante con correo recibe `queja_cerrada`. Al reabrir, recibe `queja_reabierta` con el motivo. Un fallo del envío no cambia el `200`.
-- [ ] Dos acciones simultáneas sobre la misma queja dejan exactamente una aplicada, y la otra responde `409`.
-- [ ] `GET /api/v1/tickets/:id` devuelve `confirmacion` solo para quejas en `resuelta`, con `venceEn`, `vencida`, `reaperturasRestantes`, `puedeConfirmar`, `puedeReabrir` y `exigeMotivoAlConfirmar` según el alcance del usuario.
-- [ ] Ningún archivo nuevo o modificado del backend compara el nombre de un rol, ni fija en el código el plazo, el máximo de reaperturas o el desfase horario de Guatemala.
-- [ ] En `/tickets/:id`, el bloque "Solución" muestra el plazo en `America/Guatemala` y los botones según los permisos del detalle. Los diálogos exigen los motivos obligatorios, y el texto temporal de SPEC 26 ya no aparece.
-- [ ] A 360 px de ancho, el bloque y los diálogos no producen scroll horizontal, y ningún texto de la interfaz está fijo en un componente.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
-- [ ] La sección 6 del documento de definición y `CLAUDE.md` documentan las columnas, los parámetros, la regla del plazo y quién puede confirmar y reabrir.
+- [x] La migración `0022_confirmacion` agrega `tickets.confirmacion_vence_en` y `tickets.reaperturas`, los parámetros `plazo_confirmacion_dias_habiles = 5` y `max_reaperturas = 2`, y las plantillas `queja_cerrada` y `queja_reabierta`. Su `down` lo elimina todo.
+- [x] `resolver` guarda en `confirmacion_vence_en` el fin (23:59:59.999 en `America/Guatemala`) del N-ésimo día hábil de `calendario_laboral` posterior al día de la resolución, con N leído de `parametros`.
+- [x] Si el calendario no tiene suficientes días hábiles, `resolver` responde `409 CALENDARIO_INCOMPLETO` y la queja no cambia.
+- [x] `confirmar` pasa la queja de `resuelta` a `cerrada`, fija `cerrado_en` y escribe una fila de `ticket_historial`.
+- [x] `reabrir` pasa la queja de `resuelta` a `en_proceso` con el mismo técnico, suma 1 a `reaperturas`, limpia `confirmacion_vence_en`, `resuelto_en`, `resolucion` y `resuelto_por`, y guarda el motivo en el historial.
+- [x] El vecino solicitante, el coordinador de la dependencia y el supervisor pueden confirmar y reabrir dentro de su alcance. Fuera de alcance reciben `404`. El técnico, el receptor y el administrador reciben `403`.
+- [x] Reabrir sin motivo responde `400`. Confirmar sin motivo responde `400 MOTIVO_REQUERIDO` para el coordinador y el supervisor, y `200` para el vecino.
+- [x] Con `ahora > confirmacion_vence_en`, las dos acciones responden `409 PLAZO_CONFIRMACION_VENCIDO`. En el instante exacto del vencimiento, funcionan.
+- [x] Con `reaperturas >= max_reaperturas`, `reabrir` responde `409 LIMITE_REAPERTURAS` para todos los roles.
+- [x] Al confirmar, el solicitante con correo recibe `queja_cerrada`. Al reabrir, recibe `queja_reabierta` con el motivo. Un fallo del envío no cambia el `200`.
+- [x] Dos acciones simultáneas sobre la misma queja dejan exactamente una aplicada, y la otra responde `409`.
+- [x] `GET /api/v1/tickets/:id` devuelve `confirmacion` solo para quejas en `resuelta`, con `venceEn`, `vencida`, `reaperturasRestantes`, `puedeConfirmar`, `puedeReabrir` y `exigeMotivoAlConfirmar` según el alcance del usuario.
+- [x] Ningún archivo nuevo o modificado del backend compara el nombre de un rol, ni fija en el código el plazo, el máximo de reaperturas o el desfase horario de Guatemala.
+- [x] En `/tickets/:id`, el bloque "Solución" muestra el plazo en `America/Guatemala` y los botones según los permisos del detalle. Los diálogos exigen los motivos obligatorios, y el texto temporal de SPEC 26 ya no aparece.
+- [x] A 360 px de ancho, el bloque y los diálogos no producen scroll horizontal, y ningún texto de la interfaz está fijo en un componente.
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
+- [x] La sección 6 del documento de definición y `CLAUDE.md` documentan las columnas, los parámetros, la regla del plazo y quién puede confirmar y reabrir.
 
 ## Decisiones
 

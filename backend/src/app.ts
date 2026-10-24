@@ -61,7 +61,7 @@ export function createApp(container: Container): Express {
   );
   app.use(
     '/api/v1/tickets',
-    transicionesRoutes(new TransicionesController(container.triageService, container.atencionService), autenticar(container.autorizacionService)),
+    transicionesRoutes(new TransicionesController(container.triageService, container.atencionService, container.confirmacionService), autenticar(container.autorizacionService)),
   );
   app.use(
     '/api/v1',

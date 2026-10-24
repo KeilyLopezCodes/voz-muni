@@ -94,6 +94,8 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
     creadoEn?: string;
     resolucion?: string | null;
     resueltoPor?: number | null;
+    venceEn?: Date | null;
+    reaperturas?: number;
   }
 
   // Una queja en Obras, registrada por el receptor, con coordenadas y prioridad para comprobar que no se exponen.
@@ -104,6 +106,8 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
     creadoEn = '2026-10-20T15:00:00Z',
     resolucion = null,
     resueltoPor = null,
+    venceEn = null,
+    reaperturas = 0,
   }: OpcionesTicket = {}): Promise<number> {
     const [fila] = await db('tickets')
       .insert({
@@ -128,6 +132,8 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
         resuelto_por: resueltoPor,
         resuelto_en: resolucion === null ? null : '2026-10-23T18:30:00Z',
         cerrado_en: estado === 'cerrada' ? '2026-10-25T18:30:00Z' : null,
+        confirmacion_vence_en: venceEn,
+        reaperturas,
       })
       .returning('id');
     return Number(fila.id);
@@ -227,6 +233,7 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
       informacionSolicitada: 'Envíe el número de contador',
       esSolicitante: true,
       resolucion: null,
+      confirmacion: null,
     });
   });
 
@@ -302,6 +309,77 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
       const id = await ticket({ estado: 'en_proceso', resolucion: SOLUCION, resueltoPor: ids.tecnico });
 
       expect((await detalle(id, 'supervisor')).body.resolucion).toBeNull();
+    });
+  });
+
+  describe('confirmación (SPEC 27)', () => {
+    const resuelta = (venceEn: Date, reaperturas = 0) =>
+      ticket({ estado: 'resuelta', resolucion: 'Se rellenó el bache', resueltoPor: ids.tecnico, venceEn, reaperturas });
+    const enUnDia = () => new Date(Date.now() + 86_400_000);
+
+    it('una queja en resuelta pedida por su vecino puede confirmarse y reabrirse, sin motivo al confirmar', async () => {
+      const vence = enUnDia();
+      const id = await resuelta(vence);
+
+      const res = await detalle(id, 'vecino');
+
+      expect(res.status).toBe(200);
+      expect(res.body.confirmacion).toEqual({
+        venceEn: vence.toISOString(),
+        vencida: false,
+        reaperturasRestantes: 2,
+        puedeConfirmar: true,
+        puedeReabrir: true,
+        exigeMotivoAlConfirmar: false,
+      });
+    });
+
+    it('pedida por el técnico, ve el plazo pero no puede confirmar ni reabrir', async () => {
+      const id = await resuelta(enUnDia());
+
+      expect((await detalle(id, 'tecnico')).body.confirmacion).toMatchObject({
+        vencida: false,
+        puedeConfirmar: false,
+        puedeReabrir: false,
+      });
+    });
+
+    it('el coordinador puede, con motivo obligatorio al confirmar', async () => {
+      const id = await resuelta(enUnDia());
+
+      expect((await detalle(id, 'coordinador')).body.confirmacion).toMatchObject({
+        puedeConfirmar: true,
+        puedeReabrir: true,
+        exigeMotivoAlConfirmar: true,
+      });
+    });
+
+    it('con el plazo vencido → vencida: true y ninguna acción', async () => {
+      const id = await resuelta(new Date(Date.now() - 1000));
+
+      expect((await detalle(id, 'vecino')).body.confirmacion).toMatchObject({
+        vencida: true,
+        puedeConfirmar: false,
+        puedeReabrir: false,
+      });
+    });
+
+    it('en el límite de reaperturas → puedeReabrir: false y reaperturasRestantes: 0', async () => {
+      const id = await resuelta(enUnDia(), 2);
+
+      expect((await detalle(id, 'vecino')).body.confirmacion).toMatchObject({
+        reaperturasRestantes: 0,
+        puedeConfirmar: true,
+        puedeReabrir: false,
+      });
+    });
+
+    it('en otro estado → confirmacion: null', async () => {
+      const cerrada = await ticket({ estado: 'cerrada', resolucion: 'x', resueltoPor: ids.tecnico, venceEn: enUnDia() });
+      const enProceso = await ticket();
+
+      expect((await detalle(cerrada, 'vecino')).body.confirmacion).toBeNull();
+      expect((await detalle(enProceso, 'vecino')).body.confirmacion).toBeNull();
     });
   });
 

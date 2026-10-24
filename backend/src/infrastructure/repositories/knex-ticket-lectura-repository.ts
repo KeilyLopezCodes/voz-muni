@@ -63,6 +63,8 @@ interface FilaDetalle {
   resolucion: string | null;
   resuelto_por: string | null;
   resuelto_por_nombre: string | null;
+  confirmacion_vence_en: Date | null;
+  reaperturas: number;
   solicitante_id: string;
 }
 
@@ -88,6 +90,8 @@ const COLUMNAS_DETALLE = [
   't.resolucion',
   't.resuelto_por',
   'rp.nombre as resuelto_por_nombre',
+  't.confirmacion_vence_en',
+  't.reaperturas',
   't.solicitante_id',
 ];
 
@@ -133,6 +137,8 @@ function aDetalle(fila: FilaDetalle): TicketDetalleLectura {
     cerradoEn: fila.cerrado_en,
     informacionSolicitada: fila.informacion_solicitada,
     resolucion: aResolucion(fila),
+    confirmacionVenceEn: fila.confirmacion_vence_en,
+    reaperturas: fila.reaperturas,
     solicitanteId: Number(fila.solicitante_id),
   };
 }

@@ -19,6 +19,8 @@ const BASE: TicketProps = {
   cerradoEn: null,
   resolucion: null,
   resueltoPor: null,
+  confirmacionVenceEn: null,
+  reaperturas: 0,
 };
 
 function ticketEn(estado: EstadoTicket, overrides: Partial<TicketProps> = {}): Ticket {
@@ -68,6 +70,8 @@ describe('Ticket', () => {
         cerradoEn: null,
         resolucion: null,
         resueltoPor: null,
+        confirmacionVenceEn: null,
+        reaperturas: 0,
       });
       expect(Object.isFrozen(ticket)).toBe(true);
     });
@@ -269,8 +273,14 @@ describe('Ticket', () => {
   });
 
   describe('resolver', () => {
+    const venceConfirmacion = new Date('2026-10-30T05:59:59.999Z');
+
     it('pasa a resuelta, fija resueltoEn y guarda la descripción recortada como motivo', () => {
-      const { ticket, historial } = ticketEn('en_proceso', { asignadoA: 9 }).resolver(ctx, '  Se cambió la lámpara  ');
+      const { ticket, historial } = ticketEn('en_proceso', { asignadoA: 9 }).resolver(
+        ctx,
+        '  Se cambió la lámpara  ',
+        venceConfirmacion,
+      );
 
       expect(ticket.estado).toBe('resuelta');
       expect(ticket.resueltoEn).toEqual(ctx.ahora);
@@ -285,6 +295,7 @@ describe('Ticket', () => {
       const { ticket, historial } = ticketEn('en_proceso', { asignadoA: 9 }).resolver(
         ctx,
         '  Se cambió la lámpara\nY el poste  ',
+        venceConfirmacion,
       );
 
       expect(ticket.resolucion).toBe('Se cambió la lámpara\nY el poste');
@@ -292,12 +303,18 @@ describe('Ticket', () => {
       expect(historial.motivo).toBe(ticket.resolucion);
     });
 
+    it('fija confirmacionVenceEn con el plazo recibido (SPEC 27)', () => {
+      const { ticket } = ticketEn('en_proceso', { asignadoA: 9 }).resolver(ctx, 'hecho', venceConfirmacion);
+
+      expect(ticket.confirmacionVenceEn).toEqual(venceConfirmacion);
+    });
+
     it.each(['', '   '])('con descripción %j lanza DESCRIPCION_REQUERIDA', (descripcion) => {
-      esperarRegla(() => ticketEn('en_proceso').resolver(ctx, descripcion), 'DESCRIPCION_REQUERIDA');
+      esperarRegla(() => ticketEn('en_proceso').resolver(ctx, descripcion, venceConfirmacion), 'DESCRIPCION_REQUERIDA');
     });
 
     it.each(otrosEstados('en_proceso'))('desde %s lanza InvalidTransitionError', (estado) => {
-      esperarTransicionInvalida(() => ticketEn(estado).resolver(ctx, 'hecho'), estado, 'resuelta');
+      esperarTransicionInvalida(() => ticketEn(estado).resolver(ctx, 'hecho', venceConfirmacion), estado, 'resuelta');
     });
   });
 
@@ -315,9 +332,20 @@ describe('Ticket', () => {
         resueltoEn: new Date('2026-10-22T10:00:00.000Z'),
         resolucion: 'Se cambió la lámpara',
         resueltoPor: 9,
+        confirmacionVenceEn: vence,
       });
 
     describe('confirmarSolucion', () => {
+      it('con motivo lo deja recortado en el historial (SPEC 27)', () => {
+        const { historial } = resuelta().confirmarSolucion(enElLimite, vence, '  El vecino confirmó por teléfono  ');
+
+        expect(historial.motivo).toBe('El vecino confirmó por teléfono');
+      });
+
+      it.each([undefined, '', '   '])('con motivo %j deja null en el historial', (motivo) => {
+        expect(resuelta().confirmarSolucion(enElLimite, vence, motivo).historial.motivo).toBeNull();
+      });
+
       it('en el límite exacto cierra y fija cerradoEn', () => {
         const { ticket, historial } = resuelta().confirmarSolucion(enElLimite, vence);
 
@@ -374,8 +402,10 @@ describe('Ticket', () => {
     });
 
     describe('reabrir', () => {
+      const MAX = 2;
+
       it('en el límite exacto vuelve a en_proceso, conserva el técnico y limpia resueltoEn y escalado', () => {
-        const { ticket, historial } = resuelta().reabrir(enElLimite, ' Sigue sin luz ', vence);
+        const { ticket, historial } = resuelta().reabrir(enElLimite, ' Sigue sin luz ', vence, MAX);
 
         expect(ticket.estado).toBe('en_proceso');
         expect(ticket.asignadoA).toBe(9);
@@ -391,16 +421,41 @@ describe('Ticket', () => {
         });
       });
 
+      it('suma 1 a reaperturas y limpia confirmacionVenceEn (SPEC 27)', () => {
+        const { ticket } = resuelta().reabrir(enElLimite, 'Sigue sin luz', vence, MAX);
+
+        expect(ticket.reaperturas).toBe(1);
+        expect(ticket.confirmacionVenceEn).toBeNull();
+      });
+
+      it('con reaperturas = maxReaperturas lanza LIMITE_REAPERTURAS', () => {
+        const enElTope = ticketEn('resuelta', { reaperturas: MAX, confirmacionVenceEn: vence });
+
+        esperarRegla(() => enElTope.reabrir(enElLimite, 'Sigue sin luz', vence, MAX), 'LIMITE_REAPERTURAS');
+      });
+
+      it('con maxReaperturas = 0 nunca se puede reabrir', () => {
+        esperarRegla(() => resuelta().reabrir(enElLimite, 'Sigue sin luz', vence, 0), 'LIMITE_REAPERTURAS');
+      });
+
+      it('con el plazo vencido lanza PLAZO_CONFIRMACION_VENCIDO aunque también esté en el límite', () => {
+        const enElTope = ticketEn('resuelta', { reaperturas: MAX, confirmacionVenceEn: vence });
+
+        esperarRegla(() => enElTope.reabrir(despues, 'Sigue sin luz', vence, MAX), 'PLAZO_CONFIRMACION_VENCIDO');
+      });
+
       it('1 ms después del límite lanza PLAZO_CONFIRMACION_VENCIDO', () => {
-        esperarRegla(() => resuelta().reabrir(despues, 'Sigue sin luz', vence), 'PLAZO_CONFIRMACION_VENCIDO');
+        esperarRegla(() => resuelta().reabrir(despues, 'Sigue sin luz', vence, MAX), 'PLAZO_CONFIRMACION_VENCIDO');
       });
 
       it.each(['', '   '])('con motivo %j lanza MOTIVO_REQUERIDO', (motivo) => {
-        esperarRegla(() => resuelta().reabrir(enElLimite, motivo, vence), 'MOTIVO_REQUERIDO');
+        esperarRegla(() => resuelta().reabrir(enElLimite, motivo, vence, MAX), 'MOTIVO_REQUERIDO');
       });
 
       it.each(otrosEstados('resuelta'))('desde %s lanza InvalidTransitionError', (estado) => {
-        esperarTransicionInvalida(() => ticketEn(estado).reabrir(enElLimite, 'motivo', vence), estado, 'en_proceso');
+        const enElTope = ticketEn(estado, { reaperturas: MAX });
+
+        esperarTransicionInvalida(() => enElTope.reabrir(enElLimite, 'motivo', vence, MAX), estado, 'en_proceso');
       });
     });
   });

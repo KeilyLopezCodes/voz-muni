@@ -23,6 +23,8 @@ interface FilaTicket {
   cerrado_en: Date | null;
   resolucion: string | null;
   resuelto_por: string | null;
+  confirmacion_vence_en: Date | null;
+  reaperturas: number;
   titulo: string;
   categoria_id: string;
   categoria_nombre: string;
@@ -71,6 +73,8 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
         't.cerrado_en',
         't.resolucion',
         't.resuelto_por',
+        't.confirmacion_vence_en',
+        't.reaperturas',
         't.titulo',
         't.categoria_id',
         'c.nombre as categoria_nombre',
@@ -94,6 +98,8 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
         cerradoEn: fila.cerrado_en,
         resolucion: fila.resolucion,
         resueltoPor: numeroONull(fila.resuelto_por),
+        confirmacionVenceEn: fila.confirmacion_vence_en,
+        reaperturas: fila.reaperturas,
       }),
       titulo: fila.titulo,
       categoria: { id: Number(fila.categoria_id), nombre: fila.categoria_nombre },
@@ -140,6 +146,9 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
       // Resolución vigente (SPEC 26): sale del mismo resultado del dominio que el motivo del historial.
       resolucion: ticket.resolucion,
       resuelto_por: ticket.resueltoPor,
+      // Plazo de confirmación y reaperturas (SPEC 27), del mismo resultado del dominio.
+      confirmacion_vence_en: ticket.confirmacionVenceEn,
+      reaperturas: ticket.reaperturas,
       categoria_id: categoriaId,
     });
     await this.db('ticket_historial').insert({

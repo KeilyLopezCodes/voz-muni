@@ -19,6 +19,8 @@ export interface TicketProps {
   readonly cerradoEn: Date | null;
   readonly resolucion: string | null; // descripción de la resolución vigente, recortada (SPEC 26)
   readonly resueltoPor: number | null; // quien ejecutó resolver
+  readonly confirmacionVenceEn: Date | null; // fin del plazo para confirmar o reabrir (SPEC 27)
+  readonly reaperturas: number; // cuántas veces se reabrió; nunca disminuye
 }
 
 // Vive aquí y no en registro-historial.ts para no crear un ciclo de imports (regla no-circular).
@@ -149,6 +151,14 @@ export class Ticket {
     return this.props.resueltoPor;
   }
 
+  get confirmacionVenceEn(): Date | null {
+    return this.props.confirmacionVenceEn;
+  }
+
+  get reaperturas(): number {
+    return this.props.reaperturas;
+  }
+
   enviarARevision(ctx: ContextoTransicion): ResultadoTransicion {
     return this.transicionar(ctx, ['nueva'], 'en_revision');
   }
@@ -216,26 +226,32 @@ export class Ticket {
   }
 
   // La descripción de la resolución queda en el ticket (resolución vigente, SPEC 26) y como motivo del historial
-  // (RF-23), que conserva cada resolución anterior.
-  resolver(ctx: ContextoTransicion, descripcion: string): ResultadoTransicion {
+  // (RF-23), que conserva cada resolución anterior. El plazo para confirmar lo calcula la aplicación con el
+  // calendario laboral (SPEC 27).
+  resolver(ctx: ContextoTransicion, descripcion: string, confirmacionVenceEn: Date): ResultadoTransicion {
     return this.transicionar(ctx, ['en_proceso'], 'resuelta', () => {
       const resolucion = textoRequerido(
         descripcion,
         'DESCRIPCION_REQUERIDA',
         'La descripción de la resolución es obligatoria',
       );
-      return { cambios: { resueltoEn: ctx.ahora, resolucion, resueltoPor: ctx.actorId }, motivo: resolucion };
+      return {
+        cambios: { resueltoEn: ctx.ahora, resolucion, resueltoPor: ctx.actorId, confirmacionVenceEn },
+        motivo: resolucion,
+      };
     });
   }
 
-  // El vecino confirma dentro del plazo; el límite exacto cuenta como dentro.
-  confirmarSolucion(ctx: ContextoTransicion, confirmacionVenceEn: Date): ResultadoTransicion {
+  // Se confirma dentro del plazo; el límite exacto cuenta como dentro. El motivo opcional (obligatorio para los
+  // internos, lo decide la aplicación) queda recortado en el historial; vacío o ausente, el motivo es null.
+  confirmarSolucion(ctx: ContextoTransicion, confirmacionVenceEn: Date, motivo?: string): ResultadoTransicion {
     return this.transicionar(ctx, ['resuelta'], 'cerrada', () => {
       if (ctx.actorId === null) {
         throw new ReglaDeNegocioError('ACTOR_REQUERIDO', 'La confirmación necesita un usuario');
       }
       exigirPlazoVigente(ctx.ahora, confirmacionVenceEn);
-      return { cambios: { cerradoEn: ctx.ahora } };
+      const motivoRecortado = typeof motivo === 'string' ? motivo.trim() : '';
+      return { cambios: { cerradoEn: ctx.ahora }, motivo: motivoRecortado === '' ? null : motivoRecortado };
     });
   }
 
@@ -253,13 +269,32 @@ export class Ticket {
   }
 
   // Vuelve al mismo técnico y reinicia el plazo de resolución, por eso limpia resueltoEn y escalado. La resolución
-  // deja de estar vigente: el historial la conserva (SPEC 26).
-  reabrir(ctx: ContextoTransicion, motivo: string, confirmacionVenceEn: Date): ResultadoTransicion {
+  // deja de estar vigente: el historial la conserva (SPEC 26). Suma una reapertura y limpia el plazo de
+  // confirmación; el límite se revisa después del estado y del plazo (SPEC 27).
+  reabrir(
+    ctx: ContextoTransicion,
+    motivo: string,
+    confirmacionVenceEn: Date,
+    maxReaperturas: number,
+  ): ResultadoTransicion {
     return this.transicionar(ctx, ['resuelta'], 'en_proceso', () => {
       const motivoRecortado = textoRequerido(motivo, 'MOTIVO_REQUERIDO', 'El motivo es obligatorio');
       exigirPlazoVigente(ctx.ahora, confirmacionVenceEn);
+      if (this.reaperturas >= maxReaperturas) {
+        throw new ReglaDeNegocioError(
+          'LIMITE_REAPERTURAS',
+          `La queja ya se reabrió ${this.reaperturas} veces, el máximo permitido`,
+        );
+      }
       return {
-        cambios: { resueltoEn: null, resolucion: null, resueltoPor: null, escalado: false },
+        cambios: {
+          resueltoEn: null,
+          resolucion: null,
+          resueltoPor: null,
+          confirmacionVenceEn: null,
+          reaperturas: this.reaperturas + 1,
+          escalado: false,
+        },
         motivo: motivoRecortado,
       };
     });

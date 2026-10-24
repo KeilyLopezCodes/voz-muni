@@ -549,8 +549,36 @@
     "solucion": {
       "titulo": "Solución",
       "resueltaEl": "Resuelta el {{fecha}}",
-      "por": "por {{nombre}}",
-      "pendienteConfirmar": "Revisa la solución. Pronto podrás confirmarla o reabrir la queja."
+      "por": "por {{nombre}}"
+    },
+    "confirmacion": {
+      "plazoVecino": "Tienes hasta el {{fecha}} para confirmar la solución o reabrir la queja.",
+      "plazoInterno": "El vecino tiene hasta el {{fecha}} para confirmar.",
+      "vencido": "El plazo para confirmar venció.",
+      "limite": "Esta queja ya no se puede reabrir. Si el problema continúa, registra una queja nueva.",
+      "registrarNueva": "Registrar una queja nueva",
+      "confirmar": "Confirmar solución",
+      "reabrir": "Reabrir",
+      "cancelar": "Cancelar",
+      "enviando": "Enviando…",
+      "contador": "{{actual}} / {{maximo}}",
+      "dialogoConfirmar": {
+        "titulo": "Confirmar la solución",
+        "texto": "La queja quedará cerrada.",
+        "motivo": "¿Cómo confirmó el vecino?",
+        "aceptar": "Confirmar"
+      },
+      "dialogoReabrir": {
+        "titulo": "Reabrir la queja",
+        "motivo": "¿Por qué la solución no resolvió el problema?",
+        "restantes_one": "Puedes reabrirla {{count}} vez más.",
+        "restantes_other": "Puedes reabrirla {{count}} veces más.",
+        "aceptar": "Reabrir"
+      },
+      "cerrada": "Gracias, cerramos tu queja.",
+      "reabierta": "Reabrimos tu queja.",
+      "cambio": "La queja cambió. Actualizamos la información.",
+      "error": "No pudimos completar la acción. Intenta de nuevo."
     }
   }
 }

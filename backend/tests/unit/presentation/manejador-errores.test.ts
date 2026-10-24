@@ -16,6 +16,7 @@ import type { TriageService } from '../../../src/application/services/triage.ser
 import type { AsignacionService } from '../../../src/application/services/asignacion.service';
 import type { TrasladosService } from '../../../src/application/services/traslados.service';
 import type { AtencionService } from '../../../src/application/services/atencion.service';
+import type { ConfirmacionService } from '../../../src/application/services/confirmacion.service';
 import type { ComentariosService } from '../../../src/application/services/comentarios.service';
 import type { AdjuntosService } from '../../../src/application/services/adjuntos.service';
 import type { ConsultaTicketsService } from '../../../src/application/services/consulta-tickets.service';
@@ -52,6 +53,7 @@ function buildTestContainer(): Container {
     asignacionService: {} as AsignacionService,
     trasladosService: {} as TrasladosService,
     atencionService: {} as AtencionService,
+    confirmacionService: {} as ConfirmacionService,
     comentariosService: {} as ComentariosService,
     adjuntosService: {} as AdjuntosService,
     prepararAlmacen: async () => {},

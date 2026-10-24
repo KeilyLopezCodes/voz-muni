@@ -7,7 +7,9 @@ import { AutorizacionService } from './application/services/autorizacion.service
 import { CamposExtraService } from './application/services/campos-extra.service';
 import { CatalogosService } from './application/services/catalogos.service';
 import { ComentariosService } from './application/services/comentarios.service';
+import { ConfirmacionService } from './application/services/confirmacion.service';
 import { ParametrosService } from './application/services/parametros.service';
+import { PlazosConfirmacionService } from './application/services/plazos-confirmacion.service';
 import { ConsultaTicketsService } from './application/services/consulta-tickets.service';
 import { EnvioCorreo } from './application/services/envio-correo';
 import { HealthService } from './application/services/health.service';
@@ -18,6 +20,7 @@ import { TrasladosService } from './application/services/traslados.service';
 import { TriageService } from './application/services/triage.service';
 import { UsuariosService } from './application/services/usuarios.service';
 import { VecinosService } from './application/services/vecinos.service';
+import type { Clock } from './domain/health/clock';
 import type { EnviadorCorreo } from './domain/notificaciones/enviador-correo';
 import type { BitacoraLecturaRepository } from './domain/repositories/bitacora-lectura-repository';
 import type { ReporteLecturaRepository } from './domain/repositories/reporte-lectura-repository';
@@ -32,6 +35,7 @@ import { KnexAtencionLecturaRepository } from './infrastructure/repositories/kne
 import { KnexBitacoraLecturaRepository } from './infrastructure/repositories/knex-bitacora-lectura-repository';
 import { KnexCatalogoLecturaRepository } from './infrastructure/repositories/knex-catalogo-lectura-repository';
 import { KnexParametroRepository } from './infrastructure/repositories/knex-parametro-repository';
+import { KnexCalendarioRepository } from './infrastructure/repositories/knex-calendario-repository';
 import { KnexPorAsignarLecturaRepository } from './infrastructure/repositories/knex-por-asignar-lectura-repository';
 import { KnexPlantillaRepository } from './infrastructure/repositories/knex-plantilla-repository';
 import { KnexRegistroTicketRepository } from './infrastructure/repositories/knex-registro-ticket-repository';
@@ -70,6 +74,7 @@ export interface Container {
   asignacionService: AsignacionService;
   trasladosService: TrasladosService;
   atencionService: AtencionService;
+  confirmacionService: ConfirmacionService;
   comentariosService: ComentariosService;
   adjuntosService: AdjuntosService;
   // Crea ADJUNTOS_DIR si no existe; server.ts lo llama antes de escuchar.
@@ -80,12 +85,14 @@ export interface Container {
 export interface OpcionesContainer {
   // Las pruebas inyectan un enviador que guarda los correos en memoria.
   enviadorCorreo?: EnviadorCorreo;
+  // Y un reloj para fijar la hora en los plazos (SPEC 27).
+  reloj?: Clock;
 }
 
 // Único punto fuera de infrastructure/ que instancia sus adaptadores.
 export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer = {}): Container {
   const db = knex(buildKnexConfig(env.DATABASE_URL));
-  const clock = new SystemClock();
+  const clock = opciones.reloj ?? new SystemClock();
   const usuarios = new KnexUsuarioRepository(db);
   const sesiones = new KnexSesionRepository(db);
   const tokens = new JwtTokenService(env.JWT_SECRET);
@@ -104,6 +111,10 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
   const vecinos = new KnexVecinoRepository(db);
   const catalogo = new KnexCatalogoLecturaRepository(db);
   const parametros = new ParametrosService(new KnexParametroRepository(db));
+  const plazosConfirmacion = new PlazosConfirmacionService(
+    new KnexParametroRepository(db),
+    new KnexCalendarioRepository(db),
+  );
   const almacen = new DiscoAlmacenArchivos(env.ADJUNTOS_DIR);
   const correo = new EnvioCorreo(new KnexPlantillaRepository(db), enviadorCorreo, (mensaje) => console.error(mensaje));
   return {
@@ -125,7 +136,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     ),
     registroVecinosService: new RegistroVecinosService(transaccion, correo, hasher, tokens, clock, env.APP_URL),
     usuariosService: new UsuariosService(new KnexUsuarioAdminRepository(db), transaccion, correo, tokens, clock, env.APP_URL),
-    consultaTicketsService: new ConsultaTicketsService(new KnexTicketLecturaRepository(db)),
+    consultaTicketsService: new ConsultaTicketsService(new KnexTicketLecturaRepository(db), plazosConfirmacion, clock),
     reportesLectura: new KnexReporteLecturaRepository(db),
     bitacoraLectura: new KnexBitacoraLecturaRepository(db),
     registroTicketsService: new RegistroTicketsService(
@@ -144,7 +155,10 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     triageService: new TriageService(transaccion, new KnexTriageLecturaRepository(db), correo, clock, env.APP_URL),
     asignacionService: new AsignacionService(transaccion, new KnexPorAsignarLecturaRepository(db), clock),
     trasladosService: new TrasladosService(transaccion, catalogo, clock),
-    atencionService: new AtencionService(transaccion, new KnexAtencionLecturaRepository(db), clock),
+    atencionService: new AtencionService(transaccion, new KnexAtencionLecturaRepository(db), clock, (ahora) =>
+      plazosConfirmacion.vencimientoConfirmacion(ahora),
+    ),
+    confirmacionService: new ConfirmacionService(transaccion, plazosConfirmacion, correo, clock, env.APP_URL),
     comentariosService: new ComentariosService(transaccion, new KnexTicketLecturaRepository(db), clock),
     adjuntosService: new AdjuntosService(
       transaccion,

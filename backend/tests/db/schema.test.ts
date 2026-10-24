@@ -87,6 +87,8 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['descripcion', 'text'],
     ['resolucion', 'text'],
     ['resuelto_por', 'bigint'],
+    ['confirmacion_vence_en', 'timestamp with time zone'],
+    ['reaperturas', 'integer'],
   ],
   ticket_historial: [
     ['id', 'bigint'],
@@ -336,7 +338,7 @@ describe('Esquema de base de datos', () => {
 
   describe('parametros', () => {
     it('la migración no carga limites_municipio', async () => {
-      expect(await db('parametros').select('clave')).toEqual([]);
+      expect(await db('parametros').where({ clave: 'limites_municipio' }).select('clave')).toEqual([]);
     });
 
     it('rechaza una clave con mayúsculas', () =>
@@ -426,7 +428,7 @@ describe('Esquema de base de datos', () => {
       } finally {
         await db.migrate.latest();
       }
-      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '11' }]);
+      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '13' }]);
     });
   });
 
@@ -690,6 +692,127 @@ describe('Esquema de base de datos', () => {
           .whereIn('column_name', ['resolucion', 'resuelto_por'])
           .select('column_name');
         expect(columnas).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
+  describe('confirmación (0022)', () => {
+    it('confirmacion_vence_en es NULL, reaperturas vale 0 por defecto y rechaza negativos', () =>
+      withRollback(async (trx) => {
+        const ticketId = await insertTicket(trx);
+        expect(await trx('tickets').where({ id: ticketId }).first('confirmacion_vence_en', 'reaperturas')).toEqual({
+          confirmacion_vence_en: null,
+          reaperturas: 0,
+        });
+        await expect(trx('tickets').where({ id: ticketId }).update({ reaperturas: -1 })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }));
+
+    it('carga los parámetros plazo_confirmacion_dias_habiles = 5 y max_reaperturas = 2', async () => {
+      const filas: { clave: string; valor: unknown }[] = await db('parametros')
+        .whereIn('clave', ['plazo_confirmacion_dias_habiles', 'max_reaperturas'])
+        .orderBy('clave')
+        .select('clave', 'valor');
+      expect(filas).toEqual([
+        { clave: 'max_reaperturas', valor: 2 },
+        { clave: 'plazo_confirmacion_dias_habiles', valor: 5 },
+      ]);
+    });
+
+    it('carga las plantillas queja_cerrada y queja_reabierta', async () => {
+      const filas: { clave: string; asunto: string }[] = await db('plantillas_notificacion')
+        .whereIn('clave', ['queja_cerrada', 'queja_reabierta'])
+        .orderBy('clave')
+        .select('clave', 'asunto');
+      expect(filas).toEqual([
+        { clave: 'queja_cerrada', asunto: 'VozMuni: tu queja {{numero}} fue cerrada' },
+        { clave: 'queja_reabierta', asunto: 'VozMuni: reabrimos tu queja {{numero}}' },
+      ]);
+    });
+
+    it('rellena el vencimiento y las reaperturas de las quejas resueltas antes de la migración', async () => {
+      await db.migrate.down({ name: '0022_confirmacion.js' });
+      const ids: Record<string, string> = {};
+      // Noviembre de 2026 con fines de semana no hábiles y el 4 de asueto.
+      const calendario = Array.from({ length: 30 }, (_, i) => {
+        const fecha = `2026-11-${String(i + 1).padStart(2, '0')}`;
+        const dia = new Date(`${fecha}T12:00:00Z`).getUTCDay();
+        return { fecha, es_habil: dia !== 0 && dia !== 6 && fecha !== '2026-11-04' };
+      });
+      try {
+        await db('calendario_laboral').insert(calendario);
+        const [rol] = await db('roles').where({ nombre: 'tecnico' }).select('id');
+        const [vecino] = await db('usuarios').insert({ nombre: 'Vecino 0022', telefono: '55550022', rol_id: rol.id }).returning('id');
+        const [dependencia] = await db('dependencias').insert({ nombre: 'Dependencia 0022' }).returning('id');
+        const [categoria] = await db('categorias').insert({ nombre: 'Categoría 0022', dependencia_id: dependencia.id }).returning('id');
+        const [zona] = await db('zonas').insert({ nombre: 'Zona 0022', tipo: 'zona' }).returning('id');
+        Object.assign(ids, { vecino: vecino.id, dependencia: dependencia.id, categoria: categoria.id, zona: zona.id });
+        const ticket = async (numero: string, estado: string, resueltoEn: string | null) => {
+          const [fila] = await db('tickets')
+            .insert({
+              numero,
+              solicitante_id: vecino.id,
+              categoria_id: categoria.id,
+              canal: 'portal',
+              zona_id: zona.id,
+              direccion: 'Calle principal',
+              titulo: 'Bache en la calle',
+              descripcion: 'Hay un bache profundo frente a la escuela',
+              estado,
+              resuelto_en: resueltoEn,
+            })
+            .returning('id');
+          return fila.id as string;
+        };
+        // Lunes 2 a las 23:30 en Guatemala: cuenta desde el lunes; con el 4 de asueto vence el martes 10.
+        ids.resuelta = await ticket('Q-2026-000931', 'resuelta', '2026-11-03T05:30:00Z');
+        ids.cerrada = await ticket('Q-2026-000932', 'cerrada', '2026-11-02T15:00:00Z');
+        ids.sinCalendario = await ticket('Q-2026-000933', 'resuelta', '2026-11-25T15:00:00Z');
+        ids.enProceso = await ticket('Q-2026-000934', 'en_proceso', null);
+        const reapertura = (ticketId: string) =>
+          db('ticket_historial').insert({ ticket_id: ticketId, estado_anterior: 'resuelta', estado_nuevo: 'en_proceso' });
+        await reapertura(ids.resuelta);
+        await reapertura(ids.enProceso);
+        await reapertura(ids.enProceso);
+      } finally {
+        await db.migrate.latest();
+      }
+      try {
+        const filas: { id: string; confirmacion_vence_en: Date | null; reaperturas: number }[] = await db('tickets')
+          .whereIn('id', [ids.resuelta, ids.cerrada, ids.sinCalendario, ids.enProceso])
+          .orderBy('id')
+          .select('id', 'confirmacion_vence_en', 'reaperturas');
+        expect(filas.map((f) => [f.id, f.confirmacion_vence_en?.toISOString() ?? null, f.reaperturas])).toEqual([
+          [ids.resuelta, '2026-11-11T05:59:59.999Z', 1],
+          [ids.cerrada, '2026-11-11T05:59:59.999Z', 0],
+          [ids.sinCalendario, null, 0],
+          [ids.enProceso, null, 2],
+        ]);
+      } finally {
+        const tickets = [ids.resuelta, ids.cerrada, ids.sinCalendario, ids.enProceso].filter(Boolean);
+        await db('ticket_historial').whereIn('ticket_id', tickets).delete();
+        await db('tickets').whereIn('id', tickets).delete();
+        await db('categorias').where({ id: ids.categoria }).delete();
+        await db('dependencias').where({ id: ids.dependencia }).delete();
+        await db('zonas').where({ id: ids.zona }).delete();
+        await db('usuarios').where({ id: ids.vecino }).delete();
+        await db('calendario_laboral').whereIn('fecha', calendario.map((d) => d.fecha)).delete();
+      }
+    });
+
+    it('revertir 0022 quita las columnas, los parámetros y las plantillas', async () => {
+      await db.migrate.down({ name: '0022_confirmacion.js' });
+      try {
+        const columnas = await db('information_schema.columns')
+          .where({ table_schema: 'public', table_name: 'tickets' })
+          .whereIn('column_name', ['confirmacion_vence_en', 'reaperturas'])
+          .select('column_name');
+        expect(columnas).toEqual([]);
+        expect(await db('parametros').whereIn('clave', ['plazo_confirmacion_dias_habiles', 'max_reaperturas'])).toEqual([]);
+        expect(await db('plantillas_notificacion').whereIn('clave', ['queja_cerrada', 'queja_reabierta'])).toEqual([]);
       } finally {
         await db.migrate.latest();
       }

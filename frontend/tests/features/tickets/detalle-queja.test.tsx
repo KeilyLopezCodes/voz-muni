@@ -33,6 +33,7 @@ function queja(cambios: Partial<TicketDetalle> = {}): TicketDetalle {
     informacionSolicitada: PEDIDO,
     esSolicitante: true,
     resolucion: null,
+    confirmacion: null,
     ...cambios,
   }
 }
@@ -177,6 +178,14 @@ describe('DetalleQueja', () => {
       resueltaEn: '2026-10-23T18:30:00.000Z',
       resueltaPor: null,
     }
+    const CONFIRMACION = {
+      venceEn: '2026-10-31T05:59:59.999Z',
+      vencida: false,
+      reaperturasRestantes: 2,
+      puedeConfirmar: true,
+      puedeReabrir: true,
+      exigeMotivoAlConfirmar: false,
+    }
 
     it('sin resolución no hay bloque "Solución"', async () => {
       montar({ ticket: queja({ estado: 'en_proceso', informacionSolicitada: null }) })
@@ -185,13 +194,54 @@ describe('DetalleQueja', () => {
       expect(screen.queryByRole('region', { name: textos.solucion.titulo })).not.toBeInTheDocument()
     })
 
-    it('el vecino en resuelta ve la solución, sin quién resolvió, y el aviso sobre confirmar o reabrir', async () => {
-      montar({ ticket: queja({ estado: 'resuelta', informacionSolicitada: null, resolucion: RESOLUCION }) })
+    it('el vecino en resuelta ve la solución sin quién resolvió, el plazo y los botones (SPEC 27)', async () => {
+      montar({
+        ticket: queja({ estado: 'resuelta', informacionSolicitada: null, resolucion: RESOLUCION, confirmacion: CONFIRMACION }),
+      })
 
       const seccion = await screen.findByRole('region', { name: textos.solucion.titulo })
       expect(seccion).toHaveTextContent('Se reparó la tubería.')
-      expect(seccion).toHaveTextContent(textos.solucion.pendienteConfirmar)
       expect(seccion).not.toHaveTextContent(/\bpor\b/)
+      expect(seccion).toHaveTextContent(/Tienes hasta el /)
+      expect(within(seccion).getByRole('button', { name: textos.confirmacion.confirmar })).toBeInTheDocument()
+      expect(within(seccion).getByRole('button', { name: textos.confirmacion.reabrir })).toBeInTheDocument()
+      // El texto temporal de SPEC 26 ya no existe.
+      expect(seccion).not.toHaveTextContent('Pronto podrás')
+    })
+
+    it('confirmar desde el detalle muestra "Gracias, cerramos tu queja" y recarga la queja', async () => {
+      let estado: TicketDetalle['estado'] = 'resuelta'
+      const fetchMock = montar({
+        rutas: {
+          'GET /tickets/5': () =>
+            respuesta(
+              200,
+              queja({
+                estado,
+                informacionSolicitada: null,
+                resolucion: RESOLUCION,
+                confirmacion: estado === 'resuelta' ? CONFIRMACION : null,
+              }),
+            ),
+          'POST /tickets/5/transiciones': () => {
+            estado = 'cerrada'
+            return respuesta(200, { id: 5, numero: 'Q-2026-000005', estado, asignadoA: 3, resueltoEn: null, cerradoEn: null, reaperturas: 0 })
+          },
+        },
+      })
+
+      fireEvent.click(await screen.findByRole('button', { name: textos.confirmacion.confirmar }))
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: textos.confirmacion.dialogoConfirmar.aceptar }),
+      )
+
+      expect(await screen.findByText(textos.confirmacion.cerrada)).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByText(estados.cerrada)).toBeInTheDocument())
+      expect(screen.queryByRole('button', { name: textos.confirmacion.confirmar })).not.toBeInTheDocument()
+      const detalles = fetchMock.mock.calls.filter(
+        ([entrada, init]) => (init?.method ?? 'GET') === 'GET' && String(entrada).endsWith('/tickets/5'),
+      )
+      expect(detalles).toHaveLength(2)
     })
 
     it('un interno ve quién resolvió y no el aviso del vecino', async () => {
@@ -207,7 +257,7 @@ describe('DetalleQueja', () => {
 
       const seccion = await screen.findByRole('region', { name: textos.solucion.titulo })
       expect(seccion).toHaveTextContent('por Técnico de desarrollo')
-      expect(seccion).not.toHaveTextContent(textos.solucion.pendienteConfirmar)
+      expect(seccion).not.toHaveTextContent('Pronto podrás')
     })
 
     it('en una queja cerrada se ve la solución sin el aviso', async () => {
@@ -215,7 +265,7 @@ describe('DetalleQueja', () => {
 
       const seccion = await screen.findByRole('region', { name: textos.solucion.titulo })
       expect(seccion).toHaveTextContent('Se reparó la tubería.')
-      expect(seccion).not.toHaveTextContent(textos.solucion.pendienteConfirmar)
+      expect(within(seccion).queryByRole('button')).not.toBeInTheDocument()
     })
   })
 

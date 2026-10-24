@@ -117,8 +117,11 @@ function Contenido({ ticket }: { ticket: TicketDetalle }) {
 
       {ticket.resolucion && (
         <SolucionQueja
+          ticketId={ticket.id}
           resolucion={ticket.resolucion}
-          pendienteDeConfirmar={ticket.esSolicitante && ticket.estado === 'resuelta'}
+          confirmacion={ticket.confirmacion ?? null}
+          esSolicitante={ticket.esSolicitante}
+          onHecho={setAviso}
         />
       )}
 

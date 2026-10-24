@@ -10,11 +10,23 @@ import type {
   TicketResumen,
 } from '../../../src/domain/repositories/ticket-lectura-repository';
 import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
+import { RelojFalso } from '../auth/dobles';
+
+const AHORA = new Date('2026-11-05T15:00:00.000Z');
+
+interface PlazoFalso {
+  venceEn: Date;
+  reaperturas: number;
+}
 
 interface PasoHistorial {
   ticketId: number;
   estadoNuevo: EstadoTicket;
   motivo: string | null;
+}
+
+function servicioCon(repo: TicketLecturaRepository, maxReaperturas = 2): ConsultaTicketsService {
+  return new ConsultaTicketsService(repo, { maxReaperturas: async () => maxReaperturas }, new RelojFalso(AHORA));
 }
 
 // Aplica el filtro en memoria con la misma regla del dominio y registra lo que recibe.
@@ -25,6 +37,7 @@ class TicketsEnMemoria implements TicketLecturaRepository {
     private readonly tickets: TicketResumen[],
     private readonly historial: PasoHistorial[] = [],
     private readonly resoluciones: Record<number, ResolucionLectura> = {},
+    private readonly plazos: Record<number, PlazoFalso> = {},
   ) {}
 
   async listar(filtro: FiltroTickets, pagina: number, tamano: number): Promise<Pagina<TicketResumen>> {
@@ -76,6 +89,8 @@ class TicketsEnMemoria implements TicketLecturaRepository {
       cerradoEn: null,
       informacionSolicitada: t.estado === 'en_espera' ? (esperas.at(-1)?.motivo ?? null) : null,
       resolucion: t.estado === 'resuelta' || t.estado === 'cerrada' ? (this.resoluciones[id] ?? null) : null,
+      confirmacionVenceEn: this.plazos[id]?.venceEn ?? null,
+      reaperturas: this.plazos[id]?.reaperturas ?? 0,
       solicitanteId: t.solicitanteId,
     };
   }
@@ -107,7 +122,7 @@ const coordinadorA: UsuarioAutenticado = {
 
 function crear() {
   const repo = new TicketsEnMemoria([ticket(1, DEP_A), ticket(2, DEP_B)]);
-  return { repo, servicio: new ConsultaTicketsService(repo) };
+  return { repo, servicio: servicioCon(repo) };
 }
 
 async function errorDe(promesa: Promise<unknown>): Promise<unknown> {
@@ -199,7 +214,7 @@ describe('ConsultaTicketsService', () => {
           { ticketId: 2, estadoNuevo: 'en_proceso', motivo: null },
         ],
       );
-      return { repo, servicio: new ConsultaTicketsService(repo) };
+      return { repo, servicio: servicioCon(repo) };
     }
 
     it('informacionSolicitada es el motivo del último paso a en_espera', async () => {
@@ -268,7 +283,7 @@ describe('ConsultaTicketsService', () => {
           [],
           { 4: RESOLUCION, 5: RESOLUCION, 6: RESOLUCION },
         );
-        return new ConsultaTicketsService(repo);
+        return servicioCon(repo);
       }
 
       it('una queja en_proceso no trae resolución', async () => {
@@ -299,6 +314,72 @@ describe('ConsultaTicketsService', () => {
           estado: 'cerrada',
           resolucion: { descripcion: 'Se rellenó el bache' },
         });
+      });
+    });
+
+    describe('confirmación (SPEC 27)', () => {
+      const tecnico: UsuarioAutenticado = {
+        id: 30,
+        nombre: 'Técnico',
+        rol: 'tecnico',
+        dependenciaId: DEP_A,
+        permisos: { 'tickets.ver': 'todas', 'tickets.cambiar_estado': 'asignadas' },
+      };
+      const vecinoQueAtiende: UsuarioAutenticado = { ...vecino, permisos: { ...vecino.permisos, 'tickets.cambiar_estado': 'propia' } };
+      const VIGENTE = new Date(AHORA.getTime() + 86_400_000);
+
+      function crearConPlazos(plazos: Record<number, PlazoFalso>) {
+        const repo = new TicketsEnMemoria(
+          [conEstado(4, 'en_proceso'), conEstado(5, 'resuelta'), conEstado(6, 'cerrada')],
+          [],
+          {},
+          plazos,
+        );
+        return servicioCon(repo);
+      }
+
+      it('el vecino en resuelta puede confirmar y reabrir, sin motivo al confirmar', async () => {
+        const servicio = crearConPlazos({ 5: { venceEn: VIGENTE, reaperturas: 0 } });
+
+        await expect(servicio.detalle(vecinoQueAtiende, 5)).resolves.toMatchObject({
+          confirmacion: {
+            venceEn: VIGENTE.toISOString(),
+            vencida: false,
+            reaperturasRestantes: 2,
+            puedeConfirmar: true,
+            puedeReabrir: true,
+            exigeMotivoAlConfirmar: false,
+          },
+        });
+      });
+
+      it('un alcance sin confirmación (el técnico) ve el plazo sin poder actuar', async () => {
+        const servicio = crearConPlazos({ 5: { venceEn: VIGENTE, reaperturas: 0 } });
+
+        await expect(servicio.detalle(tecnico, 5)).resolves.toMatchObject({
+          confirmacion: { puedeConfirmar: false, puedeReabrir: false, exigeMotivoAlConfirmar: true },
+        });
+      });
+
+      it('con el plazo vencido no se puede actuar; en el límite de reaperturas no se puede reabrir', async () => {
+        const vencido = crearConPlazos({ 5: { venceEn: new Date(AHORA.getTime() - 1), reaperturas: 0 } });
+        const enElTope = crearConPlazos({ 5: { venceEn: VIGENTE, reaperturas: 3 } });
+
+        await expect(vencido.detalle(vecinoQueAtiende, 5)).resolves.toMatchObject({
+          confirmacion: { vencida: true, puedeConfirmar: false, puedeReabrir: false },
+        });
+        await expect(enElTope.detalle(vecinoQueAtiende, 5)).resolves.toMatchObject({
+          confirmacion: { reaperturasRestantes: 0, puedeConfirmar: true, puedeReabrir: false },
+        });
+      });
+
+      it('fuera de resuelta, o sin vencimiento, confirmacion es null', async () => {
+        const servicio = crearConPlazos({ 4: { venceEn: VIGENTE, reaperturas: 0 }, 6: { venceEn: VIGENTE, reaperturas: 0 } });
+
+        for (const id of [4, 6]) {
+          await expect(servicio.detalle(vecinoQueAtiende, id)).resolves.toMatchObject({ confirmacion: null });
+        }
+        await expect(crearConPlazos({}).detalle(vecinoQueAtiende, 5)).resolves.toMatchObject({ confirmacion: null });
       });
     });
 
