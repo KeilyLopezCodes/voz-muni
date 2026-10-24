@@ -431,5 +431,36 @@
       "red": "No pudimos conectar con el servidor. Intenta de nuevo.",
       "generico": "No pudimos completar la acción. Intenta de nuevo."
     }
+  },
+  "comentarios": {
+    "titulo": "Comentarios",
+    "cargando": "Cargando comentarios…",
+    "errorCarga": "No pudimos cargar los comentarios.",
+    "vacio": "Todavía no hay comentarios.",
+    "vecino": "Vecino",
+    "notaInterna": "Nota interna",
+    "publico": "Público",
+    "editado": "editado",
+    "editar": "Editar",
+    "editarCampo": "Editar comentario",
+    "guardar": "Guardar",
+    "cancelar": "Cancelar",
+    "nuevo": "Nuevo comentario",
+    "campo": "Escribe un comentario",
+    "visibilidad": "Quién lo ve",
+    "contador": "{{actual}} / {{maximo}}",
+    "enviar": "Enviar",
+    "enviando": "Enviando…",
+    "edicionVencida": "Ya no se puede editar",
+    "quejaFinalizada": "La queja ya terminó: solo se pueden dejar notas internas.",
+    "errorEnvio": "No pudimos guardar el comentario. Intenta de nuevo.",
+    "roles": {
+      "vecino": "Vecino",
+      "receptor": "Receptor",
+      "tecnico": "Técnico",
+      "coordinador": "Coordinador",
+      "supervisor": "Supervisor",
+      "administrador": "Administrador"
+    }
   }
 }

@@ -1,6 +1,6 @@
 # SPEC 23 — Comentarios públicos y notas internas
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 04, SPEC 08, SPEC 11, SPEC 17, SPEC 19, SPEC 20, SPEC 22
 > **Fecha:** 2026-10-22
 > **Objetivo:** Permitir que los usuarios internos escriban comentarios públicos o notas internas en una queja, y que el vecino comente sus quejas (reanudándolas si estaban en espera, RF-22), con edición del autor durante 5 minutos, mediante `/api/v1/tickets/:id/comentarios` y un hilo en los paneles de triage, asignación y atención.
@@ -246,21 +246,21 @@ frontend/
 
 ## Criterios de aceptación
 
-- [ ] La sección 6 del documento de definición incluye `comentarios.editado_en`, los 3 endpoints y la regla de reanudación de RF-22.
-- [ ] Después de `migrate:latest`, `comentarios` tiene `editado_en`, rechaza cuerpos vacíos o de más de 4000 caracteres, y tiene el índice `(ticket_id, creado_en)`.
-- [ ] Receptor, técnico, coordinador y supervisor escriben comentarios públicos y notas internas en las quejas de su alcance, y reciben `404` fuera de él.
-- [ ] El vecino escribe comentarios públicos solo en sus quejas, recibe `403` al intentar una nota interna, y nunca ve notas internas en el hilo.
-- [ ] El administrador recibe `403` al comentar.
-- [ ] Un comentario público del solicitante en una queja `en_espera` la pasa a `en_proceso` en la misma transacción, con una fila de `ticket_historial` a su nombre. El mismo comentario en otro estado, o escrito por otra persona, no cambia el estado.
-- [ ] En quejas `rechazada` o `cerrada`, un comentario público responde `409 QUEJA_FINALIZADA`, y una nota interna se acepta.
-- [ ] `GET /tickets/:id/comentarios` devuelve el hilo en orden cronológico, con autor, rol, `interno`, `esDelSolicitante`, `editadoEn` y `editable`, y omite las notas internas en la consulta para quien no tiene `comentarios.interno`.
-- [ ] El autor puede editar el texto durante 5 minutos desde que lo creó, lo que deja `editado_en`. Después responde `409 EDICION_VENCIDA`. Nadie más puede editarlo (`404`), y `interno` no se puede cambiar.
-- [ ] Editar no reanuda la queja ni conserva el texto anterior.
-- [ ] En los paneles de `/triage`, `/asignacion` y `/atencion` se ve el hilo, se puede escribir con el selector "Público" / "Nota interna" (por defecto nota interna) y editar dentro del plazo.
-- [ ] Las notas internas se distinguen en el hilo con una etiqueta de texto, no solo con color.
-- [ ] A 360 px de ancho, el hilo no produce scroll horizontal, y ningún texto de la interfaz está fijo en un componente.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta la visibilidad de las notas, la reanudación por respuesta del vecino y la regla de edición.
+- [x] La sección 6 del documento de definición incluye `comentarios.editado_en`, los 3 endpoints y la regla de reanudación de RF-22.
+- [x] Después de `migrate:latest`, `comentarios` tiene `editado_en`, rechaza cuerpos vacíos o de más de 4000 caracteres, y tiene el índice `(ticket_id, creado_en)`.
+- [x] Receptor, técnico, coordinador y supervisor escriben comentarios públicos y notas internas en las quejas de su alcance, y reciben `404` fuera de él.
+- [x] El vecino escribe comentarios públicos solo en sus quejas, recibe `403` al intentar una nota interna, y nunca ve notas internas en el hilo.
+- [x] El administrador recibe `403` al comentar.
+- [x] Un comentario público del solicitante en una queja `en_espera` la pasa a `en_proceso` en la misma transacción, con una fila de `ticket_historial` a su nombre. El mismo comentario en otro estado, o escrito por otra persona, no cambia el estado.
+- [x] En quejas `rechazada` o `cerrada`, un comentario público responde `409 QUEJA_FINALIZADA`, y una nota interna se acepta.
+- [x] `GET /tickets/:id/comentarios` devuelve el hilo en orden cronológico, con autor, rol, `interno`, `esDelSolicitante`, `editadoEn` y `editable`, y omite las notas internas en la consulta para quien no tiene `comentarios.interno`.
+- [x] El autor puede editar el texto durante 5 minutos desde que lo creó, lo que deja `editado_en`. Después responde `409 EDICION_VENCIDA`. Nadie más puede editarlo (`404`), y `interno` no se puede cambiar.
+- [x] Editar no reanuda la queja ni conserva el texto anterior.
+- [x] En los paneles de `/triage`, `/asignacion` y `/atencion` se ve el hilo, se puede escribir con el selector "Público" / "Nota interna" (por defecto nota interna) y editar dentro del plazo.
+- [x] Las notas internas se distinguen en el hilo con una etiqueta de texto, no solo con color.
+- [ ] A 360 px de ancho, el hilo no produce scroll horizontal, y ningún texto de la interfaz está fijo en un componente. (pendiente de comprobar a 360 px en el navegador: Chromium de Playwright no está instalado; los textos sí están todos en las traducciones)
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta la visibilidad de las notas, la reanudación por respuesta del vecino y la regla de edición.
 
 ## Decisiones
 

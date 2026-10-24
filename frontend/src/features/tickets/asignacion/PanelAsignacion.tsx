@@ -25,6 +25,7 @@ import {
   listarTecnicos,
   type TicketPorAsignar,
 } from '../api/asignacion-api'
+import { HiloComentarios } from '../comentarios/HiloComentarios'
 import { SeccionTraslado } from '../traslados/SeccionTraslado'
 
 const MOTIVO_MAX = 1000
@@ -67,6 +68,8 @@ export function PanelAsignacion({ ticket, onCerrar, onTerminar }: PanelAsignacio
             clavesBandeja={CLAVES_ASIGNACION.bandeja}
             onTerminar={onTerminar}
           />
+          <Divider sx={{ my: 2 }} />
+          <HiloComentarios ticketId={ticket.id} estadoTicket={ticket.estado} clavesBandeja={CLAVES_ASIGNACION.bandeja} />
         </Box>
       )}
     </Drawer>

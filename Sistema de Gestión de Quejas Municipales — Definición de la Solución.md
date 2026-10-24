@@ -290,7 +290,7 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | ticket\_historial | id, ticket\_id, estado\_anterior, estado\_nuevo, usuario\_id, motivo, creado\_en |
 | ticket\_asignaciones | id, ticket\_id, tecnico\_anterior (nulo en la primera asignación), tecnico\_nuevo, asignado\_por, motivo, creado\_en. Solo de inserción; registra cada asignación y reasignación de técnico para la línea de tiempo |
 | solicitudes\_traslado | id, ticket\_id, solicitado\_por, dependencia\_origen\_id, dependencia\_sugerida\_id (opcional), motivo, estado (pendiente, aprobada, rechazada, retirada, sin\_efecto), resuelto\_por, motivo\_resolucion, creado\_en, resuelto\_en. Como máximo una pendiente por queja |
-| comentarios | id, ticket\_id, autor\_id, cuerpo, es\_interno, creado\_en |
+| comentarios | id, ticket\_id, autor\_id, cuerpo (1 a 4000 caracteres), es\_interno, creado\_en, editado\_en (el autor puede editar durante 5 minutos; no se guardan versiones) |
 | adjuntos | id, ticket\_id, comentario\_id, nombre, ruta, tipo\_mime, tamano\_bytes |
 | encuestas | id, ticket\_id, calificacion, comentario, creado\_en |
 | notificaciones | id, usuario\_id, ticket\_id, tipo, leida, creado\_en |
@@ -339,7 +339,9 @@ Campos adicionales por categoría (RF-09):
 | POST /api/v1/traslados/:id/rechazo | Rechazar con motivo | Supervisor |
 | POST /api/v1/traslados/:id/retiro | Retirar la solicitud propia | Quien la solicitó |
 | GET /api/v1/dependencias | Dependencias activas, para sugerir el destino de un traslado | Técnico, Coordinador, Supervisor |
-| POST /api/v1/tickets/:id/comentarios | Comentario público o nota interna | Según matriz de permisos |
+| POST /api/v1/tickets/:id/comentarios | Comentario público o nota interna (`{ cuerpo, interno }`). Un comentario público del solicitante en una queja En espera la devuelve a En proceso (RF-22) | Según matriz de permisos |
+| GET /api/v1/tickets/:id/comentarios | Hilo de comentarios; las notas internas solo para quien tiene `comentarios.interno` | Según visibilidad |
+| PATCH /api/v1/tickets/:id/comentarios/:comentarioId | El autor corrige el texto durante 5 minutos | Autor del comentario |
 | POST /api/v1/tickets/:id/adjuntos | Subir archivo | Vecino, internos |
 | POST /api/v1/tickets/:id/encuesta | Calificar la atención | Vecino |
 | GET /api/v1/reportes/resumen | Indicadores del tablero | Coordinador, Supervisor, Admin |

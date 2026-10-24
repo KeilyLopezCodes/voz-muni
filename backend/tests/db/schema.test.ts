@@ -124,6 +124,7 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['cuerpo', 'text'],
     ['es_interno', 'boolean'],
     ['creado_en', 'timestamp with time zone'],
+    ['editado_en', 'timestamp with time zone'],
   ],
   adjuntos: [
     ['id', 'bigint'],
@@ -593,6 +594,55 @@ describe('Esquema de base de datos', () => {
       withRollback(async (trx) => {
         await expect(insertTicket(trx, { canal: 'whatsapp' })).rejects.toMatchObject({ code: CHECK_VIOLATION });
       }));
+  });
+
+  describe('comentarios (0019)', () => {
+    async function insertComentario(trx: Knex.Transaction, cuerpo: string) {
+      const ticketId = await insertTicket(trx);
+      const { solicitante_id: autorId } = await trx('tickets').where({ id: ticketId }).first('solicitante_id');
+      return trx('comentarios').insert({ ticket_id: ticketId, autor_id: autorId, cuerpo }).returning(['id', 'editado_en']);
+    }
+
+    it('acepta 4000 caracteres y deja editado_en en null', () =>
+      withRollback(async (trx) => {
+        const [fila] = await insertComentario(trx, 'a'.repeat(4000));
+        expect(fila.editado_en).toBeNull();
+      }));
+
+    it.each([
+      ['vacío', ''],
+      ['de 4001 caracteres', 'a'.repeat(4001)],
+    ])('rechaza un cuerpo %s', (_caso, cuerpo) =>
+      withRollback(async (trx) => {
+        await expect(insertComentario(trx, cuerpo)).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }),
+    );
+
+    it('el índice (ticket_id, creado_en) reemplaza al de solo ticket_id', async () => {
+      const indices: { indexname: string; indexdef: string }[] = await db('pg_indexes')
+        .where({ schemaname: 'public', tablename: 'comentarios' })
+        .select('indexname', 'indexdef');
+      const nombres = indices.map((i) => i.indexname);
+      expect(nombres).toContain('comentarios_ticket_creado_idx');
+      expect(nombres).not.toContain('comentarios_ticket_idx');
+      expect(indices.find((i) => i.indexname === 'comentarios_ticket_creado_idx')!.indexdef).toContain('(ticket_id, creado_en)');
+    });
+
+    it('revertir 0019 restaura el índice original y quita la columna y el CHECK', async () => {
+      await db.migrate.down({ name: '0019_comentarios.js' });
+      try {
+        const nombres = (await db('pg_indexes').where({ schemaname: 'public', tablename: 'comentarios' }).select('indexname')).map(
+          (i: { indexname: string }) => i.indexname,
+        );
+        expect(nombres).toContain('comentarios_ticket_idx');
+        expect(nombres).not.toContain('comentarios_ticket_creado_idx');
+        expect(
+          await db('information_schema.columns').where({ table_name: 'comentarios', column_name: 'editado_en' }).select('column_name'),
+        ).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
   });
 
   describe('hijos del ticket', () => {

@@ -4,6 +4,7 @@ import { AsignacionController } from './presentation/controllers/asignacion.cont
 import { AuthController } from './presentation/controllers/auth.controller';
 import { CamposExtraController } from './presentation/controllers/campos-extra.controller';
 import { CatalogosController } from './presentation/controllers/catalogos.controller';
+import { ComentariosController } from './presentation/controllers/comentarios.controller';
 import { ParametrosController } from './presentation/controllers/parametros.controller';
 import { HealthController } from './presentation/controllers/health.controller';
 import { RecuperacionController } from './presentation/controllers/recuperacion.controller';
@@ -21,6 +22,7 @@ import { asignacionRoutes } from './presentation/routes/asignacion.routes';
 import { authRoutes } from './presentation/routes/auth.routes';
 import { camposExtraRoutes } from './presentation/routes/campos-extra.routes';
 import { catalogosRoutes } from './presentation/routes/catalogos.routes';
+import { comentariosRoutes } from './presentation/routes/comentarios.routes';
 import { parametrosRoutes } from './presentation/routes/parametros.routes';
 import { healthRoutes } from './presentation/routes/health.routes';
 import { recuperacionRoutes } from './presentation/routes/recuperacion.routes';
@@ -70,6 +72,10 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1',
     trasladosRoutes(new TrasladosController(container.trasladosService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1/tickets',
+    comentariosRoutes(new ComentariosController(container.comentariosService), autenticar(container.autorizacionService)),
   );
   app.use(
     '/api/v1/vecinos',

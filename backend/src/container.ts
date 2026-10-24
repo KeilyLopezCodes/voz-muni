@@ -5,6 +5,7 @@ import { AuthService } from './application/services/auth.service';
 import { AutorizacionService } from './application/services/autorizacion.service';
 import { CamposExtraService } from './application/services/campos-extra.service';
 import { CatalogosService } from './application/services/catalogos.service';
+import { ComentariosService } from './application/services/comentarios.service';
 import { ParametrosService } from './application/services/parametros.service';
 import { ConsultaTicketsService } from './application/services/consulta-tickets.service';
 import { EnvioCorreo } from './application/services/envio-correo';
@@ -66,6 +67,7 @@ export interface Container {
   asignacionService: AsignacionService;
   trasladosService: TrasladosService;
   atencionService: AtencionService;
+  comentariosService: ComentariosService;
   dispose(): Promise<void>;
 }
 
@@ -136,6 +138,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     asignacionService: new AsignacionService(transaccion, new KnexPorAsignarLecturaRepository(db), clock),
     trasladosService: new TrasladosService(transaccion, catalogo, clock),
     atencionService: new AtencionService(transaccion, new KnexAtencionLecturaRepository(db), clock),
+    comentariosService: new ComentariosService(transaccion, new KnexTicketLecturaRepository(db), clock),
     dispose: () => db.destroy(),
   };
 }

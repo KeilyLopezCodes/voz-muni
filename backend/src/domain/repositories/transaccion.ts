@@ -1,5 +1,6 @@
 import type { AsignacionRepository } from './asignacion-repository';
 import type { CategoriaAdminRepository } from './categoria-admin-repository';
+import type { ComentarioRepository } from './comentario-repository';
 import type { RegistroVecinoRepository } from './registro-vecino-repository';
 import type { RestablecimientoRepository } from './restablecimiento-repository';
 import type { SesionRepository } from './sesion-repository';
@@ -21,6 +22,7 @@ export interface ReposTransaccionales {
   ticketsEscritura: TicketEscrituraRepository;
   asignaciones: AsignacionRepository;
   traslados: TrasladoRepository;
+  comentarios: ComentarioRepository;
 }
 
 // Puerto: ejecuta `trabajo` en una transacción; si lanza, no queda nada escrito.

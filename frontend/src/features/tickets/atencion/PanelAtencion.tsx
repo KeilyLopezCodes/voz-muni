@@ -22,6 +22,7 @@ import {
   type TicketAtencion,
   transicionarAtencion,
 } from '../api/atencion-api'
+import { HiloComentarios } from '../comentarios/HiloComentarios'
 import { SeccionTraslado } from '../traslados/SeccionTraslado'
 
 const MOTIVO_MAX = 1000
@@ -174,6 +175,8 @@ function ContenidoPanel({ ticket, onTerminar }: { ticket: TicketAtencion; onTerm
           />
         </>
       )}
+      <Divider />
+      <HiloComentarios ticketId={ticket.id} estadoTicket={ticket.estado} clavesBandeja={CLAVES_ATENCION.bandeja} />
     </Stack>
   )
 }

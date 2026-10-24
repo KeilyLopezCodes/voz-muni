@@ -42,6 +42,9 @@ export type CodigoError =
   | 'TRASLADO_PENDIENTE'
   | 'TRASLADO_YA_RESUELTO'
   | 'TRASLADO_SIN_EFECTO'
+  | 'CUERPO_INVALIDO'
+  | 'QUEJA_FINALIZADA'
+  | 'EDICION_VENCIDA'
   | 'NO_AUTENTICADO'
   | 'TOKEN_INVALIDO'
   | 'CREDENCIALES_INVALIDAS'
@@ -82,6 +85,9 @@ const CODIGOS_DE_REGLA: readonly CodigoError[] = [
   'TECNICO_SIN_CAMBIO',
   'TRASLADO_PENDIENTE',
   'TRASLADO_YA_RESUELTO',
+  'CUERPO_INVALIDO',
+  'QUEJA_FINALIZADA',
+  'EDICION_VENCIDA',
 ];
 
 // Error esperado de un caso de uso. El mensaje es para desarrolladores, no para la UI.
