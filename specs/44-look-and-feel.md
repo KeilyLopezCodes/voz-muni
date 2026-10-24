@@ -1,6 +1,6 @@
 # SPEC 44 — Nuevo look & feel: tema índigo y coral, modo oscuro y layouts renovados
 
-> **Estado:** Aprobado
+> **Estado:** Implementada
 > **Depende de:** SPEC 06, SPEC 16, SPEC 17
 > **Fecha:** 2026-10-23
 > **Objetivo:** Dar a la SPA un aspecto moderno y cálido con un tema MUI propio (índigo y coral, Nunito Sans autoalojada, modo claro y oscuro con selector), una pantalla dividida para las páginas públicas y un layout interno con menú con iconos y menú de usuario, sin reescribir las pantallas de negocio.
