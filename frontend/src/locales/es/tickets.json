@@ -545,6 +545,12 @@
     "cerrada": "Cerrada",
     "informacionSolicitada": "La municipalidad necesita: {{informacion}}",
     "responder": "Responder",
-    "respuestaEnviada": "Gracias, enviamos tu respuesta."
+    "respuestaEnviada": "Gracias, enviamos tu respuesta.",
+    "solucion": {
+      "titulo": "Solución",
+      "resueltaEl": "Resuelta el {{fecha}}",
+      "por": "por {{nombre}}",
+      "pendienteConfirmar": "Revisa la solución. Pronto podrás confirmarla o reabrir la queja."
+    }
   }
 }

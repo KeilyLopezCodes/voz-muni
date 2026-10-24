@@ -20,6 +20,7 @@ import type { ComentarioCreado } from '../api/comentarios-api'
 import { CLAVES_TICKETS, obtenerTicket, type TicketDetalle } from '../api/tickets-api'
 import { HiloComentarios } from '../comentarios/HiloComentarios'
 import { COLOR_ESTADO } from './estado-chip'
+import { SolucionQueja } from './SolucionQueja'
 
 interface DetalleQuejaProps {
   ticketId: number | null // null: el id de la URL no es válido
@@ -112,6 +113,13 @@ function Contenido({ ticket }: { ticket: TicketDetalle }) {
         <Alert severity="success" role="status" onClose={() => setAviso(null)}>
           {aviso}
         </Alert>
+      )}
+
+      {ticket.resolucion && (
+        <SolucionQueja
+          resolucion={ticket.resolucion}
+          pendienteDeConfirmar={ticket.esSolicitante && ticket.estado === 'resuelta'}
+        />
       )}
 
       {ticket.estado === 'en_espera' && ticket.informacionSolicitada && (

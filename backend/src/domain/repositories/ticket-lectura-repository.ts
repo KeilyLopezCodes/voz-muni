@@ -18,6 +18,13 @@ export interface TicketListado {
   esperaRespuesta: boolean; // estado === 'en_espera'
 }
 
+// Resolución vigente (SPEC 26). Solo existe en resuelta o cerrada.
+export interface ResolucionLectura {
+  descripcion: string;
+  resueltaEn: Date;
+  resueltaPor: { id: number; nombre: string } | null; // null si tickets.resuelto_por es NULL
+}
+
 // Detalle básico de GET /api/v1/tickets/:id (SPEC 25). Del solicitante solo trae el id, para saber si quien
 // consulta es él; nunca correo, teléfono ni DPI. Tampoco prioridad, técnico, coordenadas ni datos adicionales.
 export interface TicketDetalleLectura {
@@ -34,6 +41,7 @@ export interface TicketDetalleLectura {
   resueltoEn: Date | null;
   cerradoEn: Date | null;
   informacionSolicitada: string | null; // motivo de la última transición a en_espera, solo si está en espera
+  resolucion: ResolucionLectura | null; // solo en resuelta o cerrada (SPEC 26)
   solicitanteId: number;
 }
 

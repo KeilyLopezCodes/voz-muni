@@ -2,6 +2,7 @@ import type { Knex } from 'knex';
 import type { FiltroTickets } from '../../domain/autorizacion/alcance-tickets';
 import type {
   Pagina,
+  ResolucionLectura,
   TicketDetalleLectura,
   TicketLecturaRepository,
   TicketListado,
@@ -59,6 +60,9 @@ interface FilaDetalle {
   resuelto_en: Date | null;
   cerrado_en: Date | null;
   informacion_solicitada: string | null;
+  resolucion: string | null;
+  resuelto_por: string | null;
+  resuelto_por_nombre: string | null;
   solicitante_id: string;
 }
 
@@ -81,8 +85,14 @@ const COLUMNAS_DETALLE = [
   't.creado_en',
   't.resuelto_en',
   't.cerrado_en',
+  't.resolucion',
+  't.resuelto_por',
+  'rp.nombre as resuelto_por_nombre',
   't.solicitante_id',
 ];
+
+// La resolución vigente solo se muestra en resuelta o cerrada (SPEC 26).
+const ESTADOS_CON_RESOLUCION: readonly EstadoTicket[] = ['resuelta', 'cerrada'];
 
 // Misma fuente que motivoEspera de SPEC 22: el motivo de la última entrada a en_espera, solo mientras sigue en espera.
 const INFORMACION_SOLICITADA = `(CASE WHEN t.estado = 'en_espera' THEN (
@@ -122,7 +132,20 @@ function aDetalle(fila: FilaDetalle): TicketDetalleLectura {
     resueltoEn: fila.resuelto_en,
     cerradoEn: fila.cerrado_en,
     informacionSolicitada: fila.informacion_solicitada,
+    resolucion: aResolucion(fila),
     solicitanteId: Number(fila.solicitante_id),
+  };
+}
+
+function aResolucion(fila: FilaDetalle): ResolucionLectura | null {
+  if (!ESTADOS_CON_RESOLUCION.includes(fila.estado) || fila.resolucion === null || fila.resuelto_en === null) {
+    return null;
+  }
+  return {
+    descripcion: fila.resolucion,
+    resueltaEn: fila.resuelto_en,
+    resueltaPor:
+      fila.resuelto_por === null ? null : { id: Number(fila.resuelto_por), nombre: fila.resuelto_por_nombre ?? '' },
   };
 }
 
@@ -194,6 +217,7 @@ export class KnexTicketLecturaRepository implements TicketLecturaRepository {
       .join('categorias as c', 'c.id', 't.categoria_id')
       .join('zonas as z', 'z.id', 't.zona_id')
       .leftJoin('dependencias as d', 'd.id', 't.dependencia_id')
+      .leftJoin('usuarios as rp', 'rp.id', 't.resuelto_por')
       .first([...COLUMNAS_DETALLE, this.db.raw(INFORMACION_SOLICITADA)]);
     return fila ? aDetalle(fila) : null;
   }

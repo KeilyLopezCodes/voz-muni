@@ -57,6 +57,8 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
         escalado: false,
         resueltoEn: null,
         cerradoEn: null,
+        resolucion: null,
+        resueltoPor: null,
       }),
     );
   }

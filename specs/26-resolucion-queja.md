@@ -1,6 +1,6 @@
 # SPEC 26 — Resolución de la queja como dato propio y visible
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 03, SPEC 04, SPEC 11, SPEC 22, SPEC 25
 > **Fecha:** 2026-10-23
 > **Objetivo:** Guardar la descripción de la resolución (RF-23) y quién la registró en las columnas nuevas `tickets.resolucion` y `tickets.resuelto_por`, y mostrarla como "Solución" en el detalle `GET /api/v1/tickets/:id` y en la pantalla `/tickets/:id`, para el vecino y para los internos.

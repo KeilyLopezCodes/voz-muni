@@ -21,6 +21,8 @@ interface FilaTicket {
   escalado: boolean;
   resuelto_en: Date | null;
   cerrado_en: Date | null;
+  resolucion: string | null;
+  resuelto_por: string | null;
   titulo: string;
   categoria_id: string;
   categoria_nombre: string;
@@ -67,6 +69,8 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
         't.escalado',
         't.resuelto_en',
         't.cerrado_en',
+        't.resolucion',
+        't.resuelto_por',
         't.titulo',
         't.categoria_id',
         'c.nombre as categoria_nombre',
@@ -88,6 +92,8 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
         escalado: fila.escalado,
         resueltoEn: fila.resuelto_en,
         cerradoEn: fila.cerrado_en,
+        resolucion: fila.resolucion,
+        resueltoPor: numeroONull(fila.resuelto_por),
       }),
       titulo: fila.titulo,
       categoria: { id: Number(fila.categoria_id), nombre: fila.categoria_nombre },
@@ -131,6 +137,9 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
       escalado: ticket.escalado,
       resuelto_en: ticket.resueltoEn,
       cerrado_en: ticket.cerradoEn,
+      // Resolución vigente (SPEC 26): sale del mismo resultado del dominio que el motivo del historial.
+      resolucion: ticket.resolucion,
+      resuelto_por: ticket.resueltoPor,
       categoria_id: categoriaId,
     });
     await this.db('ticket_historial').insert({
