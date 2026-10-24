@@ -127,7 +127,7 @@ Son 42 requerimientos en 9 módulos. Prioridad según MoSCoW: **M** = imprescind
 | ID | Requerimiento | Prioridad |
 | --- | --- | --- |
 | RF-12 | El supervisor revisa las quejas nuevas, corrige categoría, define prioridad (baja, media, alta, urgente) y las acepta o rechaza con motivo. | M |
-| RF-13 | Al aceptar, el sistema asigna la dependencia según la regla configurada para la categoría. | M |
+| RF-13 | Al aceptar, el sistema asigna la dependencia según la regla configurada para la categoría (`categorias.dependencia_id` de la categoría final). | M |
 | RF-14 | El coordinador asigna la queja a un técnico de su dependencia y puede reasignarla. | M |
 | RF-15 | El técnico o coordinador solicita traslado a otra dependencia con justificación; el supervisor lo aprueba. | M |
 | RF-16 | El sistema puede asignar técnico automáticamente al de menor carga de la dependencia. | C |
@@ -325,8 +325,9 @@ Campos adicionales por categoría (RF-09):
 | GET /api/v1/public/tickets/:numero | Consulta de estado con dato de contacto | Público |
 | POST /api/v1/tickets | Registrar queja | Vecino, Receptor, Supervisor |
 | GET /api/v1/tickets | Listado filtrado y paginado, limitado por rol | Internos, Vecino |
+| GET /api/v1/tickets/triage | Bandeja de quejas en `nueva` y `en_revision`, de la más antigua a la más reciente | Supervisor |
 | GET /api/v1/tickets/:id | Detalle con línea de tiempo | Según visibilidad |
-| POST /api/v1/tickets/:id/transiciones | Cambiar estado con motivo | Según matriz de permisos |
+| POST /api/v1/tickets/:id/transiciones | Cambiar estado con motivo. Campo `accion`: `tomar` (nueva → en_revision), `aceptar` (en_revision → asignada, con prioridad y categoría final) y `rechazar` (en_revision → rechazada, con motivo) | Según matriz de permisos (triage: Supervisor) |
 | PATCH /api/v1/tickets/:id/asignacion | Asignar o reasignar técnico | Coordinador, Supervisor |
 | POST /api/v1/tickets/:id/traslados | Solicitar o aprobar traslado | Técnico, Coordinador, Supervisor |
 | POST /api/v1/tickets/:id/comentarios | Comentario público o nota interna | Según matriz de permisos |

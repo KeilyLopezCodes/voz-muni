@@ -29,6 +29,7 @@ export interface CategoriaFormulario {
   id: number
   nombre: string
   camposExtra: CampoExtra[]
+  dependencia: { id: number; nombre: string } // la que recibe la queja al aceptarla (SPEC 19)
 }
 
 export interface Zona {

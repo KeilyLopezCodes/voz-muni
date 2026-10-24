@@ -1,6 +1,8 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { type CodigoError, ErrorDeAplicacion } from '../../application/errors/error-de-aplicacion';
+import { InvalidTransitionError } from '../../domain/errors/invalid-transition-error';
+import { ReglaDeNegocioError } from '../../domain/errors/regla-de-negocio-error';
 
 const STATUS_POR_CODIGO: Record<CodigoError, number> = {
   VALIDACION: 400,
@@ -59,6 +61,17 @@ export const manejadorErrores: ErrorRequestHandler = (error, _req, res, _next) =
     // `detalles` solo aparece en los errores que lo traen (SPEC 14); el resto conserva { codigo, mensaje }.
     const detalles = error.detalles ? { detalles: error.detalles } : {};
     res.status(STATUS_POR_CODIGO[error.codigo]).json({ codigo: error.codigo, mensaje: error.message, ...detalles });
+    return;
+  }
+
+  // Errores del dominio que ningún servicio tradujo (SPEC 19): valen para cualquier endpoint.
+  if (error instanceof InvalidTransitionError) {
+    res.status(409).json({ codigo: 'TRANSICION_INVALIDA', mensaje: error.message });
+    return;
+  }
+  if (error instanceof ReglaDeNegocioError) {
+    const detalles = error.detalles ? { detalles: error.detalles } : {};
+    res.status(400).json({ codigo: error.codigo, mensaje: error.message, ...detalles });
     return;
   }
 

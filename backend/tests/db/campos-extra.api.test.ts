@@ -59,6 +59,7 @@ describe('Campos adicionales por categoría (SPEC 14)', () => {
         ])
         .returning('id')
     ).map((f) => Number(f.id));
+    ids.dependencia = activa;
     const categorias = await db('categorias')
       .insert([
         { nombre: 'Agua potable', dependencia_id: activa },
@@ -168,13 +169,13 @@ describe('Campos adicionales por categoría (SPEC 14)', () => {
   });
 
   describe('GET /categorias y /zonas', () => {
-    it('el vecino ve solo las categorías activas con dependencia activa, con sus camposExtra', async () => {
+    it('el vecino ve solo las categorías activas con dependencia activa, con sus camposExtra y su dependencia', async () => {
       const res = await request(app).get('/api/v1/categorias').set('Authorization', `Bearer ${tokens.vecino}`);
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual([
-        { id: ids.agua, nombre: 'Agua potable', camposExtra: CAMPOS_AGUA },
-        { id: ids.alumbrado, nombre: 'Alumbrado', camposExtra: [] },
+        { id: ids.agua, nombre: 'Agua potable', camposExtra: CAMPOS_AGUA, dependencia: { id: ids.dependencia, nombre: 'Agua' } },
+        { id: ids.alumbrado, nombre: 'Alumbrado', camposExtra: [], dependencia: { id: ids.dependencia, nombre: 'Agua' } },
       ]);
     });
 

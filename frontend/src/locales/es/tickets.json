@@ -166,5 +166,80 @@
   },
   "consulta": {
     "titulo": "Consultar el estado de una queja"
+  },
+  "triage": {
+    "titulo": "Triage",
+    "filtro": {
+      "etiqueta": "Mostrar",
+      "nueva": "Nuevas",
+      "en_revision": "En revisión",
+      "todas": "Todas"
+    },
+    "estados": {
+      "nueva": "Nueva",
+      "en_revision": "En revisión"
+    },
+    "canales": {
+      "portal": "Portal",
+      "ventanilla": "Ventanilla",
+      "telefono": "Teléfono",
+      "redes": "Redes sociales",
+      "correo": "Correo electrónico"
+    },
+    "prioridades": {
+      "baja": "Baja",
+      "media": "Media",
+      "alta": "Alta",
+      "urgente": "Urgente"
+    },
+    "cargando": "Cargando…",
+    "vacia": "No hay quejas pendientes de revisar.",
+    "errorCarga": "No pudimos cargar las quejas.",
+    "reintentar": "Reintentar",
+    "paginacion": "Páginas de la bandeja",
+    "abrir": "Revisar la queja {{numero}}",
+    "panel": {
+      "titulo": "Queja {{numero}}",
+      "cerrar": "Cerrar",
+      "descripcion": "Descripción",
+      "categoria": "Categoría",
+      "zona": "Zona",
+      "direccion": "Dirección",
+      "canal": "Canal",
+      "solicitante": "Solicitante",
+      "ubicacion": "Ubicación",
+      "sinUbicacion": "Sin punto en el mapa",
+      "datosExtra": "Datos adicionales",
+      "si": "Sí",
+      "no": "No"
+    },
+    "acciones": {
+      "tomar": "Tomar",
+      "aceptar": "Aceptar",
+      "rechazar": "Rechazar",
+      "enviando": "Enviando…",
+      "prioridad": "Prioridad",
+      "prioridadRequerida": "Elige la prioridad.",
+      "categoria": "Categoría final",
+      "dependencia": "Se enviará a: {{dependencia}}",
+      "motivo": "Motivo del rechazo",
+      "motivoAyuda": "El vecino recibirá este motivo por correo.",
+      "motivoRequerido": "Escribe el motivo (hasta 1000 caracteres).",
+      "confirmarTitulo": "¿Rechazar la queja?",
+      "confirmarTexto": "La queja {{numero}} quedará rechazada y el vecino recibirá el motivo. Esta acción no se puede deshacer.",
+      "confirmar": "Sí, rechazar",
+      "cancelar": "Cancelar"
+    },
+    "avisos": {
+      "tomada": "Queja tomada",
+      "aceptada": "Aceptada y enviada a {{dependencia}}",
+      "rechazada": "Rechazada",
+      "conflicto": "Otra persona ya actuó sobre esta queja"
+    },
+    "errores": {
+      "CATEGORIA_INVALIDA": "Esa categoría ya no está disponible. Elige otra.",
+      "red": "No pudimos conectar con el servidor. Intenta de nuevo.",
+      "generico": "No pudimos completar la acción. Intenta de nuevo."
+    }
   }
 }

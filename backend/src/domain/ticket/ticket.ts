@@ -149,7 +149,8 @@ export class Ticket {
     }));
   }
 
-  asignar(ctx: ContextoTransicion, dependenciaId: number, prioridad: Prioridad): ResultadoTransicion {
+  // La nota opcional queda como motivo del historial, recortada; vacía o ausente, el motivo es null (SPEC 19).
+  asignar(ctx: ContextoTransicion, dependenciaId: number, prioridad: Prioridad, nota?: string): ResultadoTransicion {
     return this.transicionar(ctx, ['en_revision'], 'asignada', () => {
       if (!esIdValido(dependenciaId)) {
         throw new ReglaDeNegocioError('DEPENDENCIA_INVALIDA', 'La dependencia debe ser un id entero mayor que 0');
@@ -157,7 +158,8 @@ export class Ticket {
       if (!esPrioridad(prioridad)) {
         throw new ReglaDeNegocioError('PRIORIDAD_INVALIDA', `La prioridad ${String(prioridad)} no es válida`);
       }
-      return { cambios: { dependenciaId, prioridad } };
+      const notaRecortada = typeof nota === 'string' ? nota.trim() : '';
+      return { cambios: { dependenciaId, prioridad }, motivo: notaRecortada === '' ? null : notaRecortada };
     });
   }
 

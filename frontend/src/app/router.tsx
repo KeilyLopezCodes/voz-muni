@@ -10,6 +10,7 @@ import { ReportesPage } from '../features/reportes/pages/ReportesPage'
 import { ConsultaPage } from '../features/tickets/pages/ConsultaPage'
 import { NuevoTicketPage } from '../features/tickets/pages/NuevoTicketPage'
 import { TicketsPage } from '../features/tickets/pages/TicketsPage'
+import { TriagePage } from '../features/tickets/triage/TriagePage'
 import { inicioPorRol } from '../shared/auth/inicio-por-rol'
 import { RequireRole } from '../shared/auth/RequireRole'
 import { ROLES } from '../shared/auth/roles'
@@ -23,6 +24,7 @@ import { NoEncontradoPage } from '../shared/pages/NoEncontradoPage'
 const PAGINAS: Record<string, ComponentType> = {
   '/tickets': TicketsPage,
   '/tickets/nueva': NuevoTicketPage,
+  '/triage': TriagePage,
   '/reportes': ReportesPage,
   '/admin': AdminPage,
 }

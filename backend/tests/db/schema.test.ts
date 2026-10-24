@@ -397,7 +397,7 @@ describe('Esquema de base de datos', () => {
       } finally {
         await db.migrate.latest();
       }
-      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '9' }]);
+      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '11' }]);
     });
   });
 
@@ -716,8 +716,13 @@ describe('Esquema de base de datos', () => {
       },
     };
 
+    // 0016_triage agrega tickets.triage al supervisor.
+    const MATRIZ_CON_TRIAGE = { ...MATRIZ, supervisor: { ...MATRIZ.supervisor, 'tickets.triage': 'todas' } };
     // Estado tras todas las migraciones: 0009_permiso_admin_usuarios agrega admin.usuarios al administrador.
-    const MATRIZ_ACTUAL = { ...MATRIZ, administrador: { ...MATRIZ.administrador, 'admin.usuarios': 'si' } };
+    const MATRIZ_ACTUAL = {
+      ...MATRIZ_CON_TRIAGE,
+      administrador: { ...MATRIZ.administrador, 'admin.usuarios': 'si' },
+    };
 
     async function permisosPorRol(): Promise<Record<string, unknown>> {
       const roles: { nombre: string; permisos: unknown }[] = await db('roles').select('nombre', 'permisos').orderBy('id');
@@ -737,7 +742,8 @@ describe('Esquema de base de datos', () => {
     });
 
     it('carga la matriz en roles que ya existían con permisos vacíos, sin duplicarlos', async () => {
-      // 0009 depende de los roles: se revierte antes y vuelve a aplicarse con latest().
+      // 0009 y 0016 dependen de los roles: se revierten antes y vuelven a aplicarse con latest().
+      await db.migrate.down({ name: '0016_triage.js' });
       await db.migrate.down({ name: '0009_permiso_admin_usuarios.js' });
       await db.migrate.down({ name: '0006_roles.js' });
       await db('roles').insert(Object.keys(MATRIZ).map((nombre) => ({ nombre, permisos: {} })));
@@ -773,12 +779,49 @@ describe('Esquema de base de datos', () => {
       it('al revertirla desaparece la clave y el resto de los permisos queda igual', async () => {
         await db.migrate.down({ name: '0009_permiso_admin_usuarios.js' });
         try {
-          expect(await permisosPorRol()).toEqual(MATRIZ);
+          expect(await permisosPorRol()).toEqual(MATRIZ_CON_TRIAGE);
         } finally {
           await db.migrate.latest();
         }
         expect(await permisosPorRol()).toEqual(MATRIZ_ACTUAL);
       });
+    });
+  });
+
+  describe('triage (0016)', () => {
+    const CLAVES_0016 = ['queja_aceptada', 'queja_rechazada'];
+
+    async function conTriage(): Promise<{ nombre: string; valor: string }[]> {
+      return db('roles')
+        .select('nombre', db.raw("permisos->>'tickets.triage' as valor"))
+        .whereRaw("permisos->>'tickets.triage' IS NOT NULL");
+    }
+
+    it('solo el supervisor tiene tickets.triage = todas', async () => {
+      expect(await conTriage()).toEqual([{ nombre: 'supervisor', valor: 'todas' }]);
+    });
+
+    it('existen queja_aceptada y queja_rechazada', async () => {
+      const filas: { clave: string; asunto: string }[] = await db('plantillas_notificacion')
+        .whereIn('clave', CLAVES_0016)
+        .orderBy('clave')
+        .select('clave', 'asunto');
+      expect(filas).toEqual([
+        { clave: 'queja_aceptada', asunto: 'VozMuni: tu queja {{numero}} fue aceptada' },
+        { clave: 'queja_rechazada', asunto: 'VozMuni: tu queja {{numero}} no fue aceptada' },
+      ]);
+    });
+
+    it('revertir 0016 quita el permiso y las 2 plantillas, y latest() los vuelve a crear', async () => {
+      await db.migrate.down({ name: '0016_triage.js' });
+      try {
+        expect(await conTriage()).toEqual([]);
+        expect(await db('plantillas_notificacion').whereIn('clave', CLAVES_0016).select('clave')).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+      expect(await conTriage()).toEqual([{ nombre: 'supervisor', valor: 'todas' }]);
+      expect(await db('plantillas_notificacion').whereIn('clave', CLAVES_0016)).toHaveLength(2);
     });
   });
 

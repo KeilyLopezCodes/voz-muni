@@ -1,6 +1,6 @@
 # SPEC 19 — Triage del supervisor
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 04, SPEC 08, SPEC 11, SPEC 12, SPEC 14, SPEC 17
 > **Fecha:** 2026-10-22
 > **Objetivo:** Permitir que el supervisor tome las quejas nuevas, las acepte con prioridad y categoría corregida (asignando la dependencia de esa categoría) o las rechace con motivo, mediante `POST /api/v1/tickets/:id/transiciones`, una bandeja `GET /api/v1/tickets/triage` y la pantalla `/triage`, avisando al vecino por correo.
@@ -25,6 +25,7 @@ Esta spec también traduce por primera vez a HTTP los errores del dominio de SPE
 - Bloqueo de fila al transicionar, para que dos supervisores no actúen sobre la misma queja a la vez.
 - Traducción de `InvalidTransitionError` y `ReglaDeNegocioError` (SPEC 04) a HTTP.
 - **Cambio sobre SPEC 04:** `Ticket.asignar` acepta una nota opcional para el historial.
+- **Cambio sobre SPEC 14** (decidido durante la implementación): `GET /api/v1/categorias` agrega `dependencia: { id, nombre }` a cada categoría, para que el panel muestre la dependencia que quedará asignada. Es aditivo: el formulario de queja no cambia y la respuesta del `PUT` de campos extra tampoco.
 - Correos `queja_aceptada` y `queja_rechazada` al solicitante.
 - Frontend: ruta `/triage`, solo para el supervisor, con la bandeja y un panel para tomar, aceptar o rechazar.
 - Actualización de `CLAUDE.md`.
@@ -262,25 +263,25 @@ frontend/
 
 ## Criterios de aceptación
 
-- [ ] La sección 6 del documento de definición incluye `GET /api/v1/tickets/triage`, las acciones de `POST /tickets/:id/transiciones` y la aclaración de RF-13.
-- [ ] Después de `migrate:latest`, solo el supervisor tiene `tickets.triage = 'todas'`, y existen `queja_aceptada` y `queja_rechazada`.
-- [ ] `tomar` pasa una queja de `nueva` a `en_revision` y escribe su historial con el supervisor como `usuario_id`.
-- [ ] `aceptar` pasa de `en_revision` a `asignada` con la prioridad indicada y `dependencia_id` igual al `dependencia_id` de la categoría final.
-- [ ] Si `aceptar` cambia la categoría, se actualiza `tickets.categoria_id`, el historial guarda `Categoría: <anterior> → <nueva>`, y `datos_extra` no cambia.
-- [ ] `aceptar` con una categoría inactiva, o con su dependencia inactiva, responde `400 CATEGORIA_INVALIDA`.
-- [ ] `rechazar` pasa de `en_revision` a `rechazada` y guarda el motivo recortado en el historial. Sin motivo responde `400`.
-- [ ] Una acción desde un estado no permitido (por ejemplo, aceptar una `nueva`) responde `409 TRANSICION_INVALIDA`, y dos `tomar` simultáneos sobre la misma queja dejan exactamente una transición.
-- [ ] Todos los roles distintos del supervisor reciben `403` en los dos endpoints, y un ticket inexistente responde `404`.
-- [ ] El solicitante con correo recibe `queja_aceptada` con la dependencia, o `queja_rechazada` con el motivo. `tomar` no envía correo, y un fallo del envío no cambia la respuesta.
-- [ ] `GET /api/v1/tickets/triage` devuelve solo quejas en `nueva` y `en_revision`, de la más antigua primero, filtra por `estado`, está paginado con `total`, y no expone el correo, el teléfono ni el DPI del solicitante.
-- [ ] Un `ReglaDeNegocioError` del dominio responde `400` con su código, y un `InvalidTransitionError` responde `409 TRANSICION_INVALIDA`, en cualquier endpoint.
-- [ ] Las pruebas de SPEC 04 siguen pasando con la `nota` opcional de `asignar`.
-- [ ] En el frontend, solo el supervisor ve "Triage" en el menú y puede abrir `/triage`.
-- [ ] `/triage` lista las quejas pendientes con el filtro y la paginación, y el panel permite tomar, aceptar (con prioridad obligatoria, la categoría preseleccionada y la dependencia visible) y rechazar (con motivo obligatorio y confirmación).
-- [ ] Después de una acción, la bandeja se actualiza, y un `409` muestra "Otra persona ya actuó sobre esta queja".
-- [ ] A 360 px de ancho, `/triage` y el panel no producen scroll horizontal, y ningún texto de la interfaz está fijo en un componente.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta `tickets.triage`, el endpoint de transiciones y la traducción de los errores de dominio.
+- [x] La sección 6 del documento de definición incluye `GET /api/v1/tickets/triage`, las acciones de `POST /tickets/:id/transiciones` y la aclaración de RF-13.
+- [x] Después de `migrate:latest`, solo el supervisor tiene `tickets.triage = 'todas'`, y existen `queja_aceptada` y `queja_rechazada`.
+- [x] `tomar` pasa una queja de `nueva` a `en_revision` y escribe su historial con el supervisor como `usuario_id`.
+- [x] `aceptar` pasa de `en_revision` a `asignada` con la prioridad indicada y `dependencia_id` igual al `dependencia_id` de la categoría final.
+- [x] Si `aceptar` cambia la categoría, se actualiza `tickets.categoria_id`, el historial guarda `Categoría: <anterior> → <nueva>`, y `datos_extra` no cambia.
+- [x] `aceptar` con una categoría inactiva, o con su dependencia inactiva, responde `400 CATEGORIA_INVALIDA`.
+- [x] `rechazar` pasa de `en_revision` a `rechazada` y guarda el motivo recortado en el historial. Sin motivo responde `400`.
+- [x] Una acción desde un estado no permitido (por ejemplo, aceptar una `nueva`) responde `409 TRANSICION_INVALIDA`, y dos `tomar` simultáneos sobre la misma queja dejan exactamente una transición.
+- [x] Todos los roles distintos del supervisor reciben `403` en los dos endpoints, y un ticket inexistente responde `404`.
+- [x] El solicitante con correo recibe `queja_aceptada` con la dependencia, o `queja_rechazada` con el motivo. `tomar` no envía correo, y un fallo del envío no cambia la respuesta.
+- [x] `GET /api/v1/tickets/triage` devuelve solo quejas en `nueva` y `en_revision`, de la más antigua primero, filtra por `estado`, está paginado con `total`, y no expone el correo, el teléfono ni el DPI del solicitante.
+- [x] Un `ReglaDeNegocioError` del dominio responde `400` con su código, y un `InvalidTransitionError` responde `409 TRANSICION_INVALIDA`, en cualquier endpoint.
+- [x] Las pruebas de SPEC 04 siguen pasando con la `nota` opcional de `asignar`.
+- [x] En el frontend, solo el supervisor ve "Triage" en el menú y puede abrir `/triage`.
+- [x] `/triage` lista las quejas pendientes con el filtro y la paginación, y el panel permite tomar, aceptar (con prioridad obligatoria, la categoría preseleccionada y la dependencia visible) y rechazar (con motivo obligatorio y confirmación).
+- [x] Después de una acción, la bandeja se actualiza, y un `409` muestra "Otra persona ya actuó sobre esta queja".
+- [ ] A 360 px de ancho, `/triage` y el panel no producen scroll horizontal, y ningún texto de la interfaz está fijo en un componente. (pendiente de comprobar a 360 px en el navegador: Chromium de Playwright no terminó de instalarse; los textos sí están todos en las traducciones)
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta `tickets.triage`, el endpoint de transiciones y la traducción de los errores de dominio.
 
 ## Decisiones
 
@@ -301,6 +302,8 @@ frontend/
 - **Sí:** la pantalla `/triage` entra, como eligió el usuario. Depende de la sesión de SPEC 17.
 - **Sí:** se avisa al vecino al aceptar y al rechazar.
 - **No:** avisar solo al rechazar, ni esperar a RF-31.
+- **Sí:** `GET /categorias` devuelve también la dependencia de cada categoría, como eligió el usuario al implementar. Era la única forma de mostrar la dependencia antes de aceptar sin un endpoint nuevo.
+- **No:** mostrar la dependencia solo después de aceptar, ni un endpoint de categorías propio del triage.
 - **Sí:** `Ticket.asignar` acepta una nota opcional. Es un cambio menor y compatible sobre SPEC 04, ya implementada, para registrar la corrección de categoría en el historial.
 - **Sí:** `SELECT … FOR UPDATE` al transicionar, para que dos supervisores no actúen sobre la misma queja a la vez. El segundo recibe `409`.
 - **Sí:** los errores de dominio se traducen a HTTP en el manejador general (`409` para transiciones inválidas y `400` para reglas). Lo que SPEC 08 dejó fuera queda resuelto aquí para todas las specs.

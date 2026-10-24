@@ -10,6 +10,7 @@ import { HealthService } from './application/services/health.service';
 import { RecuperacionService } from './application/services/recuperacion.service';
 import { RegistroTicketsService } from './application/services/registro-tickets.service';
 import { RegistroVecinosService } from './application/services/registro-vecinos.service';
+import { TriageService } from './application/services/triage.service';
 import { UsuariosService } from './application/services/usuarios.service';
 import { VecinosService } from './application/services/vecinos.service';
 import type { EnviadorCorreo } from './domain/notificaciones/enviador-correo';
@@ -32,6 +33,7 @@ import { KnexRestablecimientoRepository } from './infrastructure/repositories/kn
 import { KnexSesionRepository } from './infrastructure/repositories/knex-sesion-repository';
 import { KnexTicketLecturaRepository } from './infrastructure/repositories/knex-ticket-lectura-repository';
 import { KnexTransaccion } from './infrastructure/repositories/knex-transaccion';
+import { KnexTriageLecturaRepository } from './infrastructure/repositories/knex-triage-lectura-repository';
 import { KnexUsuarioAdminRepository } from './infrastructure/repositories/knex-usuario-admin-repository';
 import { KnexUsuarioRepository } from './infrastructure/repositories/knex-usuario-repository';
 import { KnexVecinoRepository } from './infrastructure/repositories/knex-vecino-repository';
@@ -55,6 +57,7 @@ export interface Container {
   catalogosService: CatalogosService;
   camposExtraService: CamposExtraService;
   parametrosService: ParametrosService;
+  triageService: TriageService;
   dispose(): Promise<void>;
 }
 
@@ -121,6 +124,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     catalogosService: new CatalogosService(catalogo),
     camposExtraService: new CamposExtraService(transaccion),
     parametrosService: parametros,
+    triageService: new TriageService(transaccion, new KnexTriageLecturaRepository(db), correo, clock, env.APP_URL),
     dispose: () => db.destroy(),
   };
 }

@@ -8,6 +8,7 @@ import { HealthController } from './presentation/controllers/health.controller';
 import { RecuperacionController } from './presentation/controllers/recuperacion.controller';
 import { RegistroController } from './presentation/controllers/registro.controller';
 import { TicketsController } from './presentation/controllers/tickets.controller';
+import { TransicionesController } from './presentation/controllers/transiciones.controller';
 import { UsuariosController } from './presentation/controllers/usuarios.controller';
 import { VecinosController } from './presentation/controllers/vecinos.controller';
 import { autenticar } from './presentation/middlewares/autenticar';
@@ -22,6 +23,7 @@ import { healthRoutes } from './presentation/routes/health.routes';
 import { recuperacionRoutes } from './presentation/routes/recuperacion.routes';
 import { registroRoutes } from './presentation/routes/registro.routes';
 import { ticketsRoutes } from './presentation/routes/tickets.routes';
+import { transicionesRoutes } from './presentation/routes/transiciones.routes';
 import { usuariosRoutes } from './presentation/routes/usuarios.routes';
 import { vecinosRoutes } from './presentation/routes/vecinos.routes';
 
@@ -52,6 +54,10 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1/tickets',
     ticketsRoutes(new TicketsController(container.registroTicketsService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1/tickets',
+    transicionesRoutes(new TransicionesController(container.triageService), autenticar(container.autorizacionService)),
   );
   app.use(
     '/api/v1/vecinos',

@@ -12,6 +12,7 @@ export const ACCIONES = [
   'admin.catalogos',
   'admin.usuarios',
   'bitacora.ver',
+  'tickets.triage', // SPEC 19: solo el supervisor
 ] as const;
 
 export type Accion = (typeof ACCIONES)[number];

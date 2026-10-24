@@ -4,6 +4,7 @@ import { KnexCategoriaAdminRepository } from './knex-categoria-admin-repository'
 import { KnexRegistroVecinoRepository } from './knex-registro-vecino-repository';
 import { KnexRestablecimientoRepository } from './knex-restablecimiento-repository';
 import { KnexSesionRepository } from './knex-sesion-repository';
+import { KnexTicketEscrituraRepository } from './knex-ticket-escritura-repository';
 import { KnexUsuarioAdminRepository } from './knex-usuario-admin-repository';
 import { KnexUsuarioRepository } from './knex-usuario-repository';
 import { KnexVecinoRepository } from './knex-vecino-repository';
@@ -22,6 +23,7 @@ export class KnexTransaccion implements Transaccion {
         vecinos: new KnexVecinoRepository(trx),
         categoriasAdmin: new KnexCategoriaAdminRepository(trx),
         registroVecinos: new KnexRegistroVecinoRepository(trx),
+        ticketsEscritura: new KnexTicketEscrituraRepository(trx),
       }),
     );
   }

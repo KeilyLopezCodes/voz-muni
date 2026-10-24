@@ -24,8 +24,9 @@ export const CATEGORIAS: CategoriaFormulario[] = [
       { clave: 'numero_poste', etiqueta: 'Número de poste', requerido: true, orden: 0, tipo: 'texto', max: 20 },
       { clave: 'hay_cables', etiqueta: '¿Hay cables expuestos?', requerido: false, orden: 1, tipo: 'si_no' },
     ],
+    dependencia: { id: 20, nombre: 'Servicios Públicos' },
   },
-  { id: 2, nombre: 'Baches', camposExtra: [] },
+  { id: 2, nombre: 'Baches', camposExtra: [], dependencia: { id: 10, nombre: 'Dirección de Obras' } },
 ]
 
 export const ZONAS: Zona[] = [
