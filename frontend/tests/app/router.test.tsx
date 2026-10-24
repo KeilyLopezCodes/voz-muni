@@ -16,6 +16,10 @@ import '../../src/shared/i18n/i18n'
 const ACCESO: Record<string, { roles: readonly Rol[]; titulo: string }> = {
   '/tickets': { roles: ROLES, titulo: tickets.listado.titulo },
   '/tickets/nueva': { roles: ['vecino', 'receptor', 'supervisor'], titulo: tickets.nuevo.titulo },
+  '/triage': { roles: ['supervisor'], titulo: tickets.triage.titulo },
+  '/asignacion': { roles: ['coordinador', 'supervisor'], titulo: tickets.asignacion.titulo },
+  '/traslados': { roles: ['supervisor'], titulo: tickets.traslados.titulo },
+  '/atencion': { roles: ['tecnico', 'coordinador', 'supervisor'], titulo: tickets.atencion.titulo },
   '/reportes': {
     roles: ['tecnico', 'coordinador', 'supervisor', 'administrador'],
     titulo: reportes.titulo,

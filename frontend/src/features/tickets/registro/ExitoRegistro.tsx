@@ -11,14 +11,18 @@ interface ExitoRegistroProps {
   numero: string // Q-AAAA-NNNNNN
   ventanilla: boolean
   onRegistrarOtra: () => void
+  // Los archivos no se subieron (SPEC 24): se muestran los errores y "Reintentar", que no vuelve a crear la queja.
+  subidaFallida?: { errores: string[]; reintentar: () => Promise<boolean> } | null
 }
 
 type EstadoCopia = 'copiado' | 'noDisponible' | null
 
 // El vecino guarda su número; en ventanilla, el receptor se lo dicta al vecino (SPEC 18).
-export function ExitoRegistro({ numero, ventanilla, onRegistrarOtra }: ExitoRegistroProps) {
+export function ExitoRegistro({ numero, ventanilla, onRegistrarOtra, subidaFallida = null }: ExitoRegistroProps) {
   const { t } = useTranslation('tickets')
   const [copia, setCopia] = useState<EstadoCopia>(null)
+  const [reintentando, setReintentando] = useState(false)
+  const [subidos, setSubidos] = useState(false)
   const tituloRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
@@ -63,6 +67,38 @@ export function ExitoRegistro({ numero, ventanilla, onRegistrarOtra }: ExitoRegi
       {copia === 'noDisponible' && (
         <Alert severity="warning" role="alert">
           {t('nuevo.exito.copiaNoDisponible')}
+        </Alert>
+      )}
+      {subidaFallida && (
+        <Alert
+          severity="warning"
+          role="alert"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              disabled={reintentando}
+              onClick={async () => {
+                setReintentando(true)
+                setSubidos(await subidaFallida.reintentar())
+                setReintentando(false)
+              }}
+            >
+              {reintentando ? t('nuevo.exito.subiendo') : t('nuevo.exito.reintentar')}
+            </Button>
+          }
+        >
+          {t('nuevo.exito.falloSubida')}
+          {subidaFallida.errores.map((error) => (
+            <Typography key={error} variant="body2">
+              {error}
+            </Typography>
+          ))}
+        </Alert>
+      )}
+      {subidos && (
+        <Alert severity="success" role="status">
+          {t('nuevo.exito.subidos')}
         </Alert>
       )}
       {!ventanilla && <Typography>{t('nuevo.exito.correo')}</Typography>}

@@ -134,6 +134,16 @@ describe('Ticket', () => {
       expect(historial).toMatchObject({ estadoAnterior: 'en_revision', estadoNuevo: 'asignada', motivo: null });
     });
 
+    it('con nota la guarda recortada como motivo del historial (SPEC 19)', () => {
+      const { historial } = ticketEn('en_revision').asignar(ctx, 4, 'media', '  Categoría: Baches → Alumbrado ');
+
+      expect(historial.motivo).toBe('Categoría: Baches → Alumbrado');
+    });
+
+    it.each([undefined, '', '   '])('con la nota %p el motivo es null', (nota) => {
+      expect(ticketEn('en_revision').asignar(ctx, 4, 'media', nota).historial.motivo).toBeNull();
+    });
+
     it.each([0, -1, 1.5, Number.NaN])('con dependenciaId %p lanza DEPENDENCIA_INVALIDA', (dependenciaId) => {
       esperarRegla(() => ticketEn('en_revision').asignar(ctx, dependenciaId, 'media'), 'DEPENDENCIA_INVALIDA');
     });

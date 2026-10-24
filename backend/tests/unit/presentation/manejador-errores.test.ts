@@ -12,10 +12,18 @@ import type { VecinosService } from '../../../src/application/services/vecinos.s
 import type { CatalogosService } from '../../../src/application/services/catalogos.service';
 import type { CamposExtraService } from '../../../src/application/services/campos-extra.service';
 import type { ParametrosService } from '../../../src/application/services/parametros.service';
+import type { TriageService } from '../../../src/application/services/triage.service';
+import type { AsignacionService } from '../../../src/application/services/asignacion.service';
+import type { TrasladosService } from '../../../src/application/services/traslados.service';
+import type { AtencionService } from '../../../src/application/services/atencion.service';
+import type { ComentariosService } from '../../../src/application/services/comentarios.service';
+import type { AdjuntosService } from '../../../src/application/services/adjuntos.service';
 import type { ConsultaTicketsService } from '../../../src/application/services/consulta-tickets.service';
 import type { BitacoraLecturaRepository } from '../../../src/domain/repositories/bitacora-lectura-repository';
 import type { ReporteLecturaRepository } from '../../../src/domain/repositories/reporte-lectura-repository';
 import { HealthService } from '../../../src/application/services/health.service';
+import { InvalidTransitionError } from '../../../src/domain/errors/invalid-transition-error';
+import { ReglaDeNegocioError } from '../../../src/domain/errors/regla-de-negocio-error';
 import type { Container } from '../../../src/container';
 import { manejadorErrores } from '../../../src/presentation/middlewares/manejador-errores';
 
@@ -40,6 +48,13 @@ function buildTestContainer(): Container {
     catalogosService: {} as CatalogosService,
     camposExtraService: {} as CamposExtraService,
     parametrosService: {} as ParametrosService,
+    triageService: {} as TriageService,
+    asignacionService: {} as AsignacionService,
+    trasladosService: {} as TrasladosService,
+    atencionService: {} as AtencionService,
+    comentariosService: {} as ComentariosService,
+    adjuntosService: {} as AdjuntosService,
+    prepararAlmacen: async () => {},
     dispose: async () => {},
   };
 }
@@ -85,6 +100,32 @@ describe('manejadorErrores', () => {
 
     expect(res.status).toBe(403);
     expect(res.body).toEqual({ codigo: 'PERMISO_DENEGADO', mensaje: 'Sin permiso' });
+  });
+
+  it('traduce InvalidTransitionError del dominio a 409 TRANSICION_INVALIDA (SPEC 19)', async () => {
+    const res = await request(appQueLanza(new InvalidTransitionError('nueva', 'asignada'))).get('/falla');
+
+    expect(res.status).toBe(409);
+    expect(res.body).toEqual({ codigo: 'TRANSICION_INVALIDA', mensaje: 'No se permite pasar de nueva a asignada' });
+  });
+
+  it('traduce ReglaDeNegocioError del dominio a 400 con su codigo (SPEC 19)', async () => {
+    const res = await request(appQueLanza(new ReglaDeNegocioError('MOTIVO_REQUERIDO', 'El motivo es obligatorio'))).get(
+      '/falla',
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ codigo: 'MOTIVO_REQUERIDO', mensaje: 'El motivo es obligatorio' });
+  });
+
+  it('una ReglaDeNegocioError con detalles los incluye', async () => {
+    const detalles = [{ campo: 'x', problema: 'REQUERIDO' }];
+    const res = await request(appQueLanza(new ReglaDeNegocioError('DATOS_EXTRA_INVALIDOS', 'Datos', detalles))).get(
+      '/falla',
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ codigo: 'DATOS_EXTRA_INVALIDOS', mensaje: 'Datos', detalles });
   });
 
   it('responde 500 ERROR_INTERNO sin la traza a un error inesperado', async () => {

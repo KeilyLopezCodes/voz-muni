@@ -1,6 +1,6 @@
 import type {
   CatalogoLecturaRepository,
-  CategoriaFormulario,
+  CategoriaConDependencia,
   Zona,
 } from '../../domain/repositories/catalogo-lectura-repository';
 
@@ -8,7 +8,7 @@ import type {
 export class CatalogosService {
   constructor(private readonly catalogo: CatalogoLecturaRepository) {}
 
-  listarCategorias(): Promise<CategoriaFormulario[]> {
+  listarCategorias(): Promise<CategoriaConDependencia[]> {
     return this.catalogo.listarCategoriasActivas();
   }
 

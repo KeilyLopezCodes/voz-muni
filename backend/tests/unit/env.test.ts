@@ -11,6 +11,7 @@ describe('loadEnv', () => {
     SMTP_PASS: 'clave',
     MAIL_FROM: 'VozMuni <no-responder@vozmuni.test>',
     APP_URL: 'http://localhost:5173',
+    ADJUNTOS_DIR: './almacen/adjuntos',
   };
   const porDefecto = {
     PORT: 3000,
@@ -50,6 +51,11 @@ describe('loadEnv', () => {
 
   it('usa los valores por defecto de las variables opcionales', () => {
     expect(loadEnv(minimo)).toEqual({ ...minimo, ...porDefecto });
+  });
+
+  it('lanza un error que nombra ADJUNTOS_DIR cuando falta (SPEC 24)', () => {
+    const { ADJUNTOS_DIR: _omitida, ...sinCarpeta } = minimo;
+    expect(() => loadEnv(sinCarpeta)).toThrow(/ADJUNTOS_DIR/);
   });
 
   it('lanza un error que nombra JWT_SECRET cuando falta', () => {

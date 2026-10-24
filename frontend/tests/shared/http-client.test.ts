@@ -244,3 +244,78 @@ describe('http-client', () => {
     })
   })
 })
+
+describe('http-client: archivos (SPEC 24)', () => {
+  it('postForm envía el FormData tal cual, sin Content-Type propio, con token y X-Request-Id', async () => {
+    setTokenProvider(() => 'acceso')
+    fetchMock.mockResolvedValue(jsonResponse(201, { adjuntos: [] }))
+    const form = new FormData()
+    form.append('archivos', new Blob(['%PDF-']), 'a.pdf')
+
+    await expect(apiClient.postForm('/tickets/1/adjuntos', form)).resolves.toEqual({ adjuntos: [] })
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/v1/tickets/1/adjuntos')
+    expect(init?.method).toBe('POST')
+    expect(init?.body).toBe(form)
+    expect(headersDeLlamada().get('Content-Type')).toBeNull()
+    expect(headersDeLlamada().get('Authorization')).toBe('Bearer acceso')
+    expect(headersDeLlamada().get('X-Request-Id')).toBeTruthy()
+  })
+
+  it('postForm ante un 401 renueva y repite con el mismo FormData', async () => {
+    let token = 'viejo'
+    setTokenProvider(() => token)
+    setUnauthorizedHandler(async () => {
+      token = 'nuevo'
+      return true
+    })
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(401, { codigo: 'TOKEN_INVALIDO', mensaje: 'x' }))
+      .mockResolvedValueOnce(jsonResponse(201, { adjuntos: [] }))
+    const form = new FormData()
+
+    await apiClient.postForm('/tickets/1/adjuntos', form)
+
+    expect(fetchMock.mock.calls[1][1]?.body).toBe(form)
+    expect(headersDeLlamada(1).get('Authorization')).toBe('Bearer nuevo')
+  })
+
+  it('postForm conserva los detalles de un 400', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(400, { codigo: 'ADJUNTO_INVALIDO', mensaje: 'x', detalles: [{ campo: 'a.pdf', problema: 'MUY_GRANDE' }] }),
+    )
+
+    const error = await capturarError(apiClient.postForm('/tickets/1/adjuntos', new FormData()))
+
+    expect(error).toMatchObject({ status: 400, codigo: 'ADJUNTO_INVALIDO', detalles: [{ campo: 'a.pdf', problema: 'MUY_GRANDE' }] })
+  })
+
+  it('descargar devuelve un Blob con el token, y renueva ante un 401', async () => {
+    let token = 'viejo'
+    setTokenProvider(() => token)
+    setUnauthorizedHandler(async () => {
+      token = 'nuevo'
+      return true
+    })
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(401, { codigo: 'TOKEN_INVALIDO', mensaje: 'x' }))
+      .mockResolvedValueOnce(new Response(new Uint8Array([0xff, 0xd8, 0xff]), { status: 200, headers: { 'Content-Type': 'image/jpeg' } }))
+
+    const blob = await apiClient.descargar('/tickets/1/adjuntos/2/contenido')
+
+    expect(blob.type).toBe('image/jpeg')
+    expect(new Uint8Array(await blob.arrayBuffer())).toEqual(new Uint8Array([0xff, 0xd8, 0xff]))
+    expect(headersDeLlamada(1).get('Authorization')).toBe('Bearer nuevo')
+    expect(headersDeLlamada(1).get('Content-Type')).toBeNull()
+  })
+
+  it('descargar lanza ApiError con el codigo de un 404', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(404, { codigo: 'NO_ENCONTRADO', mensaje: 'x' }))
+
+    expect(await capturarError(apiClient.descargar('/tickets/1/adjuntos/9/contenido'))).toMatchObject({
+      status: 404,
+      codigo: 'NO_ENCONTRADO',
+    })
+  })
+})

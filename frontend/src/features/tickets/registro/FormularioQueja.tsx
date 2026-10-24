@@ -10,6 +10,8 @@ import { FormProvider, type Path, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '../../../shared/api/api-error'
 import type { Rol } from '../../../shared/auth/roles'
+import { mensajesDeError } from '../adjuntos/AdjuntosTicket'
+import { subirAdjuntos } from '../api/adjuntos-api'
 import { CLAVES_REGISTRO, crearTicket, listarCategorias } from '../api/registro-api'
 import { type Aviso, camposExtraConError, destinoDeError } from './errores-registro'
 import { cuerpoDelRegistro, ESTADO_INICIAL, type EstadoRegistro, type Paso, pasosPara } from './estado-registro'
@@ -52,6 +54,8 @@ export function FormularioQueja({ rol }: FormularioQuejaProps) {
   const [aviso, setAviso] = useState<{ paso: Paso; aviso: Aviso } | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [numero, setNumero] = useState<string | null>(null)
+  // Archivos que no se pudieron subir después de crear la queja: la pantalla de éxito ofrece reintentar (SPEC 24).
+  const [pendientes, setPendientes] = useState<{ ticketId: number; archivos: File[]; errores: string[] } | null>(null)
   const tituloRef = useRef<HTMLHeadingElement>(null)
   const montado = useRef(false)
 
@@ -128,6 +132,15 @@ export function FormularioQueja({ rol }: FormularioQuejaProps) {
     try {
       const cuerpo = cuerpoDelRegistro(metodos.getValues(), { ventanilla, camposExtra: camposDeLaCategoria() })
       const creado = await crearTicket(cuerpo)
+      // La queja ya existe: si la subida falla, no se vuelve a crear, solo se reintenta la subida.
+      const archivos = metodos.getValues('archivos')
+      if (archivos.length > 0) {
+        try {
+          await subirAdjuntos(creado.id, archivos)
+        } catch (fallo) {
+          setPendientes({ ticketId: creado.id, archivos, errores: mensajesDeError(fallo, t) })
+        }
+      }
       setNumero(creado.numero)
     } catch (error) {
       mostrarError(error)
@@ -136,15 +149,35 @@ export function FormularioQueja({ rol }: FormularioQuejaProps) {
     }
   }
 
+  const reintentarSubida = async (): Promise<boolean> => {
+    if (!pendientes) return true
+    try {
+      await subirAdjuntos(pendientes.ticketId, pendientes.archivos)
+      setPendientes(null)
+      return true
+    } catch (fallo) {
+      setPendientes({ ...pendientes, errores: mensajesDeError(fallo, t) })
+      return false
+    }
+  }
+
   const registrarOtra = () => {
     metodos.reset(ESTADO_INICIAL)
+    setPendientes(null)
     setNumero(null)
     setAviso(null)
     setIndice(0)
   }
 
   if (numero) {
-    return <ExitoRegistro numero={numero} ventanilla={ventanilla} onRegistrarOtra={registrarOtra} />
+    return (
+      <ExitoRegistro
+        numero={numero}
+        ventanilla={ventanilla}
+        onRegistrarOtra={registrarOtra}
+        subidaFallida={pendientes ? { errores: pendientes.errores, reintentar: reintentarSubida } : null}
+      />
+    )
   }
 
   const Contenido = CONTENIDO[paso]

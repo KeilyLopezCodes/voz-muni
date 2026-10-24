@@ -1,9 +1,14 @@
 import type { Knex } from 'knex';
 import type { ReposTransaccionales, Transaccion } from '../../domain/repositories/transaccion';
+import { KnexAdjuntoRepository } from './knex-adjunto-repository';
+import { KnexAsignacionRepository } from './knex-asignacion-repository';
 import { KnexCategoriaAdminRepository } from './knex-categoria-admin-repository';
+import { KnexComentarioRepository } from './knex-comentario-repository';
 import { KnexRegistroVecinoRepository } from './knex-registro-vecino-repository';
 import { KnexRestablecimientoRepository } from './knex-restablecimiento-repository';
 import { KnexSesionRepository } from './knex-sesion-repository';
+import { KnexTicketEscrituraRepository } from './knex-ticket-escritura-repository';
+import { KnexTrasladoRepository } from './knex-traslado-repository';
 import { KnexUsuarioAdminRepository } from './knex-usuario-admin-repository';
 import { KnexUsuarioRepository } from './knex-usuario-repository';
 import { KnexVecinoRepository } from './knex-vecino-repository';
@@ -22,6 +27,11 @@ export class KnexTransaccion implements Transaccion {
         vecinos: new KnexVecinoRepository(trx),
         categoriasAdmin: new KnexCategoriaAdminRepository(trx),
         registroVecinos: new KnexRegistroVecinoRepository(trx),
+        ticketsEscritura: new KnexTicketEscrituraRepository(trx),
+        asignaciones: new KnexAsignacionRepository(trx),
+        traslados: new KnexTrasladoRepository(trx),
+        comentarios: new KnexComentarioRepository(trx),
+        adjuntos: new KnexAdjuntoRepository(trx),
       }),
     );
   }

@@ -1,27 +1,37 @@
 import express, { type Express } from 'express';
 import type { Container } from './container';
+import { AdjuntosController } from './presentation/controllers/adjuntos.controller';
+import { AsignacionController } from './presentation/controllers/asignacion.controller';
 import { AuthController } from './presentation/controllers/auth.controller';
 import { CamposExtraController } from './presentation/controllers/campos-extra.controller';
 import { CatalogosController } from './presentation/controllers/catalogos.controller';
+import { ComentariosController } from './presentation/controllers/comentarios.controller';
 import { ParametrosController } from './presentation/controllers/parametros.controller';
 import { HealthController } from './presentation/controllers/health.controller';
 import { RecuperacionController } from './presentation/controllers/recuperacion.controller';
 import { RegistroController } from './presentation/controllers/registro.controller';
 import { TicketsController } from './presentation/controllers/tickets.controller';
+import { TransicionesController } from './presentation/controllers/transiciones.controller';
+import { TrasladosController } from './presentation/controllers/traslados.controller';
 import { UsuariosController } from './presentation/controllers/usuarios.controller';
 import { VecinosController } from './presentation/controllers/vecinos.controller';
 import { autenticar } from './presentation/middlewares/autenticar';
 import { limiteLogin } from './presentation/middlewares/limite-login';
 import { limiteRecuperacion } from './presentation/middlewares/limite-recuperacion';
 import { manejadorErrores, rutaNoEncontrada } from './presentation/middlewares/manejador-errores';
+import { adjuntosRoutes } from './presentation/routes/adjuntos.routes';
+import { asignacionRoutes } from './presentation/routes/asignacion.routes';
 import { authRoutes } from './presentation/routes/auth.routes';
 import { camposExtraRoutes } from './presentation/routes/campos-extra.routes';
 import { catalogosRoutes } from './presentation/routes/catalogos.routes';
+import { comentariosRoutes } from './presentation/routes/comentarios.routes';
 import { parametrosRoutes } from './presentation/routes/parametros.routes';
 import { healthRoutes } from './presentation/routes/health.routes';
 import { recuperacionRoutes } from './presentation/routes/recuperacion.routes';
 import { registroRoutes } from './presentation/routes/registro.routes';
 import { ticketsRoutes } from './presentation/routes/tickets.routes';
+import { transicionesRoutes } from './presentation/routes/transiciones.routes';
+import { trasladosRoutes } from './presentation/routes/traslados.routes';
 import { usuariosRoutes } from './presentation/routes/usuarios.routes';
 import { vecinosRoutes } from './presentation/routes/vecinos.routes';
 
@@ -52,6 +62,26 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1/tickets',
     ticketsRoutes(new TicketsController(container.registroTicketsService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1/tickets',
+    transicionesRoutes(new TransicionesController(container.triageService, container.atencionService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1',
+    asignacionRoutes(new AsignacionController(container.asignacionService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1',
+    trasladosRoutes(new TrasladosController(container.trasladosService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1/tickets',
+    comentariosRoutes(new ComentariosController(container.comentariosService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1/tickets',
+    adjuntosRoutes(new AdjuntosController(container.adjuntosService), autenticar(container.autorizacionService)),
   );
   app.use(
     '/api/v1/vecinos',

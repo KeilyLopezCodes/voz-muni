@@ -95,6 +95,28 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['motivo', 'text'],
     ['creado_en', 'timestamp with time zone'],
   ],
+  ticket_asignaciones: [
+    ['id', 'bigint'],
+    ['ticket_id', 'bigint'],
+    ['tecnico_anterior', 'bigint'],
+    ['tecnico_nuevo', 'bigint'],
+    ['asignado_por', 'bigint'],
+    ['motivo', 'text'],
+    ['creado_en', 'timestamp with time zone'],
+  ],
+  solicitudes_traslado: [
+    ['id', 'bigint'],
+    ['ticket_id', 'bigint'],
+    ['solicitado_por', 'bigint'],
+    ['dependencia_origen_id', 'bigint'],
+    ['dependencia_sugerida_id', 'bigint'],
+    ['motivo', 'text'],
+    ['estado', 'text'],
+    ['resuelto_por', 'bigint'],
+    ['motivo_resolucion', 'text'],
+    ['creado_en', 'timestamp with time zone'],
+    ['resuelto_en', 'timestamp with time zone'],
+  ],
   comentarios: [
     ['id', 'bigint'],
     ['ticket_id', 'bigint'],
@@ -102,6 +124,7 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['cuerpo', 'text'],
     ['es_interno', 'boolean'],
     ['creado_en', 'timestamp with time zone'],
+    ['editado_en', 'timestamp with time zone'],
   ],
   adjuntos: [
     ['id', 'bigint'],
@@ -111,6 +134,10 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['ruta', 'text'],
     ['tipo_mime', 'text'],
     ['tamano_bytes', 'integer'],
+    ['subido_por', 'bigint'],
+    ['creado_en', 'timestamp with time zone'],
+    ['interno', 'boolean'],
+    ['origen', 'text'],
   ],
   encuestas: [
     ['id', 'bigint'],
@@ -397,7 +424,7 @@ describe('Esquema de base de datos', () => {
       } finally {
         await db.migrate.latest();
       }
-      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '9' }]);
+      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '11' }]);
     });
   });
 
@@ -573,6 +600,114 @@ describe('Esquema de base de datos', () => {
       }));
   });
 
+  describe('adjuntos (0020)', () => {
+    async function insertAdjunto(trx: Knex.Transaction, cambios: Record<string, unknown> = {}) {
+      const ticketId = await insertTicket(trx);
+      const { solicitante_id: autorId } = await trx('tickets').where({ id: ticketId }).first('solicitante_id');
+      return trx('adjuntos')
+        .insert({
+          ticket_id: ticketId,
+          nombre: 'foto.jpg',
+          ruta: 'ab/ab000000-0000-4000-8000-000000000000',
+          tipo_mime: 'image/jpeg',
+          tamano_bytes: 1024,
+          subido_por: autorId,
+          origen: 'registro',
+          ...cambios,
+        })
+        .returning(['id', 'ticket_id', 'subido_por', 'creado_en', 'interno']);
+    }
+
+    it('acepta un adjunto de registro público con creado_en e interno por defecto', () =>
+      withRollback(async (trx) => {
+        const [fila] = await insertAdjunto(trx);
+        expect(fila.interno).toBe(false);
+        expect(fila.creado_en).toBeInstanceOf(Date);
+      }));
+
+    it.each([
+      ['un adjunto de registro interno', { interno: true }],
+      ['10485761 bytes', { tamano_bytes: 10485761 }],
+      ['un origen desconocido', { origen: 'vecino' }],
+      ['un nombre vacío', { nombre: '' }],
+      ['un nombre de 256 caracteres', { nombre: 'a'.repeat(256) }],
+    ])('rechaza %s', (_caso, cambios) =>
+      withRollback(async (trx) => {
+        await expect(insertAdjunto(trx, cambios)).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }),
+    );
+
+    it('acepta 10485760 bytes y una evidencia interna de atención', () =>
+      withRollback(async (trx) => {
+        await insertAdjunto(trx, { tamano_bytes: 10485760, origen: 'atencion', interno: true });
+      }));
+
+    it('una ruta repetida viola UNIQUE', () =>
+      withRollback(async (trx) => {
+        const [fila] = await insertAdjunto(trx);
+        await expect(
+          trx('adjuntos').insert({
+            ticket_id: fila.ticket_id,
+            nombre: 'otra.jpg',
+            ruta: 'ab/ab000000-0000-4000-8000-000000000000',
+            tipo_mime: 'image/jpeg',
+            tamano_bytes: 10,
+            subido_por: fila.subido_por,
+            origen: 'atencion',
+          }),
+        ).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
+      }));
+  });
+
+  describe('comentarios (0019)', () => {
+    async function insertComentario(trx: Knex.Transaction, cuerpo: string) {
+      const ticketId = await insertTicket(trx);
+      const { solicitante_id: autorId } = await trx('tickets').where({ id: ticketId }).first('solicitante_id');
+      return trx('comentarios').insert({ ticket_id: ticketId, autor_id: autorId, cuerpo }).returning(['id', 'editado_en']);
+    }
+
+    it('acepta 4000 caracteres y deja editado_en en null', () =>
+      withRollback(async (trx) => {
+        const [fila] = await insertComentario(trx, 'a'.repeat(4000));
+        expect(fila.editado_en).toBeNull();
+      }));
+
+    it.each([
+      ['vacío', ''],
+      ['de 4001 caracteres', 'a'.repeat(4001)],
+    ])('rechaza un cuerpo %s', (_caso, cuerpo) =>
+      withRollback(async (trx) => {
+        await expect(insertComentario(trx, cuerpo)).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }),
+    );
+
+    it('el índice (ticket_id, creado_en) reemplaza al de solo ticket_id', async () => {
+      const indices: { indexname: string; indexdef: string }[] = await db('pg_indexes')
+        .where({ schemaname: 'public', tablename: 'comentarios' })
+        .select('indexname', 'indexdef');
+      const nombres = indices.map((i) => i.indexname);
+      expect(nombres).toContain('comentarios_ticket_creado_idx');
+      expect(nombres).not.toContain('comentarios_ticket_idx');
+      expect(indices.find((i) => i.indexname === 'comentarios_ticket_creado_idx')!.indexdef).toContain('(ticket_id, creado_en)');
+    });
+
+    it('revertir 0019 restaura el índice original y quita la columna y el CHECK', async () => {
+      await db.migrate.down({ name: '0019_comentarios.js' });
+      try {
+        const nombres = (await db('pg_indexes').where({ schemaname: 'public', tablename: 'comentarios' }).select('indexname')).map(
+          (i: { indexname: string }) => i.indexname,
+        );
+        expect(nombres).toContain('comentarios_ticket_idx');
+        expect(nombres).not.toContain('comentarios_ticket_creado_idx');
+        expect(
+          await db('information_schema.columns').where({ table_name: 'comentarios', column_name: 'editado_en' }).select('column_name'),
+        ).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
   describe('hijos del ticket', () => {
     it('rechaza una calificación fuera de 1 a 5', () =>
       withRollback(async (trx) => {
@@ -661,6 +796,136 @@ describe('Esquema de base de datos', () => {
       }));
   });
 
+  describe('ticket_asignaciones (0017)', () => {
+    const SOLO_INSERCION = 'ticket_asignaciones es solo de inserción';
+
+    // Un ticket con dos usuarios para usar como técnicos; devuelve los ids.
+    async function preparar(trx: Knex.Transaction): Promise<{ ticketId: string; a: string; b: string }> {
+      const ticketId = await insertTicket(trx);
+      const { id: rolId } = await trx('roles').where({ nombre: 'rol_prueba' }).first('id');
+      const [a, b] = await trx('usuarios')
+        .insert([
+          { nombre: 'Técnico A', telefono: '55550001', rol_id: rolId },
+          { nombre: 'Técnico B', telefono: '55550002', rol_id: rolId },
+        ])
+        .returning('id');
+      return { ticketId, a: a.id, b: b.id };
+    }
+
+    async function insertAsignacion(trx: Knex.Transaction): Promise<string> {
+      const { ticketId, a, b } = await preparar(trx);
+      const [fila] = await trx('ticket_asignaciones')
+        .insert({ ticket_id: ticketId, tecnico_anterior: null, tecnico_nuevo: a, asignado_por: b })
+        .returning('id');
+      return fila.id;
+    }
+
+    it('existe el índice (ticket_id, creado_en)', async () => {
+      const indice = await db('pg_indexes')
+        .where({ schemaname: 'public', indexname: 'ticket_asignaciones_ticket_creado_en_idx' })
+        .first('tablename', 'indexdef');
+      expect(indice.tablename).toBe('ticket_asignaciones');
+      expect(indice.indexdef).toContain('(ticket_id, creado_en)');
+    });
+
+    it('permite INSERT con tecnico_anterior null y creado_en por defecto', () =>
+      withRollback(async (trx) => {
+        const id = await insertAsignacion(trx);
+        const fila = await trx('ticket_asignaciones').where({ id }).first('tecnico_anterior', 'creado_en');
+        expect(fila.tecnico_anterior).toBeNull();
+        expect(fila.creado_en).toBeInstanceOf(Date);
+      }));
+
+    it('rechaza tecnico_anterior = tecnico_nuevo', () =>
+      withRollback(async (trx) => {
+        const { ticketId, a, b } = await preparar(trx);
+        await expect(
+          trx('ticket_asignaciones').insert({ ticket_id: ticketId, tecnico_anterior: a, tecnico_nuevo: a, asignado_por: b }),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+
+    it('rechaza UPDATE', () =>
+      withRollback(async (trx) => {
+        const id = await insertAsignacion(trx);
+        await expect(trx('ticket_asignaciones').where({ id }).update({ motivo: 'otro' })).rejects.toThrow(SOLO_INSERCION);
+      }));
+
+    it('rechaza DELETE', () =>
+      withRollback(async (trx) => {
+        const id = await insertAsignacion(trx);
+        await expect(trx('ticket_asignaciones').where({ id }).delete()).rejects.toThrow(SOLO_INSERCION);
+      }));
+
+    it('rechaza TRUNCATE', () =>
+      withRollback(async (trx) => {
+        await insertAsignacion(trx);
+        await expect(trx.raw('TRUNCATE ticket_asignaciones')).rejects.toThrow(SOLO_INSERCION);
+      }));
+  });
+
+  describe('solicitudes_traslado (0018)', () => {
+    // Un ticket con su dependencia y el usuario solicitante; devuelve los ids.
+    async function preparar(trx: Knex.Transaction) {
+      const ticketId = await insertTicket(trx);
+      const { categoria_id: categoriaId, solicitante_id: usuarioId } = await trx('tickets').where({ id: ticketId }).first();
+      const { dependencia_id: origen } = await trx('categorias').where({ id: categoriaId }).first('dependencia_id');
+      const [otra] = await trx('dependencias').insert({ nombre: 'Otra dependencia' }).returning('id');
+      return { ticketId, usuarioId, origen, otra: otra.id };
+    }
+
+    const solicitud = (p: Awaited<ReturnType<typeof preparar>>, cambios: Record<string, unknown> = {}) => ({
+      ticket_id: p.ticketId,
+      solicitado_por: p.usuarioId,
+      dependencia_origen_id: p.origen,
+      motivo: 'No es de esta dependencia',
+      ...cambios,
+    });
+
+    it.each([
+      ['solicitudes_traslado_una_pendiente', '(ticket_id) WHERE (estado = '],
+      ['solicitudes_traslado_estado_creado_en_idx', '(estado, creado_en)'],
+    ])('existe el índice %s', async (nombre, definicion) => {
+      const indice = await db('pg_indexes').where({ schemaname: 'public', indexname: nombre }).first('tablename', 'indexdef');
+      expect(indice.tablename).toBe('solicitudes_traslado');
+      expect(indice.indexdef).toContain(definicion);
+    });
+
+    it('estado vale pendiente por defecto', () =>
+      withRollback(async (trx) => {
+        const p = await preparar(trx);
+        const [fila] = await trx('solicitudes_traslado').insert(solicitud(p)).returning('estado');
+        expect(fila.estado).toBe('pendiente');
+      }));
+
+    it('una segunda pendiente para el mismo ticket viola el índice único parcial; con otro estado se acepta', () =>
+      withRollback(async (trx) => {
+        const p = await preparar(trx);
+        await trx('solicitudes_traslado').insert(solicitud(p));
+        await trx('solicitudes_traslado').insert(solicitud(p, { estado: 'rechazada' }));
+        await expect(trx('solicitudes_traslado').insert(solicitud(p))).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
+      }));
+
+    it.each<[string, (p: Awaited<ReturnType<typeof preparar>>) => Record<string, unknown>]>([
+      ['la sugerida igual a la de origen', (p) => ({ dependencia_sugerida_id: p.origen })],
+      ['un motivo vacío', () => ({ motivo: '' })],
+      ['un motivo de 1001 caracteres', () => ({ motivo: 'a'.repeat(1001) })],
+      ['un estado desconocido', () => ({ estado: 'en_curso' })],
+    ])('rechaza %s', (_caso, cambios) =>
+      withRollback(async (trx) => {
+        const p = await preparar(trx);
+        await expect(trx('solicitudes_traslado').insert(solicitud(p, cambios(p)))).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }),
+    );
+
+    it('acepta una sugerida distinta de la de origen', () =>
+      withRollback(async (trx) => {
+        const p = await preparar(trx);
+        await trx('solicitudes_traslado').insert(solicitud(p, { dependencia_sugerida_id: p.otra }));
+      }));
+  });
+
   describe('migración 0006_roles', () => {
     // Matriz de SPEC 08, escrita aparte de la migración para que la prueba no la copie.
     const MATRIZ: Record<string, Record<string, string>> = {
@@ -716,8 +981,13 @@ describe('Esquema de base de datos', () => {
       },
     };
 
+    // 0016_triage agrega tickets.triage al supervisor.
+    const MATRIZ_CON_TRIAGE = { ...MATRIZ, supervisor: { ...MATRIZ.supervisor, 'tickets.triage': 'todas' } };
     // Estado tras todas las migraciones: 0009_permiso_admin_usuarios agrega admin.usuarios al administrador.
-    const MATRIZ_ACTUAL = { ...MATRIZ, administrador: { ...MATRIZ.administrador, 'admin.usuarios': 'si' } };
+    const MATRIZ_ACTUAL = {
+      ...MATRIZ_CON_TRIAGE,
+      administrador: { ...MATRIZ.administrador, 'admin.usuarios': 'si' },
+    };
 
     async function permisosPorRol(): Promise<Record<string, unknown>> {
       const roles: { nombre: string; permisos: unknown }[] = await db('roles').select('nombre', 'permisos').orderBy('id');
@@ -737,7 +1007,8 @@ describe('Esquema de base de datos', () => {
     });
 
     it('carga la matriz en roles que ya existían con permisos vacíos, sin duplicarlos', async () => {
-      // 0009 depende de los roles: se revierte antes y vuelve a aplicarse con latest().
+      // 0009 y 0016 dependen de los roles: se revierten antes y vuelven a aplicarse con latest().
+      await db.migrate.down({ name: '0016_triage.js' });
       await db.migrate.down({ name: '0009_permiso_admin_usuarios.js' });
       await db.migrate.down({ name: '0006_roles.js' });
       await db('roles').insert(Object.keys(MATRIZ).map((nombre) => ({ nombre, permisos: {} })));
@@ -773,12 +1044,49 @@ describe('Esquema de base de datos', () => {
       it('al revertirla desaparece la clave y el resto de los permisos queda igual', async () => {
         await db.migrate.down({ name: '0009_permiso_admin_usuarios.js' });
         try {
-          expect(await permisosPorRol()).toEqual(MATRIZ);
+          expect(await permisosPorRol()).toEqual(MATRIZ_CON_TRIAGE);
         } finally {
           await db.migrate.latest();
         }
         expect(await permisosPorRol()).toEqual(MATRIZ_ACTUAL);
       });
+    });
+  });
+
+  describe('triage (0016)', () => {
+    const CLAVES_0016 = ['queja_aceptada', 'queja_rechazada'];
+
+    async function conTriage(): Promise<{ nombre: string; valor: string }[]> {
+      return db('roles')
+        .select('nombre', db.raw("permisos->>'tickets.triage' as valor"))
+        .whereRaw("permisos->>'tickets.triage' IS NOT NULL");
+    }
+
+    it('solo el supervisor tiene tickets.triage = todas', async () => {
+      expect(await conTriage()).toEqual([{ nombre: 'supervisor', valor: 'todas' }]);
+    });
+
+    it('existen queja_aceptada y queja_rechazada', async () => {
+      const filas: { clave: string; asunto: string }[] = await db('plantillas_notificacion')
+        .whereIn('clave', CLAVES_0016)
+        .orderBy('clave')
+        .select('clave', 'asunto');
+      expect(filas).toEqual([
+        { clave: 'queja_aceptada', asunto: 'VozMuni: tu queja {{numero}} fue aceptada' },
+        { clave: 'queja_rechazada', asunto: 'VozMuni: tu queja {{numero}} no fue aceptada' },
+      ]);
+    });
+
+    it('revertir 0016 quita el permiso y las 2 plantillas, y latest() los vuelve a crear', async () => {
+      await db.migrate.down({ name: '0016_triage.js' });
+      try {
+        expect(await conTriage()).toEqual([]);
+        expect(await db('plantillas_notificacion').whereIn('clave', CLAVES_0016).select('clave')).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+      expect(await conTriage()).toEqual([{ nombre: 'supervisor', valor: 'todas' }]);
+      expect(await db('plantillas_notificacion').whereIn('clave', CLAVES_0016)).toHaveLength(2);
     });
   });
 
@@ -792,12 +1100,14 @@ describe('Esquema de base de datos', () => {
         .where({ table_schema: 'public' })
         .whereIn('table_name', Object.keys(expectedColumns));
       expect(tables).toEqual([]);
-      expect(Object.keys(expectedColumns)).toHaveLength(19);
+      expect(Object.keys(expectedColumns)).toHaveLength(21);
 
       const tipos = await db('pg_type').select('typname').where({ typname: 'estado_ticket' });
       expect(tipos).toEqual([]);
 
-      const funciones = await db('pg_proc').select('proname').where({ proname: 'bitacora_solo_insercion' });
+      const funciones = await db('pg_proc')
+        .select('proname')
+        .whereIn('proname', ['bitacora_solo_insercion', 'ticket_asignaciones_solo_insercion']);
       expect(funciones).toEqual([]);
     });
   });

@@ -127,7 +127,7 @@ Son 42 requerimientos en 9 módulos. Prioridad según MoSCoW: **M** = imprescind
 | ID | Requerimiento | Prioridad |
 | --- | --- | --- |
 | RF-12 | El supervisor revisa las quejas nuevas, corrige categoría, define prioridad (baja, media, alta, urgente) y las acepta o rechaza con motivo. | M |
-| RF-13 | Al aceptar, el sistema asigna la dependencia según la regla configurada para la categoría. | M |
+| RF-13 | Al aceptar, el sistema asigna la dependencia según la regla configurada para la categoría (`categorias.dependencia_id` de la categoría final). | M |
 | RF-14 | El coordinador asigna la queja a un técnico de su dependencia y puede reasignarla. | M |
 | RF-15 | El técnico o coordinador solicita traslado a otra dependencia con justificación; el supervisor lo aprueba. | M |
 | RF-16 | El sistema puede asignar técnico automáticamente al de menor carga de la dependencia. | C |
@@ -288,8 +288,10 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | zonas | id, nombre, tipo (zona, colonia, aldea) |
 | tickets | id, numero (único), titulo, descripcion, solicitante\_id, categoria\_id, dependencia\_id, asignado\_a, estado, prioridad, canal, zona\_id, direccion, lat, lng, datos\_extra (jsonb), vence\_respuesta, vence\_resolucion, escalado, creado\_en, resuelto\_en, cerrado\_en, registrado\_por (usuario que la registró: el propio vecino o el receptor de ventanilla) |
 | ticket\_historial | id, ticket\_id, estado\_anterior, estado\_nuevo, usuario\_id, motivo, creado\_en |
-| comentarios | id, ticket\_id, autor\_id, cuerpo, es\_interno, creado\_en |
-| adjuntos | id, ticket\_id, comentario\_id, nombre, ruta, tipo\_mime, tamano\_bytes |
+| ticket\_asignaciones | id, ticket\_id, tecnico\_anterior (nulo en la primera asignación), tecnico\_nuevo, asignado\_por, motivo, creado\_en. Solo de inserción; registra cada asignación y reasignación de técnico para la línea de tiempo |
+| solicitudes\_traslado | id, ticket\_id, solicitado\_por, dependencia\_origen\_id, dependencia\_sugerida\_id (opcional), motivo, estado (pendiente, aprobada, rechazada, retirada, sin\_efecto), resuelto\_por, motivo\_resolucion, creado\_en, resuelto\_en. Como máximo una pendiente por queja |
+| comentarios | id, ticket\_id, autor\_id, cuerpo (1 a 4000 caracteres), es\_interno, creado\_en, editado\_en (el autor puede editar durante 5 minutos; no se guardan versiones) |
+| adjuntos | id, ticket\_id, comentario\_id, nombre, ruta, tipo\_mime, tamano\_bytes (hasta 10 MB), subido\_por, creado\_en, interno, origen (registro o atencion; los del registro siempre son públicos) |
 | encuestas | id, ticket\_id, calificacion, comentario, creado\_en |
 | notificaciones | id, usuario\_id, ticket\_id, tipo, leida, creado\_en |
 | calendario\_laboral | fecha, es\_habil, descripcion |
@@ -325,12 +327,25 @@ Campos adicionales por categoría (RF-09):
 | GET /api/v1/public/tickets/:numero | Consulta de estado con dato de contacto | Público |
 | POST /api/v1/tickets | Registrar queja | Vecino, Receptor, Supervisor |
 | GET /api/v1/tickets | Listado filtrado y paginado, limitado por rol | Internos, Vecino |
+| GET /api/v1/tickets/triage | Bandeja de quejas en `nueva` y `en_revision`, de la más antigua a la más reciente | Supervisor |
 | GET /api/v1/tickets/:id | Detalle con línea de tiempo | Según visibilidad |
-| POST /api/v1/tickets/:id/transiciones | Cambiar estado con motivo | Según matriz de permisos |
-| PATCH /api/v1/tickets/:id/asignacion | Asignar o reasignar técnico | Coordinador, Supervisor |
-| POST /api/v1/tickets/:id/traslados | Solicitar o aprobar traslado | Técnico, Coordinador, Supervisor |
-| POST /api/v1/tickets/:id/comentarios | Comentario público o nota interna | Según matriz de permisos |
-| POST /api/v1/tickets/:id/adjuntos | Subir archivo | Vecino, internos |
+| POST /api/v1/tickets/:id/transiciones | Cambiar estado con motivo. Campo `accion`: `tomar` (nueva → en_revision), `aceptar` (en_revision → asignada, con prioridad y categoría final) y `rechazar` (en_revision → rechazada, con motivo) | Según matriz de permisos (triage: Supervisor) |
+| GET /api/v1/tickets/por-asignar | Bandeja de quejas sin técnico (o abiertas), por prioridad y antigüedad | Coordinador, Supervisor |
+| PATCH /api/v1/tickets/:id/asignacion | Asignar o reasignar técnico. Cuerpo `{ tecnicoId, motivo? }`; el motivo es obligatorio al reasignar | Coordinador, Supervisor |
+| GET /api/v1/dependencias/:id/tecnicos | Técnicos activos de la dependencia con su carga de quejas abiertas | Coordinador, Supervisor |
+| POST /api/v1/tickets/:id/traslados | El técnico asignado o el coordinador solicitan el traslado (`{ motivo, dependenciaSugeridaId? }`); el supervisor traslada directamente | Técnico, Coordinador, Supervisor |
+| GET /api/v1/traslados | Bandeja de solicitudes de traslado, por estado | Supervisor |
+| POST /api/v1/traslados/:id/aprobacion | Aprobar: la queja vuelve a En revisión sin dependencia ni técnico | Supervisor |
+| POST /api/v1/traslados/:id/rechazo | Rechazar con motivo | Supervisor |
+| POST /api/v1/traslados/:id/retiro | Retirar la solicitud propia | Quien la solicitó |
+| GET /api/v1/dependencias | Dependencias activas, para sugerir el destino de un traslado | Técnico, Coordinador, Supervisor |
+| POST /api/v1/tickets/:id/comentarios | Comentario público o nota interna (`{ cuerpo, interno }`). Un comentario público del solicitante en una queja En espera la devuelve a En proceso (RF-22) | Según matriz de permisos |
+| GET /api/v1/tickets/:id/comentarios | Hilo de comentarios; las notas internas solo para quien tiene `comentarios.interno` | Según visibilidad |
+| PATCH /api/v1/tickets/:id/comentarios/:comentarioId | El autor corrige el texto durante 5 minutos | Autor del comentario |
+| POST /api/v1/tickets/:id/adjuntos | Subir de 1 a 5 archivos (multipart: `archivos`, `interno`). Origen `registro` (solicitante o quien registró, mientras la queja está en Nueva) u `atencion` (internos con permiso de comentar); hasta 5 por origen | Vecino, internos |
+| GET /api/v1/tickets/:id/adjuntos | Lista de adjuntos; los internos solo para quien tiene `comentarios.interno` | Según visibilidad |
+| GET /api/v1/tickets/:id/adjuntos/:adjuntoId/contenido | Descargar el archivo | Según visibilidad |
+| DELETE /api/v1/tickets/:id/adjuntos/:adjuntoId | El autor borra su adjunto durante 5 minutos | Autor del adjunto |
 | POST /api/v1/tickets/:id/encuesta | Calificar la atención | Vecino |
 | GET /api/v1/reportes/resumen | Indicadores del tablero | Coordinador, Supervisor, Admin |
 | GET /api/v1/admin/usuarios | Listado paginado de usuarios internos con filtros por rol, dependencia, estado y búsqueda | Admin |

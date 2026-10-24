@@ -1,0 +1,2 @@
+# Archivos de prueba de adjuntos (SPEC 24): se guardan tal cual, sin convertir saltos de línea.
+backend/tests/fixtures/archivos/** binary

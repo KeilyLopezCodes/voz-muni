@@ -17,6 +17,7 @@ export interface Env extends DatabaseEnv {
   MAIL_FROM: string;
   APP_URL: string;
   RECUPERACION_LIMITE_POR_VENTANA: number;
+  ADJUNTOS_DIR: string;
 }
 
 const OBLIGATORIA = { error: 'es obligatoria' };
@@ -50,6 +51,8 @@ const envSchema = databaseEnvSchema.extend({
     .url({ protocol: /^https?$/, error: 'debe ser una URL http:// o https://' })
     .refine((url) => !url.endsWith('/'), { error: 'no debe terminar en /' }),
   RECUPERACION_LIMITE_POR_VENTANA: z.coerce.number().int().positive().default(5),
+  // Carpeta de los adjuntos (SPEC 24). El backend la crea al arrancar si no existe.
+  ADJUNTOS_DIR: z.string(OBLIGATORIA).min(1, OBLIGATORIA),
 });
 
 function parse<T>(schema: z.ZodType<T>, source: NodeJS.ProcessEnv): T {

@@ -6,6 +6,16 @@ export interface CategoriaFormulario {
   camposExtra: CampoExtra[];
 }
 
+// GET /categorias agrega la dependencia que recibirá la queja al aceptarla (RF-13, SPEC 19).
+export interface CategoriaConDependencia extends CategoriaFormulario {
+  dependencia: { id: number; nombre: string };
+}
+
+export interface DependenciaActiva {
+  id: number;
+  nombre: string;
+}
+
 export interface Zona {
   id: number;
   nombre: string;
@@ -18,7 +28,9 @@ export interface CatalogoLecturaRepository {
   categoriaRegistrable(categoriaId: number): Promise<boolean>;
   zonaExiste(zonaId: number): Promise<boolean>;
   // Solo las activas con dependencia activa, ordenadas por nombre.
-  listarCategoriasActivas(): Promise<CategoriaFormulario[]>;
+  listarCategoriasActivas(): Promise<CategoriaConDependencia[]>;
+  // Dependencias activas ordenadas por nombre, para sugerir el destino de un traslado (SPEC 21).
+  listarDependenciasActivas(): Promise<DependenciaActiva[]>;
   // Ordenadas por tipo y nombre.
   listarZonas(): Promise<Zona[]>;
 }

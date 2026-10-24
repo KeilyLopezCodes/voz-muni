@@ -50,6 +50,10 @@ class CatalogoFalso implements CatalogoLecturaRepository {
   async listarZonas() {
     return [];
   }
+
+  async listarDependenciasActivas() {
+    return [];
+  }
 }
 
 // Solo los vecinos activos; el resto (internos, inactivos) no aparece, como en el repositorio real.

@@ -1,6 +1,6 @@
 # SPEC 24 — Adjuntos: archivos del registro y evidencias de la atención
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 08, SPEC 11, SPEC 12, SPEC 17, SPEC 18, SPEC 19, SPEC 20, SPEC 22, SPEC 23
 > **Fecha:** 2026-10-22
 > **Objetivo:** Permitir adjuntar a una queja hasta 5 archivos al registrarla y hasta 5 evidencias internas durante la atención, validados por contenido según RNF-11 (PDF, JPG, PNG o DOCX de hasta 10 MB), guardados en disco tras una interfaz de almacenamiento, descargables solo por quien puede ver la queja y borrables por su autor durante 5 minutos.

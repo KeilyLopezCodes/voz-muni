@@ -15,9 +15,9 @@ import { AppLayout } from '../../src/shared/layout/AppLayout'
 const MENU_ESPERADO: Record<Rol, string[]> = {
   vecino: ['/tickets', '/tickets/nueva'],
   receptor: ['/tickets', '/tickets/nueva'],
-  tecnico: ['/tickets', '/reportes'],
-  coordinador: ['/tickets', '/reportes'],
-  supervisor: ['/tickets', '/tickets/nueva', '/reportes'],
+  tecnico: ['/tickets', '/atencion', '/reportes'],
+  coordinador: ['/tickets', '/asignacion', '/atencion', '/reportes'],
+  supervisor: ['/tickets', '/tickets/nueva', '/triage', '/asignacion', '/atencion', '/traslados', '/reportes'],
   administrador: ['/tickets', '/reportes', '/admin'],
 }
 

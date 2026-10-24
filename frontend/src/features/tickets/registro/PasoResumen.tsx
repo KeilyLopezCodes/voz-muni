@@ -65,6 +65,10 @@ export function PasoResumen({ pasos, irAPaso }: PasoResumenProps) {
     descripcion: [
       { etiqueta: t('nuevo.descripcion.titulo'), valor: valores.titulo.trim() },
       { etiqueta: t('nuevo.descripcion.descripcion'), valor: valores.descripcion.trim() },
+      {
+        etiqueta: t('nuevo.archivos.titulo'),
+        valor: valores.archivos.length > 0 ? valores.archivos.map((archivo) => archivo.name).join('\n') : t('nuevo.archivos.ninguno'),
+      },
     ],
     ubicacion: [
       { etiqueta: t('nuevo.ubicacion.zona'), valor: zona?.nombre ?? '' },

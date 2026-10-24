@@ -7,6 +7,10 @@
     "abrir": "Abrir menú",
     "tickets": "Quejas",
     "nuevoTicket": "Nueva queja",
+    "triage": "Triage",
+    "asignacion": "Asignación",
+    "atencion": "Atención",
+    "traslados": "Traslados",
     "reportes": "Reportes",
     "admin": "Administración",
     "cerrarSesion": "Cerrar sesión"

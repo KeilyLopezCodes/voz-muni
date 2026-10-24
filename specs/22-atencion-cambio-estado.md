@@ -1,6 +1,6 @@
 # SPEC 22 — Atención de la queja: cambios de estado internos
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 04, SPEC 08, SPEC 11, SPEC 17, SPEC 19, SPEC 20, SPEC 21
 > **Fecha:** 2026-10-22
 > **Objetivo:** Agregar a `POST /api/v1/tickets/:id/transiciones` las acciones `iniciar`, `poner_en_espera`, `reanudar` y `resolver`, para el técnico asignado, el coordinador de la dependencia y el supervisor, con una bandeja `GET /api/v1/tickets/atencion` y la pantalla `/atencion`.
@@ -231,21 +231,21 @@ frontend/
 
 ## Criterios de aceptación
 
-- [ ] `POST /api/v1/tickets/:id/transiciones` acepta `iniciar`, `poner_en_espera`, `reanudar` y `resolver`, que llaman a los métodos de SPEC 04 y escriben su fila de `ticket_historial`.
-- [ ] `poner_en_espera` exige motivo y `resolver` exige descripción, y los dos se guardan recortados en el historial. `resolver` fija `resuelto_en`.
-- [ ] `iniciar` sin técnico asignado responde `400 TECNICO_REQUERIDO`, y una acción desde un estado no permitido responde `409 TRANSICION_INVALIDA`.
-- [ ] El técnico asignado, el coordinador de la dependencia y el supervisor pueden ejecutar las 4 acciones dentro de su alcance. Fuera de alcance reciben `404`.
-- [ ] El vecino, el receptor y el administrador reciben `403 PERMISO_DENEGADO` en las 4 acciones.
-- [ ] Las acciones `tomar`, `aceptar` y `rechazar` de SPEC 19 siguen funcionando igual, con sus mismos permisos y respuestas.
-- [ ] Dos transiciones simultáneas sobre la misma queja dejan exactamente una aplicada, y la otra responde `409`.
-- [ ] `GET /api/v1/tickets/atencion` devuelve las quejas en `asignada`, `en_proceso` y `en_espera` dentro del alcance del usuario, filtradas por estado, ordenadas por prioridad y antigüedad, paginadas con `total`, con `motivoEspera` y `trasladoPendiente`, y sin datos de contacto del solicitante.
-- [ ] Ningún archivo nuevo del backend compara el nombre de un rol: el permiso sale del alcance en `roles.permisos`.
-- [ ] En el frontend, el técnico, el coordinador y el supervisor ven "Atención" en el menú y pueden abrir `/atencion`, y los demás roles no.
-- [ ] El panel muestra solo las acciones válidas para el estado de la queja. "Poner en espera" exige motivo. "Resolver" exige descripción y confirmación. "Iniciar" se deshabilita sin técnico.
-- [ ] Desde `/atencion`, el técnico y el coordinador pueden solicitar un traslado (SPEC 21) si no hay uno pendiente.
-- [ ] A 360 px de ancho, `/atencion` y el panel no producen scroll horizontal, y ningún texto de la interfaz está fijo en un componente.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta las acciones de atención, la regla por alcance y el permiso por acción de `/transiciones`.
+- [x] `POST /api/v1/tickets/:id/transiciones` acepta `iniciar`, `poner_en_espera`, `reanudar` y `resolver`, que llaman a los métodos de SPEC 04 y escriben su fila de `ticket_historial`.
+- [x] `poner_en_espera` exige motivo y `resolver` exige descripción, y los dos se guardan recortados en el historial. `resolver` fija `resuelto_en`.
+- [x] `iniciar` sin técnico asignado responde `400 TECNICO_REQUERIDO`, y una acción desde un estado no permitido responde `409 TRANSICION_INVALIDA`.
+- [x] El técnico asignado, el coordinador de la dependencia y el supervisor pueden ejecutar las 4 acciones dentro de su alcance. Fuera de alcance reciben `404`.
+- [x] El vecino, el receptor y el administrador reciben `403 PERMISO_DENEGADO` en las 4 acciones.
+- [x] Las acciones `tomar`, `aceptar` y `rechazar` de SPEC 19 siguen funcionando igual, con sus mismos permisos y respuestas.
+- [x] Dos transiciones simultáneas sobre la misma queja dejan exactamente una aplicada, y la otra responde `409`.
+- [x] `GET /api/v1/tickets/atencion` devuelve las quejas en `asignada`, `en_proceso` y `en_espera` dentro del alcance del usuario, filtradas por estado, ordenadas por prioridad y antigüedad, paginadas con `total`, con `motivoEspera` y `trasladoPendiente`, y sin datos de contacto del solicitante.
+- [x] Ningún archivo nuevo del backend compara el nombre de un rol: el permiso sale del alcance en `roles.permisos`.
+- [x] En el frontend, el técnico, el coordinador y el supervisor ven "Atención" en el menú y pueden abrir `/atencion`, y los demás roles no.
+- [x] El panel muestra solo las acciones válidas para el estado de la queja. "Poner en espera" exige motivo. "Resolver" exige descripción y confirmación. "Iniciar" se deshabilita sin técnico.
+- [x] Desde `/atencion`, el técnico y el coordinador pueden solicitar un traslado (SPEC 21) si no hay uno pendiente.
+- [ ] A 360 px de ancho, `/atencion` y el panel no producen scroll horizontal, y ningún texto de la interfaz está fijo en un componente. (pendiente de comprobar a 360 px en el navegador: Chromium de Playwright no está instalado; los textos sí están todos en las traducciones)
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta las acciones de atención, la regla por alcance y el permiso por acción de `/transiciones`.
 
 ## Decisiones
 
