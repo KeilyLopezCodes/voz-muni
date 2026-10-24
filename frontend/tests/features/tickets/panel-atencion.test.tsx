@@ -24,7 +24,7 @@ function montar(ticket: TicketAtencion, transicion: Manejador = () => respuesta(
   const onTerminar = vi.fn()
   render(
     <QueryClientProvider client={queryClient}>
-      <SessionProvider session={{ usuarioId: 30, rol, dependenciaId: 4 }}>
+      <SessionProvider session={{ usuarioId: 30, nombre: 'Usuario Prueba', rol, dependenciaId: 4 }}>
         <PanelAtencion ticket={ticket} onCerrar={vi.fn()} onTerminar={onTerminar} />
       </SessionProvider>
     </QueryClientProvider>,

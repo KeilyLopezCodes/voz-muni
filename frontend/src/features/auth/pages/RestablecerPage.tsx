@@ -1,10 +1,8 @@
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
-import Container from '@mui/material/Container'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
-import Typography from '@mui/material/Typography'
 import { useState } from 'react'
 import { useForm, type UseFormRegisterReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +10,7 @@ import { Navigate, Link as RouterLink, useSearchParams } from 'react-router'
 import { ApiError } from '../../../shared/api/api-error'
 import { inicioPorRol } from '../../../shared/auth/inicio-por-rol'
 import { useSession } from '../../../shared/auth/session'
+import { PantallaPublica } from '../../../shared/layout/PantallaPublica'
 import { restablecer } from '../api/auth-api'
 import { useIniciarSesion } from '../AuthProvider'
 import { validarConfirmacion, validarPassword } from '../validacion-registro'
@@ -87,13 +86,7 @@ export function RestablecerPage() {
   const enlaceInvalido = error === 'TOKEN_RECUPERACION_INVALIDO'
 
   return (
-    <Container component="main" maxWidth="sm" sx={{ py: 6 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        {t('comun:app.titulo')}
-      </Typography>
-      <Typography variant="h5" component="h2" gutterBottom>
-        {t('auth:restablecer.titulo')}
-      </Typography>
+    <PantallaPublica titulo={t('auth:restablecer.titulo')}>
 
       {error && (
         <Alert severity="error" role="alert" sx={{ mb: 2 }}>
@@ -142,6 +135,6 @@ export function RestablecerPage() {
           </Button>
         </Stack>
       )}
-    </Container>
+    </PantallaPublica>
   )
 }

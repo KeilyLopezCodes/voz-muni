@@ -1,31 +1,53 @@
+import AddCircleRounded from '@mui/icons-material/AddCircleRounded'
+import AdminPanelSettingsRounded from '@mui/icons-material/AdminPanelSettingsRounded'
+import AssignmentIndRounded from '@mui/icons-material/AssignmentIndRounded'
+import FactCheckRounded from '@mui/icons-material/FactCheckRounded'
+import HandymanRounded from '@mui/icons-material/HandymanRounded'
+import InsertChartRounded from '@mui/icons-material/InsertChartRounded'
+import ListAltRounded from '@mui/icons-material/ListAltRounded'
+import MenuRounded from '@mui/icons-material/MenuRounded'
+import SwapHorizRounded from '@mui/icons-material/SwapHorizRounded'
 import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
+import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
-import SvgIcon from '@mui/material/SvgIcon'
 import Toolbar from '@mui/material/Toolbar'
-import Typography from '@mui/material/Typography'
-import { useState, type ReactNode } from 'react'
+import { useState, type ComponentType, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
 import { RUTAS_PROTEGIDAS } from '../auth/rutas'
-import { useCerrarSesion, useSession } from '../auth/session'
+import { useSession } from '../auth/session'
+import { Logo } from '../marca/Logo'
+import { MenuUsuario } from './MenuUsuario'
 
-const ANCHO_MENU = 240
+const ANCHO_MENU = 248
+
+// Icono de cada ruta del menú (SPEC 44). Vive aquí y no en rutas.ts, para que las guardas no dependan de los iconos.
+// Una ruta nueva con enMenu necesita su icono: lo exige app-layout.test.tsx.
+export const ICONO_POR_RUTA: Record<string, ComponentType> = {
+  '/tickets': ListAltRounded,
+  '/tickets/nueva': AddCircleRounded,
+  '/triage': FactCheckRounded,
+  '/asignacion': AssignmentIndRounded,
+  '/atencion': HandymanRounded,
+  '/traslados': SwapHorizRounded,
+  '/reportes': InsertChartRounded,
+  '/admin': AdminPanelSettingsRounded,
+}
 
 interface AppLayoutProps {
   children: ReactNode
 }
 
 // Menú lateral permanente desde md; en pantallas chicas (desde 360 px) se abre con el botón.
+// La barra ocupa el ancho del contenido, así el logo queda arriba del menú lateral.
 export function AppLayout({ children }: AppLayoutProps) {
   const { t } = useTranslation('comun')
   const session = useSession()
-  const cerrarSesion = useCerrarSesion()
   const [menuAbierto, setMenuAbierto] = useState(false)
 
   const rutasDelMenu = RUTAS_PROTEGIDAS.filter(
@@ -34,46 +56,53 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const menu = (
     <nav aria-label={t('menu.principal')}>
-      <Toolbar />
-      <List>
-        {rutasDelMenu.map((ruta) => (
-          <ListItemButton
-            key={ruta.path}
-            component={NavLink}
-            to={ruta.path}
-            end
-            onClick={() => setMenuAbierto(false)}
-          >
-            <ListItemText primary={t(ruta.etiqueta)} />
-          </ListItemButton>
-        ))}
+      <Toolbar sx={{ px: 2.5 }}>
+        <Logo tamano={32} />
+      </Toolbar>
+      {/* NavLink pone aria-current="page" en la ruta actual; el tema lo resalta. */}
+      <List sx={{ pt: 1 }}>
+        {rutasDelMenu.map((ruta) => {
+          const Icono = ICONO_POR_RUTA[ruta.path]
+          return (
+            <ListItemButton
+              key={ruta.path}
+              component={NavLink}
+              to={ruta.path}
+              end
+              onClick={() => setMenuAbierto(false)}
+              sx={{ mb: 0.5 }}
+            >
+              {Icono && (
+                <ListItemIcon sx={{ minWidth: 40, color: 'inherit' }}>
+                  <Icono />
+                </ListItemIcon>
+              )}
+              <ListItemText primary={t(ruta.etiqueta)} slotProps={{ primary: { sx: { fontWeight: 'inherit' } } }} />
+            </ListItemButton>
+          )
+        })}
       </List>
     </nav>
   )
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+      <AppBar position="fixed" sx={{ width: { md: `calc(100% - ${ANCHO_MENU}px)` }, ml: { md: `${ANCHO_MENU}px` } }}>
         <Toolbar>
           <IconButton
-            color="inherit"
             edge="start"
             aria-label={t('menu.abrir')}
             onClick={() => setMenuAbierto(true)}
-            sx={{ mr: 2, display: { md: 'none' } }}
+            sx={{ mr: 1, display: { md: 'none' } }}
           >
-            <SvgIcon>
-              <path d="M3 18h18v-2H3zm0-5h18v-2H3zm0-7v2h18V6z" />
-            </SvgIcon>
+            <MenuRounded />
           </IconButton>
-          <Typography variant="h6" component="div" noWrap sx={{ flexGrow: 1 }}>
-            {t('app.titulo')}
-          </Typography>
-          {session && (
-            <Button color="inherit" onClick={() => void cerrarSesion()} sx={{ flexShrink: 0 }}>
-              {t('menu.cerrarSesion')}
-            </Button>
-          )}
+          {/* En escritorio el logo ya está en el menú lateral. */}
+          <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
+            <Logo tamano={28} />
+          </Box>
+          <Box sx={{ flexGrow: 1 }} />
+          {session && <MenuUsuario session={session} />}
         </Toolbar>
       </AppBar>
 

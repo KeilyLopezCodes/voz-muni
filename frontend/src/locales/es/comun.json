@@ -31,5 +31,31 @@
   },
   "sesion": {
     "cargando": "Cargando la sesión…"
+  },
+  "tema": {
+    "etiqueta": "Tema",
+    "claro": "Claro",
+    "oscuro": "Oscuro",
+    "sistema": "Sistema"
+  },
+  "marca": {
+    "logo": "VozMuni",
+    "lema": "Tu voz mejora tu municipio",
+    "beneficios": {
+      "registra": "Registra tu queja en minutos, desde tu celular.",
+      "sigue": "Sigue su avance en cada etapa.",
+      "respuesta": "Recibe respuesta de la dependencia responsable."
+    }
+  },
+  "menuUsuario": {
+    "abrir": "Abrir menú de usuario"
+  },
+  "roles": {
+    "vecino": "Vecino",
+    "receptor": "Receptor",
+    "tecnico": "Técnico",
+    "coordinador": "Coordinador",
+    "supervisor": "Supervisor",
+    "administrador": "Administrador"
   }
 }

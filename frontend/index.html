@@ -4,6 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VozMuni</title>
+    <!--
+      Aplica el modo de color antes del primer pintado, para no mostrar un instante el modo equivocado (SPEC 44).
+      Equivale al InitColorSchemeScript de MUI: lee localStorage['vozmuni.tema'] (CLAVE_MODO en shared/theme/theme.ts),
+      con 'system' por defecto, y pone la clase .light o .dark en <html>.
+    -->
+    <script>
+      ;(function () {
+        var modo = 'system'
+        try {
+          modo = localStorage.getItem('vozmuni.tema') || 'system'
+        } catch (e) {
+          // localStorage bloqueado: sigue al sistema.
+        }
+        var oscuro = modo === 'dark' || (modo === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.classList.add(oscuro ? 'dark' : 'light')
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

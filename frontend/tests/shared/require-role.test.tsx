@@ -41,13 +41,13 @@ describe('RequireRole', () => {
   })
 
   it('redirige a /403 con un rol no permitido', () => {
-    renderPrivada({ usuarioId: 1, rol: 'vecino', dependenciaId: null })
+    renderPrivada({ usuarioId: 1, nombre: 'Usuario Prueba', rol: 'vecino', dependenciaId: null })
     expect(screen.getByText('pantalla-403')).toBeInTheDocument()
     expect(screen.queryByText('contenido-privado')).not.toBeInTheDocument()
   })
 
   it('muestra el contenido con un rol permitido', () => {
-    renderPrivada({ usuarioId: 2, rol: 'coordinador', dependenciaId: 3 })
+    renderPrivada({ usuarioId: 2, nombre: 'Usuario Prueba', rol: 'coordinador', dependenciaId: 3 })
     expect(screen.getByText('contenido-privado')).toBeInTheDocument()
   })
 

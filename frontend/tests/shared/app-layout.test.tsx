@@ -9,7 +9,8 @@ import { RequireRole } from '../../src/shared/auth/RequireRole'
 import { ROLES, type Rol } from '../../src/shared/auth/roles'
 import { SessionProvider } from '../../src/shared/auth/SessionProvider'
 import '../../src/shared/i18n/i18n'
-import { AppLayout } from '../../src/shared/layout/AppLayout'
+import { RUTAS_PROTEGIDAS } from '../../src/shared/auth/rutas'
+import { AppLayout, ICONO_POR_RUTA } from '../../src/shared/layout/AppLayout'
 
 // Rutas con enMenu = true de la tabla de SPEC 06, por rol.
 const MENU_ESPERADO: Record<Rol, string[]> = {
@@ -24,7 +25,7 @@ const MENU_ESPERADO: Record<Rol, string[]> = {
 describe('AppLayout', () => {
   it.each(ROLES)('el menú del rol %s muestra exactamente sus rutas', (rol) => {
     render(
-      <SessionProvider session={{ usuarioId: 1, rol, dependenciaId: null }}>
+      <SessionProvider session={{ usuarioId: 1, nombre: 'Usuario Prueba', rol, dependenciaId: null }}>
         <MemoryRouter>
           <AppLayout>
             <p>contenido</p>
@@ -39,7 +40,37 @@ describe('AppLayout', () => {
     expect(enlaces.map((enlace) => enlace.getAttribute('href'))).toEqual(MENU_ESPERADO[rol])
   })
 
-  it('sin sesión no muestra "Cerrar sesión"', () => {
+  it('cada ruta con enMenu tiene su icono (SPEC 44)', () => {
+    const sinIcono = RUTAS_PROTEGIDAS.filter((ruta) => ruta.enMenu && !ICONO_POR_RUTA[ruta.path]).map((ruta) => ruta.path)
+    expect(sinIcono).toEqual([])
+  })
+
+  it('el menú muestra el logo y marca la ruta actual con aria-current="page" (SPEC 44)', () => {
+    render(
+      <SessionProvider session={{ usuarioId: 1, nombre: 'Usuario Prueba', rol: 'supervisor', dependenciaId: null }}>
+        <MemoryRouter initialEntries={['/triage']}>
+          <AppLayout>
+            <p>contenido</p>
+          </AppLayout>
+        </MemoryRouter>
+      </SessionProvider>,
+    )
+
+    const menu = screen.getByRole('navigation', { name: comun.menu.principal, hidden: true })
+    expect(within(menu).getByRole('img', { name: comun.marca.logo, hidden: true })).toBeInTheDocument()
+    const activos = within(menu)
+      .getAllByRole('link', { hidden: true })
+      .filter((enlace) => enlace.getAttribute('aria-current') === 'page')
+    expect(activos.map((enlace) => enlace.getAttribute('href'))).toEqual(['/triage'])
+    // /tickets no queda activo en /tickets/nueva ni en otras rutas: los enlaces usan "end".
+    expect(within(menu).getByRole('link', { name: comun.menu.tickets, hidden: true })).not.toHaveAttribute('aria-current')
+    // Cada ítem lleva su icono.
+    for (const enlace of within(menu).getAllByRole('link', { hidden: true })) {
+      expect(enlace.querySelector('svg')).not.toBeNull()
+    }
+  })
+
+  it('sin sesión no muestra el menú de usuario ni "Cerrar sesión"', () => {
     render(
       <SessionProvider session={null}>
         <MemoryRouter>
@@ -50,11 +81,13 @@ describe('AppLayout', () => {
       </SessionProvider>,
     )
 
-    expect(screen.queryByRole('button', { name: comun.menu.cerrarSesion })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: comun.menuUsuario.abrir })).not.toBeInTheDocument()
+    expect(screen.queryByText(comun.menu.cerrarSesion)).not.toBeInTheDocument()
   })
 })
 
-// Con AuthProvider real (SPEC 17): el botón usa cerrarSesion() de la sesión del navegador.
+// Con AuthProvider real (SPEC 17): "Cerrar sesión" usa cerrarSesion() de la sesión del navegador.
+// Desde SPEC 44 está dentro del menú de usuario: primero se abre el menú.
 describe('AppLayout: cerrar sesión', () => {
   const fetchMock = vi.fn<typeof fetch>()
 
@@ -90,6 +123,11 @@ describe('AppLayout: cerrar sesión', () => {
     return { queryClient, router, irALogin }
   }
 
+  async function cerrarSesionDesdeMenu() {
+    fireEvent.click(await screen.findByRole('button', { name: comun.menuUsuario.abrir }))
+    fireEvent.click(screen.getByRole('menuitem', { name: comun.menu.cerrarSesion }))
+  }
+
   // Al montar, AuthProvider renueva con el token guardado; luego la prueba decide /auth/logout.
   function backend(logout: () => Promise<Response>) {
     fetchMock.mockImplementation(async (entrada) => {
@@ -121,7 +159,7 @@ describe('AppLayout: cerrar sesión', () => {
     backend(async () => new Response(null, { status: 204 }))
     const { queryClient, router, irALogin } = montar()
 
-    fireEvent.click(await screen.findByRole('button', { name: comun.menu.cerrarSesion }))
+    await cerrarSesionDesdeMenu()
 
     expect(await screen.findByText('pantalla-login')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/login')
@@ -139,7 +177,7 @@ describe('AppLayout: cerrar sesión', () => {
     })
     const { queryClient } = montar()
 
-    fireEvent.click(await screen.findByRole('button', { name: comun.menu.cerrarSesion }))
+    await cerrarSesionDesdeMenu()
 
     expect(await screen.findByText('pantalla-login')).toBeInTheDocument()
     expect(localStorage.getItem(CLAVE_REFRESH)).toBeNull()
@@ -150,7 +188,7 @@ describe('AppLayout: cerrar sesión', () => {
     backend(() => new Promise<Response>(() => {}))
     montar()
 
-    fireEvent.click(await screen.findByRole('button', { name: comun.menu.cerrarSesion }))
+    await cerrarSesionDesdeMenu()
 
     expect(await screen.findByText('pantalla-login')).toBeInTheDocument()
     expect(localStorage.getItem(CLAVE_REFRESH)).toBeNull()

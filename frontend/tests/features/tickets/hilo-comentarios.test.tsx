@@ -40,7 +40,7 @@ function montar({
   const invalidar = vi.spyOn(queryClient, 'invalidateQueries')
   render(
     <QueryClientProvider client={queryClient}>
-      <SessionProvider session={{ usuarioId: 30, rol, dependenciaId: 4 }}>
+      <SessionProvider session={{ usuarioId: 30, nombre: 'Usuario Prueba', rol, dependenciaId: 4 }}>
         <HiloComentarios ticketId={5} estadoTicket={estado} clavesBandeja={['tickets', 'atencion']} />
       </SessionProvider>
     </QueryClientProvider>,

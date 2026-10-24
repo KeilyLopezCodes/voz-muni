@@ -3,6 +3,7 @@ import type { Rol } from './roles'
 
 export interface Session {
   usuarioId: number
+  nombre: string // SPEC 44: para el menú de usuario
   rol: Rol
   dependenciaId: number | null
 }

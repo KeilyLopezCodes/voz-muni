@@ -41,7 +41,7 @@ function renderRuta(path: string, rol: Rol | null) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
-      <SessionProvider session={rol ? { usuarioId: 1, rol, dependenciaId: null } : null}>
+      <SessionProvider session={rol ? { usuarioId: 1, nombre: 'Usuario Prueba', rol, dependenciaId: null } : null}>
         <RouterProvider router={router} />
       </SessionProvider>
     </QueryClientProvider>,
@@ -88,7 +88,8 @@ describe('router', () => {
   it('/consulta carga sin sesión', () => {
     const router = renderRuta('/consulta', null)
     expect(router.state.location.pathname).toBe('/consulta')
-    expect(tituloActual()).toBe(tickets.consulta.titulo)
+    // Desde SPEC 44 es una pantalla pública: h1 "VozMuni" y el título de la página en h2.
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(tickets.consulta.titulo)
   })
 
   it('/registro carga sin sesión (SPEC 16)', () => {

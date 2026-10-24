@@ -2,13 +2,13 @@ import Alert from '@mui/material/Alert'
 import AlertTitle from '@mui/material/AlertTitle'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
-import Container from '@mui/material/Container'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router'
 import { ApiError } from '../../../shared/api/api-error'
+import { PantallaPublica } from '../../../shared/layout/PantallaPublica'
 import { verificar } from '../api/registro-api'
 
 type Estado = 'verificando' | 'exito' | 'invalido' | 'sin-conexion'
@@ -38,13 +38,7 @@ export function VerificarPage() {
   }, [token])
 
   return (
-    <Container component="main" maxWidth="sm" sx={{ py: 6 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        {t('comun:app.titulo')}
-      </Typography>
-      <Typography variant="h5" component="h2" gutterBottom>
-        {t('auth:verificar.titulo')}
-      </Typography>
+    <PantallaPublica titulo={t('auth:verificar.titulo')}>
 
       {estado === 'verificando' && (
         <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }} role="status">
@@ -82,6 +76,6 @@ export function VerificarPage() {
           {t('auth:verificar.sinConexion')}
         </Alert>
       )}
-    </Container>
+    </PantallaPublica>
   )
 }

@@ -65,7 +65,12 @@ function Login() {
 
 function VerSesion() {
   const session = useSession()
-  return <p>sesion-{session ? `${session.usuarioId}-${session.rol}` : 'ninguna'}</p>
+  return (
+    <>
+      <p>sesion-{session ? `${session.usuarioId}-${session.rol}` : 'ninguna'}</p>
+      <p>nombre-{session?.nombre ?? ''}</p>
+    </>
+  )
 }
 
 function montar(inicio = '/privada') {
@@ -120,6 +125,8 @@ describe('AuthProvider', () => {
 
     expect(await screen.findByText('contenido-privado')).toBeInTheDocument()
     expect(screen.getByText('sesion-5-vecino')).toBeInTheDocument()
+    // SPEC 44: el nombre de la respuesta llega a la sesión, para el menú de usuario.
+    expect(screen.getByText('nombre-Vecino')).toBeInTheDocument()
     expect(localStorage.getItem(CLAVE_REFRESH)).toBe('t1+')
   })
 

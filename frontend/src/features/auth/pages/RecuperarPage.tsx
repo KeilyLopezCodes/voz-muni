@@ -1,6 +1,5 @@
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
-import Container from '@mui/material/Container'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -8,6 +7,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '../../../shared/api/api-error'
+import { PantallaPublica } from '../../../shared/layout/PantallaPublica'
 import { recuperar } from '../api/auth-api'
 import { validarEmail } from '../validacion-registro'
 
@@ -48,13 +48,7 @@ export function RecuperarPage() {
   })
 
   return (
-    <Container component="main" maxWidth="sm" sx={{ py: 6 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        {t('comun:app.titulo')}
-      </Typography>
-      <Typography variant="h5" component="h2" gutterBottom>
-        {t('auth:recuperar.titulo')}
-      </Typography>
+    <PantallaPublica titulo={t('auth:recuperar.titulo')}>
 
       {enviado ? (
         <Alert severity="success" role="status">
@@ -85,6 +79,6 @@ export function RecuperarPage() {
           </Button>
         </Stack>
       )}
-    </Container>
+    </PantallaPublica>
   )
 }

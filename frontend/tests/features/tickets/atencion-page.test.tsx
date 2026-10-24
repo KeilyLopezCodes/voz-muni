@@ -16,7 +16,7 @@ afterEach(() => {
 
 function montar(rol: Rol = 'tecnico') {
   renderConConsultas(
-    <SessionProvider session={{ usuarioId: 30, rol, dependenciaId: rol === 'supervisor' ? null : 4 }}>
+    <SessionProvider session={{ usuarioId: 30, nombre: 'Usuario Prueba', rol, dependenciaId: rol === 'supervisor' ? null : 4 }}>
       <AtencionPage />
     </SessionProvider>,
   )

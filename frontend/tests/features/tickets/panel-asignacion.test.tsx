@@ -141,7 +141,7 @@ describe('PanelAsignacion: traslado', () => {
     const onTerminar = vi.fn()
     render(
       <QueryClientProvider client={queryClient}>
-        <SessionProvider session={{ usuarioId: 1, rol, dependenciaId: rol === 'coordinador' ? 4 : null }}>
+        <SessionProvider session={{ usuarioId: 1, nombre: 'Usuario Prueba', rol, dependenciaId: rol === 'coordinador' ? 4 : null }}>
           <PanelAsignacion ticket={ticket} onCerrar={vi.fn()} onTerminar={onTerminar} />
         </SessionProvider>
       </QueryClientProvider>,

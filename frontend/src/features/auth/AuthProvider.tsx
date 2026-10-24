@@ -40,7 +40,7 @@ export function AuthProvider({ queryClient, irALogin, children }: AuthProviderPr
 
   // Aplica una respuesta de login, refresh o restablecer. Un rol desconocido no crea sesión.
   const aplicar = useCallback((respuesta: RespuestaSesion): boolean => {
-    const { id, rol, dependenciaId } = respuesta.usuario
+    const { id, nombre, rol, dependenciaId } = respuesta.usuario
     if (!esRol(rol)) {
       tokenAcceso = null
       borrarRefresh()
@@ -49,9 +49,13 @@ export function AuthProvider({ queryClient, irALogin, children }: AuthProviderPr
     }
     tokenAcceso = respuesta.accessToken
     setSession((actual) =>
-      actual && actual.usuarioId === id && actual.rol === rol && actual.dependenciaId === dependenciaId
+      actual &&
+      actual.usuarioId === id &&
+      actual.nombre === nombre &&
+      actual.rol === rol &&
+      actual.dependenciaId === dependenciaId
         ? actual
-        : { usuarioId: id, rol, dependenciaId },
+        : { usuarioId: id, nombre, rol, dependenciaId },
     )
     return true
   }, [])
