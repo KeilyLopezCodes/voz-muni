@@ -28,6 +28,12 @@ export const RUTAS_PROTEGIDAS: readonly RutaProtegida[] = [
     enMenu: true,
   },
   {
+    path: '/asignacion',
+    roles: ['coordinador', 'supervisor'],
+    etiqueta: 'comun:menu.asignacion',
+    enMenu: true,
+  },
+  {
     path: '/reportes',
     roles: ['tecnico', 'coordinador', 'supervisor', 'administrador'],
     etiqueta: 'comun:menu.reportes',

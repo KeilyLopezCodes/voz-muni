@@ -1,5 +1,6 @@
 import express, { type Express } from 'express';
 import type { Container } from './container';
+import { AsignacionController } from './presentation/controllers/asignacion.controller';
 import { AuthController } from './presentation/controllers/auth.controller';
 import { CamposExtraController } from './presentation/controllers/campos-extra.controller';
 import { CatalogosController } from './presentation/controllers/catalogos.controller';
@@ -15,6 +16,7 @@ import { autenticar } from './presentation/middlewares/autenticar';
 import { limiteLogin } from './presentation/middlewares/limite-login';
 import { limiteRecuperacion } from './presentation/middlewares/limite-recuperacion';
 import { manejadorErrores, rutaNoEncontrada } from './presentation/middlewares/manejador-errores';
+import { asignacionRoutes } from './presentation/routes/asignacion.routes';
 import { authRoutes } from './presentation/routes/auth.routes';
 import { camposExtraRoutes } from './presentation/routes/campos-extra.routes';
 import { catalogosRoutes } from './presentation/routes/catalogos.routes';
@@ -58,6 +60,10 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1/tickets',
     transicionesRoutes(new TransicionesController(container.triageService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1',
+    asignacionRoutes(new AsignacionController(container.asignacionService), autenticar(container.autorizacionService)),
   );
   app.use(
     '/api/v1/vecinos',

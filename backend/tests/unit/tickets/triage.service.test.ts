@@ -76,6 +76,10 @@ class TicketsEnMemoria implements TicketEscrituraRepository {
     return CATEGORIAS.find((c) => c.id === categoriaId) ?? null;
   }
 
+  async guardarTecnico(): Promise<void> {
+    throw new Error('el triage no asigna técnico');
+  }
+
   async guardarTransicion(resultado: ResultadoTransicion, categoriaId: number): Promise<void> {
     this.guardadas.push({ resultado, categoriaId });
   }

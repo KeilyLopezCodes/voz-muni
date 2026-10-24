@@ -24,6 +24,8 @@ export interface TicketEscrituraRepository {
   // al commit. Devuelve null si no existe, si está fuera de alcance o si el filtro es null (sin consultar la base).
   obtenerParaActualizar(id: number, filtro: FiltroTickets): Promise<TicketParaTransicion | null>;
   obtenerCategoria(categoriaId: number): Promise<CategoriaDestino | null>;
+  // Solo cambia asignado_a: asignar un técnico no cambia el estado ni escribe historial (SPEC 20).
+  guardarTecnico(ticket: Ticket): Promise<void>;
   // Actualiza el ticket (estado, prioridad, dependencia, técnico, marcas y categoría) e inserta su historial.
   guardarTransicion(resultado: ResultadoTransicion, categoriaId: number): Promise<void>;
 }

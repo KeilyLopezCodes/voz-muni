@@ -21,27 +21,10 @@ import {
   TAMANO_PAGINA,
   type TicketTriage,
 } from '../api/triage-api'
+import { antiguedad, fechaGuatemala } from '../antiguedad'
 import { PanelTriage } from './PanelTriage'
 
 const FILTROS: readonly FiltroTriage[] = ['nueva', 'en_revision', 'todas']
-
-const ZONA_HORARIA = 'America/Guatemala'
-
-// "hace 3 h": el texto lo arma Intl en el idioma activo, no va fijo en el componente.
-function antiguedad(creadoEn: string, ahora: Date, idioma: string): string {
-  const minutos = Math.max(0, Math.round((ahora.getTime() - new Date(creadoEn).getTime()) / 60_000))
-  const formato = new Intl.RelativeTimeFormat(idioma, { numeric: 'always', style: 'short' })
-  if (minutos < 60) return formato.format(-minutos, 'minute')
-  if (minutos < 24 * 60) return formato.format(-Math.floor(minutos / 60), 'hour')
-  return formato.format(-Math.floor(minutos / (24 * 60)), 'day')
-}
-
-// Fecha completa en la hora de Guatemala, como título de la antigüedad.
-function fechaGuatemala(creadoEn: string, idioma: string): string {
-  return new Intl.DateTimeFormat(idioma, { dateStyle: 'medium', timeStyle: 'short', timeZone: ZONA_HORARIA }).format(
-    new Date(creadoEn),
-  )
-}
 
 // Bandeja del supervisor (SPEC 19): las quejas nuevas y en revisión, la más antigua primero.
 export function TriagePage() {

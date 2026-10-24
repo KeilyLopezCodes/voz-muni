@@ -34,6 +34,11 @@ export function envDePrueba(cambios: Partial<Env> = {}): Env {
 // Deja la base sin esquema. Antes borra sesiones y usuarios, porque el down de 0006_roles
 // falla a propósito si algún usuario tiene uno de los 6 roles (ON DELETE RESTRICT).
 export async function reiniciarEsquema(db: Knex): Promise<void> {
+  // ticket_asignaciones es solo de inserción y apunta a tickets y usuarios: revertir su migración borra la tabla
+  // (el trigger no impide DROP TABLE), y así los tickets y usuarios se pueden borrar.
+  if (await db.schema.hasTable('ticket_asignaciones')) {
+    await db.migrate.down({ name: '0017_asignaciones.js' });
+  }
   // Primero las tablas que apuntan a usuarios. La bitácora no se puede vaciar: el rollback la elimina.
   const tablas = [
     'ticket_historial',

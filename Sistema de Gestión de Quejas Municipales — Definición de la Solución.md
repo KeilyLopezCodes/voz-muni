@@ -288,6 +288,7 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | zonas | id, nombre, tipo (zona, colonia, aldea) |
 | tickets | id, numero (único), titulo, descripcion, solicitante\_id, categoria\_id, dependencia\_id, asignado\_a, estado, prioridad, canal, zona\_id, direccion, lat, lng, datos\_extra (jsonb), vence\_respuesta, vence\_resolucion, escalado, creado\_en, resuelto\_en, cerrado\_en, registrado\_por (usuario que la registró: el propio vecino o el receptor de ventanilla) |
 | ticket\_historial | id, ticket\_id, estado\_anterior, estado\_nuevo, usuario\_id, motivo, creado\_en |
+| ticket\_asignaciones | id, ticket\_id, tecnico\_anterior (nulo en la primera asignación), tecnico\_nuevo, asignado\_por, motivo, creado\_en. Solo de inserción; registra cada asignación y reasignación de técnico para la línea de tiempo |
 | comentarios | id, ticket\_id, autor\_id, cuerpo, es\_interno, creado\_en |
 | adjuntos | id, ticket\_id, comentario\_id, nombre, ruta, tipo\_mime, tamano\_bytes |
 | encuestas | id, ticket\_id, calificacion, comentario, creado\_en |
@@ -328,7 +329,9 @@ Campos adicionales por categoría (RF-09):
 | GET /api/v1/tickets/triage | Bandeja de quejas en `nueva` y `en_revision`, de la más antigua a la más reciente | Supervisor |
 | GET /api/v1/tickets/:id | Detalle con línea de tiempo | Según visibilidad |
 | POST /api/v1/tickets/:id/transiciones | Cambiar estado con motivo. Campo `accion`: `tomar` (nueva → en_revision), `aceptar` (en_revision → asignada, con prioridad y categoría final) y `rechazar` (en_revision → rechazada, con motivo) | Según matriz de permisos (triage: Supervisor) |
-| PATCH /api/v1/tickets/:id/asignacion | Asignar o reasignar técnico | Coordinador, Supervisor |
+| GET /api/v1/tickets/por-asignar | Bandeja de quejas sin técnico (o abiertas), por prioridad y antigüedad | Coordinador, Supervisor |
+| PATCH /api/v1/tickets/:id/asignacion | Asignar o reasignar técnico. Cuerpo `{ tecnicoId, motivo? }`; el motivo es obligatorio al reasignar | Coordinador, Supervisor |
+| GET /api/v1/dependencias/:id/tecnicos | Técnicos activos de la dependencia con su carga de quejas abiertas | Coordinador, Supervisor |
 | POST /api/v1/tickets/:id/traslados | Solicitar o aprobar traslado | Técnico, Coordinador, Supervisor |
 | POST /api/v1/tickets/:id/comentarios | Comentario público o nota interna | Según matriz de permisos |
 | POST /api/v1/tickets/:id/adjuntos | Subir archivo | Vecino, internos |

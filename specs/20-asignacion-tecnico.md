@@ -1,6 +1,6 @@
 # SPEC 20 — Asignación y reasignación de técnico
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 04, SPEC 08, SPEC 11, SPEC 17, SPEC 19
 > **Fecha:** 2026-10-22
 > **Objetivo:** Permitir que el coordinador asigne o reasigne un técnico de su dependencia a una queja, y que el supervisor lo haga en cualquier dependencia, registrando cada cambio en una tabla nueva `ticket_asignaciones`, con una bandeja de quejas por asignar, una lista de técnicos con su carga y la pantalla `/asignacion`.
@@ -269,22 +269,22 @@ frontend/
 
 ## Criterios de aceptación
 
-- [ ] La sección 6 del documento de definición incluye `ticket_asignaciones` y los 3 endpoints.
-- [ ] `npm run migrate:latest` crea `ticket_asignaciones`, y `UPDATE`, `DELETE` y `TRUNCATE` sobre ella fallan con `ticket_asignaciones es solo de inserción`. Un rollback completo no deja ninguna de las 20 tablas.
-- [ ] El coordinador asigna a una queja `asignada` de su dependencia un técnico activo de esa dependencia. `tickets.asignado_a` cambia, el estado no, y se inserta una fila con `tecnico_anterior` null, `asignado_por` del coordinador y `motivo` opcional.
-- [ ] La reasignación exige motivo, guarda el técnico anterior, y en `en_proceso` mantiene el estado.
-- [ ] Un técnico de otra dependencia, inactivo o con otro rol responde `400 TECNICO_NO_ELEGIBLE`, y el mismo técnico ya asignado responde `400 TECNICO_SIN_CAMBIO`.
-- [ ] Asignar en un estado distinto de `asignada` o `en_proceso` responde `400 OPERACION_NO_PERMITIDA`.
-- [ ] El coordinador recibe `404` sobre quejas de otra dependencia. El supervisor asigna en cualquier dependencia. El técnico, el receptor, el vecino y el administrador reciben `403`.
-- [ ] Dos asignaciones simultáneas sobre la misma queja se serializan: quedan las dos filas en orden, y `asignado_a` es la última.
-- [ ] `GET /tickets/por-asignar` devuelve las quejas sin técnico (o las abiertas, según `vista`) dentro del alcance del usuario, ordenadas por prioridad y antigüedad, paginadas con `total`, y sin datos de contacto del solicitante.
-- [ ] `GET /dependencias/:id/tecnicos` devuelve los técnicos activos de la dependencia con su carga de quejas abiertas, y responde `404` al coordinador que pide otra dependencia.
-- [ ] Después de asignar un técnico, la transición `iniciar` de SPEC 04 funciona sobre esa queja.
-- [ ] En el frontend, solo el coordinador y el supervisor ven "Asignación" en el menú y pueden abrir `/asignacion`.
-- [ ] `/asignacion` muestra la bandeja con las vistas y la paginación. El panel lista los técnicos con su carga, pide motivo solo al reasignar, y actualiza la bandeja después de asignar.
-- [ ] A 360 px de ancho, `/asignacion` y el panel no producen scroll horizontal, y ningún texto de la interfaz está fijo en un componente.
-- [ ] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
-- [ ] `CLAUDE.md` documenta `ticket_asignaciones` y la regla de técnicos elegibles.
+- [x] La sección 6 del documento de definición incluye `ticket_asignaciones` y los 3 endpoints.
+- [x] `npm run migrate:latest` crea `ticket_asignaciones`, y `UPDATE`, `DELETE` y `TRUNCATE` sobre ella fallan con `ticket_asignaciones es solo de inserción`. Un rollback completo no deja ninguna de las 20 tablas.
+- [x] El coordinador asigna a una queja `asignada` de su dependencia un técnico activo de esa dependencia. `tickets.asignado_a` cambia, el estado no, y se inserta una fila con `tecnico_anterior` null, `asignado_por` del coordinador y `motivo` opcional.
+- [x] La reasignación exige motivo, guarda el técnico anterior, y en `en_proceso` mantiene el estado.
+- [x] Un técnico de otra dependencia, inactivo o con otro rol responde `400 TECNICO_NO_ELEGIBLE`, y el mismo técnico ya asignado responde `400 TECNICO_SIN_CAMBIO`.
+- [x] Asignar en un estado distinto de `asignada` o `en_proceso` responde `400 OPERACION_NO_PERMITIDA`.
+- [x] El coordinador recibe `404` sobre quejas de otra dependencia. El supervisor asigna en cualquier dependencia. El técnico, el receptor, el vecino y el administrador reciben `403`.
+- [x] Dos asignaciones simultáneas sobre la misma queja se serializan: quedan las dos filas en orden, y `asignado_a` es la última.
+- [x] `GET /tickets/por-asignar` devuelve las quejas sin técnico (o las abiertas, según `vista`) dentro del alcance del usuario, ordenadas por prioridad y antigüedad, paginadas con `total`, y sin datos de contacto del solicitante.
+- [x] `GET /dependencias/:id/tecnicos` devuelve los técnicos activos de la dependencia con su carga de quejas abiertas, y responde `404` al coordinador que pide otra dependencia.
+- [x] Después de asignar un técnico, la transición `iniciar` de SPEC 04 funciona sobre esa queja.
+- [x] En el frontend, solo el coordinador y el supervisor ven "Asignación" en el menú y pueden abrir `/asignacion`.
+- [x] `/asignacion` muestra la bandeja con las vistas y la paginación. El panel lista los técnicos con su carga, pide motivo solo al reasignar, y actualiza la bandeja después de asignar.
+- [ ] A 360 px de ancho, `/asignacion` y el panel no producen scroll horizontal, y ningún texto de la interfaz está fijo en un componente. (pendiente de comprobar a 360 px en el navegador: Chromium de Playwright no terminó de instalarse; los textos sí están todos en las traducciones)
+- [x] En `backend/`, `npm test`, `npm run test:db`, `npm run typecheck` y `npm run lint:deps` terminan con código 0. En `frontend/`, `npm test`, `npm run build` y `npm run lint:deps` terminan con código 0.
+- [x] `CLAUDE.md` documenta `ticket_asignaciones` y la regla de técnicos elegibles.
 
 ## Decisiones
 

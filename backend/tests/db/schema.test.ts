@@ -95,6 +95,15 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['motivo', 'text'],
     ['creado_en', 'timestamp with time zone'],
   ],
+  ticket_asignaciones: [
+    ['id', 'bigint'],
+    ['ticket_id', 'bigint'],
+    ['tecnico_anterior', 'bigint'],
+    ['tecnico_nuevo', 'bigint'],
+    ['asignado_por', 'bigint'],
+    ['motivo', 'text'],
+    ['creado_en', 'timestamp with time zone'],
+  ],
   comentarios: [
     ['id', 'bigint'],
     ['ticket_id', 'bigint'],
@@ -661,6 +670,73 @@ describe('Esquema de base de datos', () => {
       }));
   });
 
+  describe('ticket_asignaciones (0017)', () => {
+    const SOLO_INSERCION = 'ticket_asignaciones es solo de inserción';
+
+    // Un ticket con dos usuarios para usar como técnicos; devuelve los ids.
+    async function preparar(trx: Knex.Transaction): Promise<{ ticketId: string; a: string; b: string }> {
+      const ticketId = await insertTicket(trx);
+      const { id: rolId } = await trx('roles').where({ nombre: 'rol_prueba' }).first('id');
+      const [a, b] = await trx('usuarios')
+        .insert([
+          { nombre: 'Técnico A', telefono: '55550001', rol_id: rolId },
+          { nombre: 'Técnico B', telefono: '55550002', rol_id: rolId },
+        ])
+        .returning('id');
+      return { ticketId, a: a.id, b: b.id };
+    }
+
+    async function insertAsignacion(trx: Knex.Transaction): Promise<string> {
+      const { ticketId, a, b } = await preparar(trx);
+      const [fila] = await trx('ticket_asignaciones')
+        .insert({ ticket_id: ticketId, tecnico_anterior: null, tecnico_nuevo: a, asignado_por: b })
+        .returning('id');
+      return fila.id;
+    }
+
+    it('existe el índice (ticket_id, creado_en)', async () => {
+      const indice = await db('pg_indexes')
+        .where({ schemaname: 'public', indexname: 'ticket_asignaciones_ticket_creado_en_idx' })
+        .first('tablename', 'indexdef');
+      expect(indice.tablename).toBe('ticket_asignaciones');
+      expect(indice.indexdef).toContain('(ticket_id, creado_en)');
+    });
+
+    it('permite INSERT con tecnico_anterior null y creado_en por defecto', () =>
+      withRollback(async (trx) => {
+        const id = await insertAsignacion(trx);
+        const fila = await trx('ticket_asignaciones').where({ id }).first('tecnico_anterior', 'creado_en');
+        expect(fila.tecnico_anterior).toBeNull();
+        expect(fila.creado_en).toBeInstanceOf(Date);
+      }));
+
+    it('rechaza tecnico_anterior = tecnico_nuevo', () =>
+      withRollback(async (trx) => {
+        const { ticketId, a, b } = await preparar(trx);
+        await expect(
+          trx('ticket_asignaciones').insert({ ticket_id: ticketId, tecnico_anterior: a, tecnico_nuevo: a, asignado_por: b }),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+
+    it('rechaza UPDATE', () =>
+      withRollback(async (trx) => {
+        const id = await insertAsignacion(trx);
+        await expect(trx('ticket_asignaciones').where({ id }).update({ motivo: 'otro' })).rejects.toThrow(SOLO_INSERCION);
+      }));
+
+    it('rechaza DELETE', () =>
+      withRollback(async (trx) => {
+        const id = await insertAsignacion(trx);
+        await expect(trx('ticket_asignaciones').where({ id }).delete()).rejects.toThrow(SOLO_INSERCION);
+      }));
+
+    it('rechaza TRUNCATE', () =>
+      withRollback(async (trx) => {
+        await insertAsignacion(trx);
+        await expect(trx.raw('TRUNCATE ticket_asignaciones')).rejects.toThrow(SOLO_INSERCION);
+      }));
+  });
+
   describe('migración 0006_roles', () => {
     // Matriz de SPEC 08, escrita aparte de la migración para que la prueba no la copie.
     const MATRIZ: Record<string, Record<string, string>> = {
@@ -835,12 +911,14 @@ describe('Esquema de base de datos', () => {
         .where({ table_schema: 'public' })
         .whereIn('table_name', Object.keys(expectedColumns));
       expect(tables).toEqual([]);
-      expect(Object.keys(expectedColumns)).toHaveLength(19);
+      expect(Object.keys(expectedColumns)).toHaveLength(20);
 
       const tipos = await db('pg_type').select('typname').where({ typname: 'estado_ticket' });
       expect(tipos).toEqual([]);
 
-      const funciones = await db('pg_proc').select('proname').where({ proname: 'bitacora_solo_insercion' });
+      const funciones = await db('pg_proc')
+        .select('proname')
+        .whereIn('proname', ['bitacora_solo_insercion', 'ticket_asignaciones_solo_insercion']);
       expect(funciones).toEqual([]);
     });
   });

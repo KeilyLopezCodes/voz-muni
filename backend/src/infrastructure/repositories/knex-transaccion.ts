@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 import type { ReposTransaccionales, Transaccion } from '../../domain/repositories/transaccion';
+import { KnexAsignacionRepository } from './knex-asignacion-repository';
 import { KnexCategoriaAdminRepository } from './knex-categoria-admin-repository';
 import { KnexRegistroVecinoRepository } from './knex-registro-vecino-repository';
 import { KnexRestablecimientoRepository } from './knex-restablecimiento-repository';
@@ -24,6 +25,7 @@ export class KnexTransaccion implements Transaccion {
         categoriasAdmin: new KnexCategoriaAdminRepository(trx),
         registroVecinos: new KnexRegistroVecinoRepository(trx),
         ticketsEscritura: new KnexTicketEscrituraRepository(trx),
+        asignaciones: new KnexAsignacionRepository(trx),
       }),
     );
   }

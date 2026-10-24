@@ -118,6 +118,10 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
     };
   }
 
+  async guardarTecnico(ticket: Ticket): Promise<void> {
+    await this.db('tickets').where({ id: ticket.id }).update({ asignado_a: ticket.asignadoA });
+  }
+
   async guardarTransicion({ ticket, historial }: ResultadoTransicion, categoriaId: number): Promise<void> {
     await this.db('tickets').where({ id: ticket.id }).update({
       estado: ticket.estado,

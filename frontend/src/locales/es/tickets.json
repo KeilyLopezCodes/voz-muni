@@ -241,5 +241,51 @@
       "red": "No pudimos conectar con el servidor. Intenta de nuevo.",
       "generico": "No pudimos completar la acción. Intenta de nuevo."
     }
+  },
+  "asignacion": {
+    "titulo": "Asignación",
+    "vista": {
+      "etiqueta": "Mostrar",
+      "sin_tecnico": "Sin técnico",
+      "abiertas": "Todas abiertas"
+    },
+    "estados": {
+      "asignada": "Asignada",
+      "en_proceso": "En proceso",
+      "en_espera": "En espera"
+    },
+    "sinTecnico": "Sin técnico",
+    "tecnico": "Técnico: {{nombre}}",
+    "cargando": "Cargando…",
+    "vacia": "No hay quejas por asignar.",
+    "errorCarga": "No pudimos cargar las quejas.",
+    "reintentar": "Reintentar",
+    "paginacion": "Páginas de la bandeja",
+    "abrir": "Asignar técnico a la queja {{numero}}",
+    "panel": {
+      "titulo": "Queja {{numero}}",
+      "cerrar": "Cerrar",
+      "tecnicos": "Técnicos de {{dependencia}}",
+      "carga_one": "{{count}} abierta",
+      "carga_other": "{{count}} abiertas",
+      "actual": "actual",
+      "sinTecnicos": "Esta dependencia no tiene técnicos activos.",
+      "errorTecnicos": "No pudimos cargar los técnicos.",
+      "tecnicoRequerido": "Elige un técnico.",
+      "motivo": "Motivo de la reasignación",
+      "motivoRequerido": "Escribe el motivo (hasta 1000 caracteres).",
+      "asignar": "Asignar",
+      "reasignar": "Reasignar",
+      "enviando": "Enviando…"
+    },
+    "avisos": {
+      "asignada": "Asignada a {{nombre}}",
+      "cambioEstado": "La queja cambió de estado"
+    },
+    "errores": {
+      "TECNICO_NO_ELEGIBLE": "Ese técnico ya no está disponible",
+      "red": "No pudimos conectar con el servidor. Intenta de nuevo.",
+      "generico": "No pudimos asignar el técnico. Intenta de nuevo."
+    }
   }
 }
