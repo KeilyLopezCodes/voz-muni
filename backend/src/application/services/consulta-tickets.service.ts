@@ -53,13 +53,24 @@ export class ConsultaTicketsService {
     if (!ticket) {
       throw new ErrorDeAplicacion('NO_ENCONTRADO', `No existe el ticket ${id}`);
     }
-    const { solicitanteId, creadoEn, resueltoEn, cerradoEn, ...resto } = ticket;
+    const { solicitanteId, creadoEn, resueltoEn, cerradoEn, resolucion, ...resto } = ticket;
+    // Con el alcance propia (el vecino) no se expone quién resolvió, como el técnico en SPEC 25. Depende del
+    // alcance, no del nombre del rol (SPEC 26).
+    const verQuienResolvio = usuario.permisos['tickets.ver'] !== 'propia';
     return {
       ...resto,
       creadoEn: creadoEn.toISOString(),
       resueltoEn: isoONull(resueltoEn),
       cerradoEn: isoONull(cerradoEn),
       esSolicitante: solicitanteId === usuario.id,
+      resolucion:
+        resolucion === null
+          ? null
+          : {
+              descripcion: resolucion.descripcion,
+              resueltaEn: resolucion.resueltaEn.toISOString(),
+              resueltaPor: verQuienResolvio ? resolucion.resueltaPor : null,
+            },
     };
   }
 }

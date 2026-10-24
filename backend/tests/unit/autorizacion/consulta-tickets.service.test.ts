@@ -3,6 +3,7 @@ import { ConsultaTicketsService } from '../../../src/application/services/consul
 import { cumpleFiltro, type FiltroTickets } from '../../../src/domain/autorizacion/alcance-tickets';
 import type {
   Pagina,
+  ResolucionLectura,
   TicketDetalleLectura,
   TicketLecturaRepository,
   TicketListado,
@@ -23,6 +24,7 @@ class TicketsEnMemoria implements TicketLecturaRepository {
   constructor(
     private readonly tickets: TicketResumen[],
     private readonly historial: PasoHistorial[] = [],
+    private readonly resoluciones: Record<number, ResolucionLectura> = {},
   ) {}
 
   async listar(filtro: FiltroTickets, pagina: number, tamano: number): Promise<Pagina<TicketResumen>> {
@@ -73,6 +75,7 @@ class TicketsEnMemoria implements TicketLecturaRepository {
       resueltoEn: null,
       cerradoEn: null,
       informacionSolicitada: t.estado === 'en_espera' ? (esperas.at(-1)?.motivo ?? null) : null,
+      resolucion: t.estado === 'resuelta' || t.estado === 'cerrada' ? (this.resoluciones[id] ?? null) : null,
       solicitanteId: t.solicitanteId,
     };
   }
@@ -243,6 +246,60 @@ describe('ConsultaTicketsService', () => {
       expect(repo.filtrosRecibidos).toEqual([[{ campo: 'solicitanteId', valor: VECINO }]]);
       expect(pagina.datos.map((t) => t.id)).toEqual([1, 2]);
       expect(pagina.datos[0]).toMatchObject({ esperaRespuesta: true, creadoEn: '2026-10-22T00:00:00.000Z' });
+    });
+
+    describe('resolución (SPEC 26)', () => {
+      const RESOLUCION: ResolucionLectura = {
+        descripcion: 'Se rellenó el bache',
+        resueltaEn: new Date('2026-10-23T18:30:00Z'),
+        resueltaPor: { id: 30, nombre: 'Técnico de desarrollo' },
+      };
+      const supervisor: UsuarioAutenticado = {
+        id: 5,
+        nombre: 'Supervisora',
+        rol: 'supervisor',
+        dependenciaId: null,
+        permisos: { 'tickets.ver': 'todas' },
+      };
+
+      function crearResueltas() {
+        const repo = new TicketsEnMemoria(
+          [conEstado(4, 'en_proceso'), conEstado(5, 'resuelta'), conEstado(6, 'cerrada')],
+          [],
+          { 4: RESOLUCION, 5: RESOLUCION, 6: RESOLUCION },
+        );
+        return new ConsultaTicketsService(repo);
+      }
+
+      it('una queja en_proceso no trae resolución', async () => {
+        await expect(crearResueltas().detalle(supervisor, 4)).resolves.toMatchObject({ resolucion: null });
+      });
+
+      it.each([
+        ['el supervisor', supervisor],
+        ['el coordinador', coordinadorA],
+      ])('%s ve la descripción, la fecha y quién resolvió', async (_quien, usuario) => {
+        await expect(crearResueltas().detalle(usuario, 5)).resolves.toMatchObject({
+          resolucion: {
+            descripcion: 'Se rellenó el bache',
+            resueltaEn: '2026-10-23T18:30:00.000Z',
+            resueltaPor: { id: 30, nombre: 'Técnico de desarrollo' },
+          },
+        });
+      });
+
+      it('con alcance propia (el vecino) resueltaPor es null', async () => {
+        await expect(crearResueltas().detalle(vecino, 5)).resolves.toMatchObject({
+          resolucion: { descripcion: 'Se rellenó el bache', resueltaEn: '2026-10-23T18:30:00.000Z', resueltaPor: null },
+        });
+      });
+
+      it('una queja cerrada mantiene la resolución', async () => {
+        await expect(crearResueltas().detalle(vecino, 6)).resolves.toMatchObject({
+          estado: 'cerrada',
+          resolucion: { descripcion: 'Se rellenó el bache' },
+        });
+      });
     });
 
     it('listarParaUsuario rechaza un tamano mayor que 50', async () => {

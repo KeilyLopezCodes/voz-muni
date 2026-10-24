@@ -32,6 +32,7 @@ function queja(cambios: Partial<TicketDetalle> = {}): TicketDetalle {
     cerradoEn: null,
     informacionSolicitada: PEDIDO,
     esSolicitante: true,
+    resolucion: null,
     ...cambios,
   }
 }
@@ -168,6 +169,54 @@ describe('DetalleQueja', () => {
     const caja = await screen.findByRole('form', { name: comentarios.nuevo })
     expect(within(caja).getByRole('button', { name: comentarios.notaInterna })).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: adjuntos.subir })).toBeInTheDocument()
+  })
+
+  describe('solución (SPEC 26)', () => {
+    const RESOLUCION = {
+      descripcion: 'Se reparó la tubería.',
+      resueltaEn: '2026-10-23T18:30:00.000Z',
+      resueltaPor: null,
+    }
+
+    it('sin resolución no hay bloque "Solución"', async () => {
+      montar({ ticket: queja({ estado: 'en_proceso', informacionSolicitada: null }) })
+
+      await screen.findByRole('heading', { level: 1 })
+      expect(screen.queryByRole('region', { name: textos.solucion.titulo })).not.toBeInTheDocument()
+    })
+
+    it('el vecino en resuelta ve la solución, sin quién resolvió, y el aviso sobre confirmar o reabrir', async () => {
+      montar({ ticket: queja({ estado: 'resuelta', informacionSolicitada: null, resolucion: RESOLUCION }) })
+
+      const seccion = await screen.findByRole('region', { name: textos.solucion.titulo })
+      expect(seccion).toHaveTextContent('Se reparó la tubería.')
+      expect(seccion).toHaveTextContent(textos.solucion.pendienteConfirmar)
+      expect(seccion).not.toHaveTextContent(/\bpor\b/)
+    })
+
+    it('un interno ve quién resolvió y no el aviso del vecino', async () => {
+      montar({
+        rol: 'coordinador',
+        ticket: queja({
+          estado: 'resuelta',
+          informacionSolicitada: null,
+          esSolicitante: false,
+          resolucion: { ...RESOLUCION, resueltaPor: { id: 3, nombre: 'Técnico de desarrollo' } },
+        }),
+      })
+
+      const seccion = await screen.findByRole('region', { name: textos.solucion.titulo })
+      expect(seccion).toHaveTextContent('por Técnico de desarrollo')
+      expect(seccion).not.toHaveTextContent(textos.solucion.pendienteConfirmar)
+    })
+
+    it('en una queja cerrada se ve la solución sin el aviso', async () => {
+      montar({ ticket: queja({ estado: 'cerrada', informacionSolicitada: null, resolucion: RESOLUCION }) })
+
+      const seccion = await screen.findByRole('region', { name: textos.solucion.titulo })
+      expect(seccion).toHaveTextContent('Se reparó la tubería.')
+      expect(seccion).not.toHaveTextContent(textos.solucion.pendienteConfirmar)
+    })
   })
 
   it('un 404 muestra "No encontramos esta queja"', async () => {

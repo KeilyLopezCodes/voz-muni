@@ -45,6 +45,7 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
       ['vecino', 'vecino', null],
       ['otroVecino', 'vecino', null],
       ['tecnico', 'tecnico', ids.obras],
+      ['coordinador', 'coordinador', ids.obras],
       ['receptor', 'receptor', null],
       ['supervisor', 'supervisor', null],
       ['administrador', 'administrador', null],
@@ -91,6 +92,8 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
     solicitante?: number;
     asignadoA?: number | null;
     creadoEn?: string;
+    resolucion?: string | null;
+    resueltoPor?: number | null;
   }
 
   // Una queja en Obras, registrada por el receptor, con coordenadas y prioridad para comprobar que no se exponen.
@@ -99,6 +102,8 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
     solicitante = ids.vecino,
     asignadoA = ids.tecnico,
     creadoEn = '2026-10-20T15:00:00Z',
+    resolucion = null,
+    resueltoPor = null,
   }: OpcionesTicket = {}): Promise<number> {
     const [fila] = await db('tickets')
       .insert({
@@ -119,6 +124,10 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
         lng: -90.506882,
         datos_extra: { profundidad: 30 },
         creado_en: creadoEn,
+        resolucion,
+        resuelto_por: resueltoPor,
+        resuelto_en: resolucion === null ? null : '2026-10-23T18:30:00Z',
+        cerrado_en: estado === 'cerrada' ? '2026-10-25T18:30:00Z' : null,
       })
       .returning('id');
     return Number(fila.id);
@@ -217,6 +226,7 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
       cerradoEn: null,
       informacionSolicitada: 'Envíe el número de contador',
       esSolicitante: true,
+      resolucion: null,
     });
   });
 
@@ -234,6 +244,65 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
     for (const campo of ['solicitante', 'solicitanteId', 'prioridad', 'tecnico', 'asignadoA', 'lat', 'lng', 'ubicacion', 'datosExtra']) {
       expect(res.body).not.toHaveProperty(campo);
     }
+  });
+
+  describe('resolución (SPEC 26)', () => {
+    const SOLUCION = 'Se rellenó el bache con asfalto.\nSe señalizó la zona.';
+    const resuelta = (estado: EstadoTicket = 'resuelta') =>
+      ticket({ estado, resolucion: SOLUCION, resueltoPor: ids.tecnico });
+
+    it('una queja en_proceso → resolucion: null', async () => {
+      const id = await ticket();
+
+      expect((await detalle(id, 'supervisor')).body.resolucion).toBeNull();
+    });
+
+    it.each(['tecnico', 'coordinador', 'supervisor'])(
+      'una queja resuelta pedida por el %s trae la descripción, la fecha y quién resolvió',
+      async (quien) => {
+        const id = await resuelta();
+
+        const res = await detalle(id, quien);
+
+        expect(res.status).toBe(200);
+        expect(res.body.resolucion).toEqual({
+          descripcion: SOLUCION,
+          resueltaEn: '2026-10-23T18:30:00.000Z',
+          resueltaPor: { id: ids.tecnico, nombre: 'Usuario tecnico' },
+        });
+      },
+    );
+
+    it('la misma queja pedida por su vecino no dice quién resolvió ni expone datos de contacto', async () => {
+      const id = await resuelta();
+
+      const res = await detalle(id, 'vecino');
+
+      expect(res.status).toBe(200);
+      expect(res.body.resolucion).toEqual({
+        descripcion: SOLUCION,
+        resueltaEn: '2026-10-23T18:30:00.000Z',
+        resueltaPor: null,
+      });
+      const texto = JSON.stringify(res.body);
+      for (const prohibido of ['Usuario tecnico', '@lectura.test', '55550000', '100000000000']) {
+        expect(texto).not.toContain(prohibido);
+      }
+    });
+
+    it('una queja cerrada mantiene la resolución', async () => {
+      const id = await resuelta('cerrada');
+
+      const res = await detalle(id, 'vecino');
+
+      expect(res.body).toMatchObject({ estado: 'cerrada', resolucion: { descripcion: SOLUCION, resueltaPor: null } });
+    });
+
+    it('con la columna llena en un estado que no es resuelta ni cerrada → resolucion: null', async () => {
+      const id = await ticket({ estado: 'en_proceso', resolucion: SOLUCION, resueltoPor: ids.tecnico });
+
+      expect((await detalle(id, 'supervisor')).body.resolucion).toBeNull();
+    });
   });
 
   it('un técnico ve solo sus asignadas en el listado', async () => {

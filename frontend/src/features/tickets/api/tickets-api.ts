@@ -34,6 +34,13 @@ export interface PaginaTickets {
   total: number
 }
 
+// Resolución vigente (SPEC 26), solo en resuelta o cerrada. resueltaPor es null para el vecino.
+export interface ResolucionDetalle {
+  descripcion: string
+  resueltaEn: string // ISO 8601 en UTC
+  resueltaPor: { id: number; nombre: string } | null
+}
+
 // Sin datos del solicitante, prioridad, técnico, coordenadas ni datos adicionales.
 export interface TicketDetalle {
   id: number
@@ -50,6 +57,7 @@ export interface TicketDetalle {
   cerradoEn: string | null
   informacionSolicitada: string | null // lo que pidió la municipalidad, solo si está en espera
   esSolicitante: boolean
+  resolucion: ResolucionDetalle | null
 }
 
 export const TAMANO_PAGINA = 20

@@ -234,7 +234,14 @@ describe('Atención de la queja (SPEC 22)', () => {
     expect((await transicion(id, { accion: 'reanudar' })).status).toBe(200);
     const resolver = await transicion(id, { accion: 'resolver', descripcion: ' Se rellenó el bache con asfalto ' });
     expect(resolver.status).toBe(200);
-    expect(resolver.body).toMatchObject({ estado: 'resuelta', resueltoEn: expect.stringMatching(/Z$/) });
+    // La respuesta no cambia con SPEC 26: la resolución no viaja en ella.
+    expect(resolver.body).toEqual({
+      id,
+      numero: expect.stringMatching(/^Q-2026-/),
+      estado: 'resuelta',
+      asignadoA: ids.tecnico,
+      resueltoEn: expect.stringMatching(/Z$/),
+    });
 
     const tecnico = String(ids.tecnico);
     expect(await historial(id)).toEqual([
@@ -244,6 +251,11 @@ describe('Atención de la queja (SPEC 22)', () => {
       { estado_anterior: 'en_proceso', estado_nuevo: 'resuelta', usuario_id: tecnico, motivo: 'Se rellenó el bache con asfalto' },
     ]);
     expect((await db('tickets').where({ id }).first('resuelto_en')).resuelto_en).toBeInstanceOf(Date);
+    // SPEC 26: la resolución vigente coincide con el motivo del historial y guarda quién resolvió.
+    expect(await db('tickets').where({ id }).first('resolucion', 'resuelto_por')).toEqual({
+      resolucion: 'Se rellenó el bache con asfalto',
+      resuelto_por: tecnico,
+    });
   });
 
   it('un técnico no asignado → 404', async () => {
@@ -258,7 +270,23 @@ describe('Atención de la queja (SPEC 22)', () => {
     expect((await transicion(id, { accion: 'resolver', descripcion: 'x' }, 'coordinadorAgua')).status).toBe(404);
     const res = await transicion(id, { accion: 'resolver', descripcion: 'Resuelto por el coordinador' }, 'coordinador');
     expect(res.status).toBe(200);
-    expect((await historial(id)).at(-1)!.usuario_id).toBe(String(ids.coordinador));
+    const ultima = (await historial(id)).at(-1)!;
+    expect(ultima.usuario_id).toBe(String(ids.coordinador));
+    expect(await db('tickets').where({ id }).first('resolucion', 'resuelto_por')).toEqual({
+      resolucion: ultima.motivo,
+      resuelto_por: String(ids.coordinador),
+    });
+  });
+
+  it('resolver con descripción en blanco no toca la resolución (SPEC 26)', async () => {
+    const id = await ticket({ estado: 'en_proceso' });
+
+    expect((await transicion(id, { accion: 'resolver', descripcion: '   ' })).status).toBe(400);
+    expect(await db('tickets').where({ id }).first('estado', 'resolucion', 'resuelto_por')).toEqual({
+      estado: 'en_proceso',
+      resolucion: null,
+      resuelto_por: null,
+    });
   });
 
   it('el supervisor inicia cualquiera → 200', async () => {

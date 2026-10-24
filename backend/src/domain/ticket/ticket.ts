@@ -17,6 +17,8 @@ export interface TicketProps {
   readonly escalado: boolean;
   readonly resueltoEn: Date | null;
   readonly cerradoEn: Date | null;
+  readonly resolucion: string | null; // descripción de la resolución vigente, recortada (SPEC 26)
+  readonly resueltoPor: number | null; // quien ejecutó resolver
 }
 
 // Vive aquí y no en registro-historial.ts para no crear un ciclo de imports (regla no-circular).
@@ -139,6 +141,14 @@ export class Ticket {
     return this.props.cerradoEn;
   }
 
+  get resolucion(): string | null {
+    return this.props.resolucion;
+  }
+
+  get resueltoPor(): number | null {
+    return this.props.resueltoPor;
+  }
+
   enviarARevision(ctx: ContextoTransicion): ResultadoTransicion {
     return this.transicionar(ctx, ['nueva'], 'en_revision');
   }
@@ -205,12 +215,17 @@ export class Ticket {
     }));
   }
 
-  // La descripción de la resolución se guarda como motivo del historial (RF-23).
+  // La descripción de la resolución queda en el ticket (resolución vigente, SPEC 26) y como motivo del historial
+  // (RF-23), que conserva cada resolución anterior.
   resolver(ctx: ContextoTransicion, descripcion: string): ResultadoTransicion {
-    return this.transicionar(ctx, ['en_proceso'], 'resuelta', () => ({
-      cambios: { resueltoEn: ctx.ahora },
-      motivo: textoRequerido(descripcion, 'DESCRIPCION_REQUERIDA', 'La descripción de la resolución es obligatoria'),
-    }));
+    return this.transicionar(ctx, ['en_proceso'], 'resuelta', () => {
+      const resolucion = textoRequerido(
+        descripcion,
+        'DESCRIPCION_REQUERIDA',
+        'La descripción de la resolución es obligatoria',
+      );
+      return { cambios: { resueltoEn: ctx.ahora, resolucion, resueltoPor: ctx.actorId }, motivo: resolucion };
+    });
   }
 
   // El vecino confirma dentro del plazo; el límite exacto cuenta como dentro.
@@ -237,12 +252,16 @@ export class Ticket {
     });
   }
 
-  // Vuelve al mismo técnico y reinicia el plazo de resolución, por eso limpia resueltoEn y escalado.
+  // Vuelve al mismo técnico y reinicia el plazo de resolución, por eso limpia resueltoEn y escalado. La resolución
+  // deja de estar vigente: el historial la conserva (SPEC 26).
   reabrir(ctx: ContextoTransicion, motivo: string, confirmacionVenceEn: Date): ResultadoTransicion {
     return this.transicionar(ctx, ['resuelta'], 'en_proceso', () => {
       const motivoRecortado = textoRequerido(motivo, 'MOTIVO_REQUERIDO', 'El motivo es obligatorio');
       exigirPlazoVigente(ctx.ahora, confirmacionVenceEn);
-      return { cambios: { resueltoEn: null, escalado: false }, motivo: motivoRecortado };
+      return {
+        cambios: { resueltoEn: null, resolucion: null, resueltoPor: null, escalado: false },
+        motivo: motivoRecortado,
+      };
     });
   }
 

@@ -85,6 +85,8 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['registrado_por', 'bigint'],
     ['titulo', 'text'],
     ['descripcion', 'text'],
+    ['resolucion', 'text'],
+    ['resuelto_por', 'bigint'],
   ],
   ticket_historial: [
     ['id', 'bigint'],
@@ -598,6 +600,100 @@ describe('Esquema de base de datos', () => {
       withRollback(async (trx) => {
         await expect(insertTicket(trx, { canal: 'whatsapp' })).rejects.toMatchObject({ code: CHECK_VIOLATION });
       }));
+  });
+
+  describe('resolución (0021)', () => {
+    it('las columnas son NULL por defecto y resuelto_por referencia a usuarios', () =>
+      withRollback(async (trx) => {
+        const ticketId = await insertTicket(trx);
+        const fila = await trx('tickets').where({ id: ticketId }).first('resolucion', 'resuelto_por');
+        expect(fila).toEqual({ resolucion: null, resuelto_por: null });
+        await expect(trx('tickets').where({ id: ticketId }).update({ resuelto_por: 999999999 })).rejects.toMatchObject({
+          code: FOREIGN_KEY_VIOLATION,
+        });
+      }));
+
+    it('rellena las quejas resueltas o cerradas con su última entrada a resuelta', async () => {
+      await db.migrate.down({ name: '0021_resolucion.js' });
+      const ids: Record<string, string> = {};
+      try {
+        const [rol] = await db('roles').where({ nombre: 'tecnico' }).select('id');
+        const [vecino] = await db('usuarios').insert({ nombre: 'Vecino 0021', telefono: '55550021', rol_id: rol.id }).returning('id');
+        const [primero] = await db('usuarios').insert({ nombre: 'Técnico A', email: 'a-0021@x.gt', rol_id: rol.id }).returning('id');
+        const [segundo] = await db('usuarios').insert({ nombre: 'Técnico B', email: 'b-0021@x.gt', rol_id: rol.id }).returning('id');
+        Object.assign(ids, { vecino: vecino.id, primero: primero.id, segundo: segundo.id });
+        const [dependencia] = await db('dependencias').insert({ nombre: 'Dependencia 0021' }).returning('id');
+        const [categoria] = await db('categorias').insert({ nombre: 'Categoría 0021', dependencia_id: dependencia.id }).returning('id');
+        const [zona] = await db('zonas').insert({ nombre: 'Zona 0021', tipo: 'zona' }).returning('id');
+        Object.assign(ids, { dependencia: dependencia.id, categoria: categoria.id, zona: zona.id });
+        const ticket = async (numero: string, estado: string) => {
+          const [fila] = await db('tickets')
+            .insert({
+              numero,
+              solicitante_id: vecino.id,
+              categoria_id: categoria.id,
+              canal: 'portal',
+              zona_id: zona.id,
+              direccion: 'Calle principal',
+              titulo: 'Bache en la calle',
+              descripcion: 'Hay un bache profundo frente a la escuela',
+              estado,
+            })
+            .returning('id');
+          return fila.id as string;
+        };
+        ids.resuelta = await ticket('Q-2026-000921', 'resuelta');
+        ids.cerrada = await ticket('Q-2026-000922', 'cerrada');
+        ids.reabierta = await ticket('Q-2026-000923', 'en_proceso');
+        const aResuelta = (ticketId: string, usuarioId: string, motivo: string, creadoEn: string) =>
+          db('ticket_historial').insert({
+            ticket_id: ticketId,
+            estado_anterior: 'en_proceso',
+            estado_nuevo: 'resuelta',
+            usuario_id: usuarioId,
+            motivo,
+            creado_en: creadoEn,
+          });
+        await aResuelta(ids.resuelta, primero.id, 'Primera solución', '2026-10-01T10:00:00Z');
+        await aResuelta(ids.resuelta, segundo.id, 'Se rellenó el bache', '2026-10-02T10:00:00Z');
+        await aResuelta(ids.cerrada, primero.id, 'Se cambió la lámpara', '2026-10-03T10:00:00Z');
+        await aResuelta(ids.reabierta, primero.id, 'Solución rechazada', '2026-10-04T10:00:00Z');
+      } finally {
+        await db.migrate.latest();
+      }
+      try {
+        const filas: { id: string; resolucion: string | null; resuelto_por: string | null }[] = await db('tickets')
+          .whereIn('id', [ids.resuelta, ids.cerrada, ids.reabierta])
+          .orderBy('id')
+          .select('id', 'resolucion', 'resuelto_por');
+        expect(filas).toEqual([
+          { id: ids.resuelta, resolucion: 'Se rellenó el bache', resuelto_por: ids.segundo },
+          { id: ids.cerrada, resolucion: 'Se cambió la lámpara', resuelto_por: ids.primero },
+          { id: ids.reabierta, resolucion: null, resuelto_por: null },
+        ]);
+      } finally {
+        const tickets = [ids.resuelta, ids.cerrada, ids.reabierta].filter(Boolean);
+        await db('ticket_historial').whereIn('ticket_id', tickets).delete();
+        await db('tickets').whereIn('id', tickets).delete();
+        await db('categorias').where({ id: ids.categoria }).delete();
+        await db('dependencias').where({ id: ids.dependencia }).delete();
+        await db('zonas').where({ id: ids.zona }).delete();
+        await db('usuarios').whereIn('id', [ids.vecino, ids.primero, ids.segundo].filter(Boolean)).delete();
+      }
+    });
+
+    it('revertir 0021 quita las dos columnas', async () => {
+      await db.migrate.down({ name: '0021_resolucion.js' });
+      try {
+        const columnas = await db('information_schema.columns')
+          .where({ table_schema: 'public', table_name: 'tickets' })
+          .whereIn('column_name', ['resolucion', 'resuelto_por'])
+          .select('column_name');
+        expect(columnas).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
   });
 
   describe('adjuntos (0020)', () => {

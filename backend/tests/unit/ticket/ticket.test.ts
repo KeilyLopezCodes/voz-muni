@@ -17,6 +17,8 @@ const BASE: TicketProps = {
   escalado: false,
   resueltoEn: null,
   cerradoEn: null,
+  resolucion: null,
+  resueltoPor: null,
 };
 
 function ticketEn(estado: EstadoTicket, overrides: Partial<TicketProps> = {}): Ticket {
@@ -64,6 +66,8 @@ describe('Ticket', () => {
         escalado: false,
         resueltoEn: null,
         cerradoEn: null,
+        resolucion: null,
+        resueltoPor: null,
       });
       expect(Object.isFrozen(ticket)).toBe(true);
     });
@@ -277,6 +281,17 @@ describe('Ticket', () => {
       });
     });
 
+    it('deja resolucion con la descripción recortada y resueltoPor con el actor (SPEC 26)', () => {
+      const { ticket, historial } = ticketEn('en_proceso', { asignadoA: 9 }).resolver(
+        ctx,
+        '  Se cambió la lámpara\nY el poste  ',
+      );
+
+      expect(ticket.resolucion).toBe('Se cambió la lámpara\nY el poste');
+      expect(ticket.resueltoPor).toBe(ctx.actorId);
+      expect(historial.motivo).toBe(ticket.resolucion);
+    });
+
     it.each(['', '   '])('con descripción %j lanza DESCRIPCION_REQUERIDA', (descripcion) => {
       esperarRegla(() => ticketEn('en_proceso').resolver(ctx, descripcion), 'DESCRIPCION_REQUERIDA');
     });
@@ -298,6 +313,8 @@ describe('Ticket', () => {
         prioridad: 'media',
         escalado: true,
         resueltoEn: new Date('2026-10-22T10:00:00.000Z'),
+        resolucion: 'Se cambió la lámpara',
+        resueltoPor: 9,
       });
 
     describe('confirmarSolucion', () => {
@@ -306,6 +323,9 @@ describe('Ticket', () => {
 
         expect(ticket.estado).toBe('cerrada');
         expect(ticket.cerradoEn).toEqual(enElLimite.ahora);
+        // La resolución se mantiene al cerrar (SPEC 26).
+        expect(ticket.resolucion).toBe('Se cambió la lámpara');
+        expect(ticket.resueltoPor).toBe(9);
         expect(historial).toMatchObject({
           estadoAnterior: 'resuelta',
           estadoNuevo: 'cerrada',
@@ -361,6 +381,8 @@ describe('Ticket', () => {
         expect(ticket.asignadoA).toBe(9);
         expect(ticket.dependenciaId).toBe(4);
         expect(ticket.resueltoEn).toBeNull();
+        expect(ticket.resolucion).toBeNull();
+        expect(ticket.resueltoPor).toBeNull();
         expect(ticket.escalado).toBe(false);
         expect(historial).toMatchObject({
           estadoAnterior: 'resuelta',
