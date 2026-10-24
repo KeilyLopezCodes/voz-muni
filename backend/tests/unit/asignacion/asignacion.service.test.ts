@@ -1,3 +1,4 @@
+import { slaLecturaVacia, slaVacio } from '../../support/sla-vacio';
 import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { AsignacionService } from '../../../src/application/services/asignacion.service';
 import type { RegistroAsignacion, TecnicoCandidato } from '../../../src/domain/asignacion/asignacion-tecnico';
@@ -60,6 +61,8 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
         resueltoPor: null,
         confirmacionVenceEn: null,
         reaperturas: 0,
+        escaladoEn: null,
+        escaladoPor: null,
       }),
     );
   }
@@ -75,7 +78,7 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
       ticket,
       titulo: 'Bache',
       categoria: { id: 1, nombre: 'Baches' },
-      solicitante: { id: 7, nombre: 'Ana', email: null },
+      solicitante: { id: 7, nombre: 'Ana', email: null }, sla: slaVacio(), zonaId: 1,
     };
   }
 
@@ -132,6 +135,7 @@ class BandejaFalsa implements PorAsignarLecturaRepository {
       zona: { id: 1, nombre: 'Zona 1', tipo: 'zona' },
       tecnico: null,
       creadoEn: AHORA,
+      sla: slaLecturaVacia,
     };
     return { datos: [ticket], pagina, tamano, total: 1 };
   }

@@ -1,5 +1,6 @@
 import type { FiltroTickets } from '../autorizacion/alcance-tickets';
 import type { DatosExtra } from '../categorias/datos-extra';
+import type { SlaLectura } from '../sla/sla-lectura';
 import type { Prioridad } from '../ticket/prioridad';
 import type { ESTADOS_ABIERTOS } from './asignacion-repository';
 import type { Pagina } from './ticket-lectura-repository';
@@ -24,6 +25,7 @@ export interface TicketAtencion {
   motivoEspera: string | null; // motivo de la última transición a en_espera, solo si está en espera
   trasladoPendiente: boolean; // hay una solicitud de traslado pendiente (SPEC 21)
   creadoEn: Date;
+  sla: SlaLectura; // SPEC 30
 }
 
 // Bandeja de atención (SPEC 22), siempre filtrada por alcance (SPEC 11). Un filtro null no consulta la base.

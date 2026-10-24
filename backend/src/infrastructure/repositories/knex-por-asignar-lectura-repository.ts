@@ -8,7 +8,9 @@ import type {
 } from '../../domain/repositories/por-asignar-lectura-repository';
 import type { Pagina } from '../../domain/repositories/ticket-lectura-repository';
 import type { Prioridad } from '../../domain/ticket/prioridad';
+import type { SlaLectura } from '../../domain/sla/sla-lectura';
 import { aplicarFiltro, COLUMNAS_TICKET } from './knex-filtro';
+import { COLUMNA_SLA } from './knex-sla';
 
 // pg devuelve los bigint como string.
 interface FilaPorAsignar {
@@ -27,6 +29,7 @@ interface FilaPorAsignar {
   tecnico_id: string | null;
   tecnico_nombre: string | null;
   creado_en: Date;
+  sla: SlaLectura;
 }
 
 const COLUMNAS = [
@@ -62,6 +65,7 @@ function aTicketPorAsignar(fila: FilaPorAsignar): TicketPorAsignar {
     zona: { id: Number(fila.zona_id), nombre: fila.zona_nombre, tipo: fila.zona_tipo },
     tecnico: fila.tecnico_id === null ? null : { id: Number(fila.tecnico_id), nombre: fila.tecnico_nombre ?? '' },
     creadoEn: fila.creado_en,
+    sla: fila.sla,
   };
 }
 
@@ -90,7 +94,7 @@ export class KnexPorAsignarLecturaRepository implements PorAsignarLecturaReposit
       .join('dependencias as d', 'd.id', 't.dependencia_id')
       .join('zonas as z', 'z.id', 't.zona_id')
       .leftJoin('usuarios as tec', 'tec.id', 't.asignado_a')
-      .select(COLUMNAS)
+      .select([...COLUMNAS, this.db.raw(COLUMNA_SLA)])
       .orderByRaw(`${ORDEN_PRIORIDAD}, t.creado_en ASC, t.id ASC`)
       .limit(tamano)
       .offset((pagina - 1) * tamano);

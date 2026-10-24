@@ -12,6 +12,7 @@ import type { ComandoConfirmacion, ConfirmacionHechaDto } from '../dto/confirmac
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 import type { EnvioCorreo } from './envio-correo';
 import type { PlazosConfirmacionService } from './plazos-confirmacion.service';
+import type { MotorSla } from './sla.service';
 
 interface ConfirmacionHecha {
   actual: TicketParaTransicion;
@@ -29,6 +30,7 @@ export class ConfirmacionService {
     private readonly correo: EnvioCorreo,
     private readonly clock: Clock,
     private readonly appUrl: string, // APP_URL, sin barra final
+    private readonly sla: MotorSla,
   ) {}
 
   async transicionar(
@@ -63,7 +65,11 @@ export class ConfirmacionService {
           comando.accion === 'confirmar'
             ? ticket.confirmarSolucion(ctx, ticket.confirmacionVenceEn, comando.motivo)
             : ticket.reabrir(ctx, comando.motivo, ticket.confirmacionVenceEn, await this.plazos.maxReaperturas());
-        await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id);
+        const cambiosSla =
+          comando.accion === 'reabrir'
+            ? await this.sla.alReabrir(ctx.ahora, { categoriaId: actual.categoria.id, prioridad: ticket.prioridad })
+            : {};
+        await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
         return { actual, resultado };
       }),
     );

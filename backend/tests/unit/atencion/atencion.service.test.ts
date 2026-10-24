@@ -1,3 +1,4 @@
+import { slaNulo, slaVacio } from '../../support/sla-vacio';
 import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { AtencionService } from '../../../src/application/services/atencion.service';
 import type { FiltroTickets } from '../../../src/domain/autorizacion/alcance-tickets';
@@ -48,6 +49,8 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
         resueltoPor: null,
         confirmacionVenceEn: null,
         reaperturas: 0,
+        escaladoEn: null,
+        escaladoPor: null,
       }),
     );
   }
@@ -58,7 +61,7 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
     if (!ticket || filtro === null || filtro.some((c) => c.campo === 'asignadoA' && c.valor !== ticket.asignadoA)) {
       return null;
     }
-    return { ticket, titulo: 'Bache', categoria: { id: 1, nombre: 'Baches' }, solicitante: { id: 7, nombre: 'Ana', email: null } };
+    return { ticket, titulo: 'Bache', categoria: { id: 1, nombre: 'Baches' }, solicitante: { id: 7, nombre: 'Ana', email: null }, sla: slaVacio(), zonaId: 1 };
   }
 
   async guardarTransicion(resultado: ResultadoTransicion): Promise<void> {
@@ -89,6 +92,7 @@ function armar(vencimiento: (ahora: Date) => Promise<Date> = async () => VENCE_C
       pedidos.push(ahora);
       return vencimiento(ahora);
     },
+    slaNulo,
   );
   return { tickets, bandeja, servicio, pedidos };
 }

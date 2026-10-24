@@ -1,3 +1,4 @@
+import { slaNulo, slaVacio } from '../../support/sla-vacio';
 import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { ConfirmacionService } from '../../../src/application/services/confirmacion.service';
 import { EnvioCorreo } from '../../../src/application/services/envio-correo';
@@ -60,6 +61,8 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
         resueltoPor: estado === 'resuelta' ? 30 : null,
         confirmacionVenceEn: estado === 'resuelta' ? VENCE : null,
         reaperturas: 0,
+        escaladoEn: null,
+        escaladoPor: null,
         ...cambios,
       }),
     );
@@ -75,7 +78,7 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
       ticket,
       titulo: 'Bache frente a la escuela',
       categoria: { id: 1, nombre: 'Baches' },
-      solicitante: { id: 7, nombre: 'Ana Vecina', email: this.email },
+      solicitante: { id: 7, nombre: 'Ana Vecina', email: this.email }, sla: slaVacio(), zonaId: 1,
     };
   }
 
@@ -106,6 +109,7 @@ function armar({ maxReaperturas = 2, ahora = AHORA }: { maxReaperturas?: number;
     new EnvioCorreo(plantillas(), enviador, (mensaje) => errores.push(mensaje)),
     new RelojFalso(ahora),
     'https://vozmuni.test',
+    slaNulo,
   );
   return { tickets, enviador, errores, servicio };
 }

@@ -8,7 +8,9 @@ import type {
 } from '../../domain/repositories/atencion-lectura-repository';
 import type { Pagina } from '../../domain/repositories/ticket-lectura-repository';
 import type { Prioridad } from '../../domain/ticket/prioridad';
+import type { SlaLectura } from '../../domain/sla/sla-lectura';
 import { aplicarFiltro, COLUMNAS_TICKET } from './knex-filtro';
+import { COLUMNA_SLA } from './knex-sla';
 
 // pg devuelve los bigint y los numeric como string.
 interface FilaAtencion {
@@ -34,6 +36,7 @@ interface FilaAtencion {
   motivo_espera: string | null;
   traslado_pendiente: boolean;
   creado_en: Date;
+  sla: SlaLectura;
 }
 
 // Del solicitante no se lee nada: ni correo, ni teléfono, ni DPI (RNF-12).
@@ -67,6 +70,7 @@ const COLUMNAS = [
      SELECT 1 FROM solicitudes_traslado st WHERE st.ticket_id = t.id AND st.estado = 'pendiente'
    ) as traslado_pendiente`,
   't.creado_en',
+  COLUMNA_SLA,
 ];
 
 // Urgente primero; una prioridad nula (no debería existir después del triage) queda al final.
@@ -90,6 +94,7 @@ function aTicketAtencion(fila: FilaAtencion): TicketAtencion {
     motivoEspera: fila.motivo_espera,
     trasladoPendiente: fila.traslado_pendiente,
     creadoEn: fila.creado_en,
+    sla: fila.sla,
   };
 }
 

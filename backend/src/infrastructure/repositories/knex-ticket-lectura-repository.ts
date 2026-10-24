@@ -9,7 +9,9 @@ import type {
   TicketResumen,
 } from '../../domain/repositories/ticket-lectura-repository';
 import type { EstadoTicket } from '../../domain/ticket/estado-ticket';
+import type { SlaLectura } from '../../domain/sla/sla-lectura';
 import { aplicarFiltro, COLUMNAS_TICKET } from './knex-filtro';
+import { COLUMNA_SLA } from './knex-sla';
 
 // pg devuelve los bigint como string.
 interface FilaTicket {
@@ -66,6 +68,7 @@ interface FilaDetalle {
   confirmacion_vence_en: Date | null;
   reaperturas: number;
   solicitante_id: string;
+  sla: SlaLectura;
 }
 
 // Del solicitante solo el id: ni correo, ni teléfono, ni DPI (RNF-12). Tampoco prioridad, técnico,
@@ -140,6 +143,7 @@ function aDetalle(fila: FilaDetalle): TicketDetalleLectura {
     confirmacionVenceEn: fila.confirmacion_vence_en,
     reaperturas: fila.reaperturas,
     solicitanteId: Number(fila.solicitante_id),
+    sla: fila.sla,
   };
 }
 
@@ -224,7 +228,7 @@ export class KnexTicketLecturaRepository implements TicketLecturaRepository {
       .join('zonas as z', 'z.id', 't.zona_id')
       .leftJoin('dependencias as d', 'd.id', 't.dependencia_id')
       .leftJoin('usuarios as rp', 'rp.id', 't.resuelto_por')
-      .first([...COLUMNAS_DETALLE, this.db.raw(INFORMACION_SOLICITADA)]);
+      .first([...COLUMNAS_DETALLE, this.db.raw(INFORMACION_SOLICITADA), this.db.raw(COLUMNA_SLA)]);
     return fila ? aDetalle(fila) : null;
   }
 }

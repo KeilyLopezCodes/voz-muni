@@ -7,7 +7,7 @@ import { buildContainer, type Container } from '../../src/container';
 import type { Clock } from '../../src/domain/health/clock';
 import type { EnviadorCorreo, MensajeCorreo } from '../../src/domain/notificaciones/enviador-correo';
 import type { EstadoTicket } from '../../src/domain/ticket/estado-ticket';
-import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
+import { cargarSlaDePrueba, createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
 
 const PASSWORD = 'Clave-de-prueba-1';
 
@@ -62,6 +62,7 @@ describe('Confirmar o reabrir la solución (SPEC 27)', () => {
     ids.baches = Number(baches.id);
     const [zona] = await db('zonas').insert({ nombre: 'Zona 1', tipo: 'zona' }).returning('id');
     ids.zona = Number(zona.id);
+    await cargarSlaDePrueba(db, [ids.baches]);
 
     const hash = await bcrypt.hash(PASSWORD, 4);
     const usuarios: [string, string, number | null, string | null][] = [

@@ -234,6 +234,7 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
       esSolicitante: true,
       resolucion: null,
       confirmacion: null,
+      sla: null, // el vecino no ve el SLA (SPEC 30)
     });
   });
 

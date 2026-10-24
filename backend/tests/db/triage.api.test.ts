@@ -5,7 +5,7 @@ import request from 'supertest';
 import { createApp } from '../../src/app';
 import { buildContainer, type Container } from '../../src/container';
 import type { EnviadorCorreo, MensajeCorreo } from '../../src/domain/notificaciones/enviador-correo';
-import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
+import { cargarSlaDePrueba, createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
 
 const PASSWORD = 'Clave-de-prueba-1';
 
@@ -50,6 +50,7 @@ describe('Triage del supervisor (SPEC 19)', () => {
     }
     const [zona] = await db('zonas').insert({ nombre: 'Zona 1', tipo: 'zona' }).returning('id');
     ids.zona = Number(zona.id);
+    await cargarSlaDePrueba(db, [ids.baches, ids.alumbrado]);
 
     const hash = await bcrypt.hash(PASSWORD, 4);
     for (const rol of ['supervisor', 'receptor', 'coordinador', 'tecnico', 'administrador', 'vecino']) {
@@ -146,7 +147,8 @@ describe('Triage del supervisor (SPEC 19)', () => {
       estado: 'asignada',
       prioridad: 'alta',
       dependencia_id: String(ids.obras),
-      vence_resolucion: null,
+      // Se calcula al aceptar con la política de la categoría y la prioridad (SPEC 30).
+      vence_resolucion: expect.any(Date),
     });
     expect(await historial(id)).toEqual([
       { estado_anterior: null, estado_nuevo: 'nueva', usuario_id: String(ids.vecino), motivo: null },

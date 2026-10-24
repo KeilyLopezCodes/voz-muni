@@ -168,6 +168,7 @@ describe('Asignación de técnico (SPEC 20)', () => {
         zona: { id: ids.zona, nombre: 'Zona 1', tipo: 'zona' },
         tecnico: null,
         creadoEn: expect.stringMatching(/Z$/),
+        sla: expect.objectContaining({ escalado: false }), // SPEC 30
       });
       const texto = JSON.stringify(res.body);
       expect(texto).not.toContain('vecino@asignacion.test');
@@ -402,6 +403,8 @@ describe('Asignación de técnico (SPEC 20)', () => {
       resueltoPor: null,
       confirmacionVenceEn: null,
       reaperturas: 0,
+      escaladoEn: null,
+      escaladoPor: null,
     });
 
     expect(guardado.iniciar({ actorId: ids.tecnicoA1, ahora: new Date() }).ticket.estado).toBe('en_proceso');

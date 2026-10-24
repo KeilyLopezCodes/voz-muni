@@ -39,6 +39,8 @@ function ticketEn(estado: EstadoTicket): Ticket {
     resueltoPor: null,
     confirmacionVenceEn: null,
     reaperturas: 0,
+    escaladoEn: null,
+    escaladoPor: null,
   });
 }
 

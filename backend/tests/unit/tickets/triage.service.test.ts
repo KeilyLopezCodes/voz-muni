@@ -1,3 +1,4 @@
+import { slaNulo, slaVacio } from '../../support/sla-vacio';
 import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { ErrorDeAplicacion } from '../../../src/application/errors/error-de-aplicacion';
 import { EnvioCorreo } from '../../../src/application/services/envio-correo';
@@ -64,10 +65,12 @@ class TicketsEnMemoria implements TicketEscrituraRepository {
         resueltoPor: null,
         confirmacionVenceEn: null,
         reaperturas: 0,
+        escaladoEn: null,
+        escaladoPor: null,
       }),
       titulo: 'Bache frente a la escuela',
       categoria: { id: 1, nombre: 'Baches' },
-      solicitante: { id: 7, nombre: 'Ana López', email },
+      solicitante: { id: 7, nombre: 'Ana López', email }, sla: slaVacio(), zonaId: 1,
     });
   }
 
@@ -78,6 +81,10 @@ class TicketsEnMemoria implements TicketEscrituraRepository {
 
   async obtenerCategoria(categoriaId: number): Promise<CategoriaDestino | null> {
     return CATEGORIAS.find((c) => c.id === categoriaId) ?? null;
+  }
+
+  async guardarEscalado(): Promise<void> {
+    throw new Error('no se usa');
   }
 
   async guardarTecnico(): Promise<void> {
@@ -126,6 +133,7 @@ function armar() {
     correo,
     new RelojFalso(AHORA),
     'http://localhost:5173',
+    slaNulo,
   );
   return { tickets, bandeja, enviador, errores, servicio };
 }

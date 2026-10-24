@@ -1,3 +1,4 @@
+import { slaLecturaVacia } from '../../support/sla-vacio';
 import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { ConsultaTicketsService } from '../../../src/application/services/consulta-tickets.service';
 import { cumpleFiltro, type FiltroTickets } from '../../../src/domain/autorizacion/alcance-tickets';
@@ -92,6 +93,7 @@ class TicketsEnMemoria implements TicketLecturaRepository {
       confirmacionVenceEn: this.plazos[id]?.venceEn ?? null,
       reaperturas: this.plazos[id]?.reaperturas ?? 0,
       solicitanteId: t.solicitanteId,
+      sla: slaLecturaVacia,
     };
   }
 }

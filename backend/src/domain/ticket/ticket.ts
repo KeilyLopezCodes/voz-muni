@@ -1,5 +1,6 @@
 import { InvalidTransitionError } from '../errors/invalid-transition-error';
 import { ReglaDeNegocioError } from '../errors/regla-de-negocio-error';
+import type { TipoPlazo } from '../sla/vencimientos';
 import type { Ubicacion } from '../ubicacion/limites-municipio';
 import { CANALES, type Canal } from './canal';
 import type { ContextoTransicion } from './contexto-transicion';
@@ -21,6 +22,8 @@ export interface TicketProps {
   readonly resueltoPor: number | null; // quien ejecutó resolver
   readonly confirmacionVenceEn: Date | null; // fin del plazo para confirmar o reabrir (SPEC 27)
   readonly reaperturas: number; // cuántas veces se reabrió; nunca disminuye
+  readonly escaladoEn: Date | null; // cuándo se marcó escalada (SPEC 32)
+  readonly escaladoPor: TipoPlazo | null; // qué plazo venció
 }
 
 // Vive aquí y no en registro-historial.ts para no crear un ciclo de imports (regla no-circular).
@@ -159,6 +162,14 @@ export class Ticket {
     return this.props.reaperturas;
   }
 
+  get escaladoEn(): Date | null {
+    return this.props.escaladoEn;
+  }
+
+  get escaladoPor(): TipoPlazo | null {
+    return this.props.escaladoPor;
+  }
+
   enviarARevision(ctx: ContextoTransicion): ResultadoTransicion {
     return this.transicionar(ctx, ['nueva'], 'en_revision');
   }
@@ -294,21 +305,24 @@ export class Ticket {
           confirmacionVenceEn: null,
           reaperturas: this.reaperturas + 1,
           escalado: false,
+          escaladoEn: null,
+          escaladoPor: null,
         },
         motivo: motivoRecortado,
       };
     });
   }
 
-  // Escalada es una marca, no un estado: no genera historial. Cuándo se marca lo decide la spec de SLA.
-  marcarEscalado(): Ticket {
+  // Escalada es una marca, no un estado: no genera historial. La marca el job de SLA al vencer un plazo (SPEC 32);
+  // si ya estaba escalada conserva la fecha y el plazo originales.
+  marcarEscalado(ahora: Date, plazo: TipoPlazo): Ticket {
     if (esFinal(this.estado)) {
       throw new ReglaDeNegocioError(
         'OPERACION_NO_PERMITIDA',
         `No se puede escalar una queja en estado final ${this.estado}`,
       );
     }
-    return this.escalado ? this : new Ticket({ ...this.props, escalado: true });
+    return this.escalado ? this : new Ticket({ ...this.props, escalado: true, escaladoEn: ahora, escaladoPor: plazo });
   }
 
   // Orden de validación de la SPEC 04: primero el estado de origen, después los datos.

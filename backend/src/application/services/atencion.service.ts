@@ -8,6 +8,7 @@ import type { ContextoTransicion } from '../../domain/ticket/contexto-transicion
 import type { AtencionHechaDto, ComandoAtencion, TicketAtencionDto } from '../dto/atencion.dto';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import type { MotorSla } from './sla.service';
 
 // Fin del plazo para confirmar o reabrir una queja resuelta en `ahora` (SPEC 27). Lanza CALENDARIO_INCOMPLETO o
 // PARAMETRO_INVALIDO si no se puede calcular: nunca se inventa un plazo.
@@ -42,6 +43,7 @@ export class AtencionService {
     private readonly bandeja: AtencionLecturaRepository,
     private readonly clock: Clock,
     private readonly vencimientoConfirmacion: CalcularVencimientoConfirmacion,
+    private readonly sla: MotorSla,
   ) {}
 
   transicionar(usuario: UsuarioAutenticado, id: number, comando: ComandoAtencion): Promise<AtencionHechaDto> {
@@ -56,7 +58,17 @@ export class AtencionService {
       // Solo resolver necesita el plazo de confirmación (SPEC 27). Si no se puede calcular, la queja no cambia.
       const confirmacionVenceEn = comando.accion === 'resolver' ? await this.vencimientoConfirmacion(ahora) : null;
       const resultado = aplicar(actual.ticket, { actorId: usuario.id, ahora }, comando, confirmacionVenceEn);
-      await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id);
+      const clasificacion = { categoriaId: actual.categoria.id, prioridad: actual.ticket.prioridad };
+      // El plazo se mueve después del método de dominio, en la misma transacción (SPEC 30).
+      const cambiosSla =
+        comando.accion === 'iniciar'
+          ? this.sla.alIniciar(actual.sla, ahora)
+          : comando.accion === 'poner_en_espera'
+            ? await this.sla.alPonerEnEspera(actual.sla, ahora)
+            : comando.accion === 'reanudar'
+              ? await this.sla.alReanudar(actual.sla, ahora, clasificacion)
+              : {};
+      await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
       const { ticket } = resultado;
       return {
         id: ticket.id,

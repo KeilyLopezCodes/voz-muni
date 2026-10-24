@@ -186,6 +186,7 @@ describe('Atención de la queja (SPEC 22)', () => {
         motivoEspera: null,
         trasladoPendiente: false,
         creadoEn: expect.stringMatching(/Z$/),
+        sla: expect.objectContaining({ pausado: false }), // SPEC 30
       });
       const texto = JSON.stringify(res.body);
       expect(texto).not.toContain('vecino@atencion.test');

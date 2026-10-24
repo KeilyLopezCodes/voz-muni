@@ -1,4 +1,5 @@
 import type { FiltroTickets, TicketAlcance } from '../autorizacion/alcance-tickets';
+import type { SlaLectura } from '../sla/sla-lectura';
 import type { EstadoTicket } from '../ticket/estado-ticket';
 
 export interface TicketResumen extends TicketAlcance {
@@ -45,6 +46,7 @@ export interface TicketDetalleLectura {
   confirmacionVenceEn: Date | null; // fin del plazo para confirmar o reabrir (SPEC 27)
   reaperturas: number;
   solicitanteId: number;
+  sla: SlaLectura; // el servicio lo quita para el alcance propia (SPEC 30)
 }
 
 export interface Pagina<T> {

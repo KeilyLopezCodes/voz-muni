@@ -3,6 +3,8 @@ import path from 'node:path';
 import knex, { type Knex } from 'knex';
 import type { Env } from '../../src/infrastructure/config/env';
 import { buildKnexConfig } from '../../src/infrastructure/database/knex-config';
+import { ASUETOS_2026_2027 } from '../../src/infrastructure/database/seed-helpers/asuetos-guatemala';
+import { generarCalendario } from '../../src/infrastructure/database/seed-helpers/calendario';
 
 const databaseUrlTest = process.env.DATABASE_URL_TEST;
 if (!databaseUrlTest) {
@@ -70,4 +72,31 @@ export function createTestKnex(): Knex {
     migrations: { ...config.migrations, directory: path.join(distDatabaseDir, 'migrations') },
     seeds: { ...config.seeds, directory: path.join(distDatabaseDir, 'seeds') },
   });
+}
+
+// Políticas de SLA de prueba (SPEC 30): aceptar y reabrir las exigen. También carga el calendario 2026–2027 si falta.
+export async function cargarSlaDePrueba(db: Knex, categoriaIds: number[]): Promise<void> {
+  const plazos = [
+    ['urgente', 2, 8],
+    ['alta', 8, 24],
+    ['media', 16, 48],
+    ['baja', 24, 72],
+  ] as const;
+  for (const categoriaId of categoriaIds) {
+    await db('politicas_sla')
+      .insert(
+        plazos.map(([prioridad, horasRespuesta, horasResolucion]) => ({
+          categoria_id: categoriaId,
+          prioridad,
+          horas_respuesta: horasRespuesta,
+          horas_resolucion: horasResolucion,
+        })),
+      )
+      .onConflict(['categoria_id', 'prioridad'])
+      .ignore();
+  }
+  const [{ total }] = await db('calendario_laboral').count({ total: '*' });
+  if (Number(total) === 0) {
+    await db('calendario_laboral').insert(generarCalendario('2026-01-01', '2027-12-31', ASUETOS_2026_2027));
+  }
 }

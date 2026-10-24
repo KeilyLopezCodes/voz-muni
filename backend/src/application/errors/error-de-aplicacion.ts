@@ -53,6 +53,8 @@ export type CodigoError =
   | 'PLAZO_NO_DEFINIDO'
   | 'PLAZO_CONFIRMACION_VENCIDO'
   | 'LIMITE_REAPERTURAS'
+  | 'MATRIZ_SLA_INVALIDA'
+  | 'SLA_NO_CONFIGURADO'
   | 'NO_AUTENTICADO'
   | 'TOKEN_INVALIDO'
   | 'CREDENCIALES_INVALIDAS'
@@ -102,6 +104,7 @@ const CODIGOS_DE_REGLA: readonly CodigoError[] = [
   'CALENDARIO_INCOMPLETO',
   'PLAZO_CONFIRMACION_VENCIDO',
   'LIMITE_REAPERTURAS',
+  'MATRIZ_SLA_INVALIDA',
 ];
 
 // Error esperado de un caso de uso. El mensaje es para desarrolladores, no para la UI.

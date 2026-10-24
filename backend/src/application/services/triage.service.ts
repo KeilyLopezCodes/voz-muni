@@ -11,6 +11,7 @@ import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { ComandoTriage, TicketTriageDto, TransicionDto } from '../dto/triage.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 import type { EnvioCorreo } from './envio-correo';
+import type { MotorSla } from './sla.service';
 
 interface TransicionHecha {
   actual: TicketParaTransicion;
@@ -28,6 +29,7 @@ export class TriageService {
     private readonly correo: EnvioCorreo,
     private readonly clock: Clock,
     private readonly appUrl: string, // APP_URL, sin barra final
+    private readonly sla: MotorSla,
   ) {}
 
   async transicionar(usuario: UsuarioAutenticado, id: number, comando: ComandoTriage): Promise<TransicionDto> {
@@ -63,7 +65,9 @@ export class TriageService {
       const nota =
         destino.id === actual.categoria.id ? undefined : `Categoría: ${actual.categoria.nombre} → ${destino.nombre}`;
       const resultado = actual.ticket.asignar(ctx, destino.dependenciaId, comando.prioridad, nota);
-      await ticketsEscritura.guardarTransicion(resultado, destino.id);
+      // Los dos plazos corren desde el registro con la categoría y la prioridad finales (SPEC 30).
+      const cambiosSla = await this.sla.alAceptar(actual.sla, { categoriaId: destino.id, prioridad: comando.prioridad });
+      await ticketsEscritura.guardarTransicion(resultado, destino.id, cambiosSla);
       return { actual, resultado, categoriaId: destino.id, dependenciaNombre: destino.dependenciaNombre };
     });
 

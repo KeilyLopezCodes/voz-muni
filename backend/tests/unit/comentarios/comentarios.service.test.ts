@@ -1,3 +1,4 @@
+import { slaNulo, slaVacio } from '../../support/sla-vacio';
 import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { ComentariosService } from '../../../src/application/services/comentarios.service';
 import type { FiltroTickets } from '../../../src/domain/autorizacion/alcance-tickets';
@@ -64,6 +65,8 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
         resueltoPor: null,
         confirmacionVenceEn: null,
         reaperturas: 0,
+        escaladoEn: null,
+        escaladoPor: null,
       }),
     );
   }
@@ -75,7 +78,7 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
       ticket,
       titulo: 'Bache',
       categoria: { id: 1, nombre: 'Baches' },
-      solicitante: { id: VECINO_ID, nombre: 'Ana López', email: null },
+      solicitante: { id: VECINO_ID, nombre: 'Ana López', email: null }, sla: slaVacio(), zonaId: 1,
     };
   }
 
@@ -137,6 +140,7 @@ function armar() {
     new TransaccionEnMemoria({ ticketsEscritura: tickets as unknown as TicketEscrituraRepository, comentarios }),
     lectura as unknown as TicketLecturaRepository,
     reloj,
+    slaNulo,
   );
   return { tickets, comentarios, reloj, servicio };
 }

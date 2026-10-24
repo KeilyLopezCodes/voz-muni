@@ -13,6 +13,7 @@ import type { Transaccion } from '../../domain/repositories/transaccion';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { ComentarioCreadoDto, ComentarioDto, DatosComentario } from '../dto/comentarios.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import type { MotorSla } from './sla.service';
 
 // Comentarios públicos y notas internas (RF-19, RF-22, SPEC 23). El permiso para escribir (comentarios.publico o
 // comentarios.interno, según `interno`) lo valida la presentación; aquí el acceso al ticket sale de tickets.ver.
@@ -21,6 +22,7 @@ export class ComentariosService {
     private readonly transaccion: Transaccion,
     private readonly tickets: TicketLecturaRepository,
     private readonly clock: Clock,
+    private readonly sla: MotorSla,
   ) {}
 
   comentar(usuario: UsuarioAutenticado, ticketId: number, datos: DatosComentario): Promise<ComentarioCreadoDto> {
@@ -53,7 +55,12 @@ export class ComentariosService {
         });
         if (reanuda) {
           const resultado = actual.ticket.reanudar({ actorId: usuario.id, ahora });
-          await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id);
+          // Mismo camino de salida de la pausa que reanudar (SPEC 30).
+          const cambiosSla = await this.sla.alReanudar(actual.sla, ahora, {
+            categoriaId: actual.categoria.id,
+            prioridad: actual.ticket.prioridad,
+          });
+          await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
           estado = resultado.ticket.estado;
         }
         return {

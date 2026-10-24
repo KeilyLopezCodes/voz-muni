@@ -21,6 +21,8 @@ const BASE: TicketProps = {
   resueltoPor: null,
   confirmacionVenceEn: null,
   reaperturas: 0,
+  escaladoEn: null,
+  escaladoPor: null,
 };
 
 function ticketEn(estado: EstadoTicket, overrides: Partial<TicketProps> = {}): Ticket {
@@ -72,6 +74,8 @@ describe('Ticket', () => {
         resueltoPor: null,
         confirmacionVenceEn: null,
         reaperturas: 0,
+        escaladoEn: null,
+        escaladoPor: null,
       });
       expect(Object.isFrozen(ticket)).toBe(true);
     });
@@ -461,9 +465,17 @@ describe('Ticket', () => {
   });
 
   describe('marcarEscalado', () => {
+    const AHORA_ESCALADO = new Date('2026-10-24T10:00:00Z');
+
+    it('guarda la fecha y el plazo (SPEC 32)', () => {
+      const ticket = ticketEn('en_proceso').marcarEscalado(AHORA_ESCALADO, 'respuesta');
+      expect(ticket.escaladoEn).toEqual(AHORA_ESCALADO);
+      expect(ticket.escaladoPor).toBe('respuesta');
+    });
+
     it.each(otrosEstados('rechazada', 'cerrada'))('en %s marca escalado sin cambiar de estado', (estado) => {
       const original = ticketEn(estado);
-      const ticket = original.marcarEscalado();
+      const ticket = original.marcarEscalado(AHORA_ESCALADO, 'resolucion');
 
       expect(ticket.escalado).toBe(true);
       expect(ticket.estado).toBe(estado);
@@ -471,12 +483,12 @@ describe('Ticket', () => {
     });
 
     it('es idempotente', () => {
-      const ticket = ticketEn('en_proceso').marcarEscalado().marcarEscalado();
+      const ticket = ticketEn('en_proceso').marcarEscalado(AHORA_ESCALADO, 'resolucion').marcarEscalado(AHORA_ESCALADO, 'resolucion');
       expect(ticket.escalado).toBe(true);
     });
 
     it.each<EstadoTicket>(['rechazada', 'cerrada'])('en %s lanza OPERACION_NO_PERMITIDA', (estado) => {
-      esperarRegla(() => ticketEn(estado).marcarEscalado(), 'OPERACION_NO_PERMITIDA');
+      esperarRegla(() => ticketEn(estado).marcarEscalado(AHORA_ESCALADO, 'resolucion'), 'OPERACION_NO_PERMITIDA');
     });
   });
 

@@ -65,7 +65,7 @@ export class ConsultaTicketsService {
     if (!ticket) {
       throw new ErrorDeAplicacion('NO_ENCONTRADO', `No existe el ticket ${id}`);
     }
-    const { solicitanteId, creadoEn, resueltoEn, cerradoEn, resolucion, confirmacionVenceEn, reaperturas, ...resto } =
+    const { solicitanteId, creadoEn, resueltoEn, cerradoEn, resolucion, confirmacionVenceEn, reaperturas, sla, ...resto } =
       ticket;
     // Con el alcance propia (el vecino) no se expone quién resolvió, como el técnico en SPEC 25. Depende del
     // alcance, no del nombre del rol (SPEC 26).
@@ -85,6 +85,7 @@ export class ConsultaTicketsService {
               resueltaPor: verQuienResolvio ? resolucion.resueltaPor : null,
             },
       confirmacion: await this.confirmacion(usuario, ticket),
+      sla: verQuienResolvio ? sla : null,
     };
   }
 

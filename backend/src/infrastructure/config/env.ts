@@ -19,6 +19,11 @@ export interface Env extends DatabaseEnv {
   APP_URL: string;
   RECUPERACION_LIMITE_POR_VENTANA: number;
   ADJUNTOS_DIR: string;
+  // Tareas programadas (SPEC 31 a 36). Opcionales para que los entornos de prueba no tengan que declararlas.
+  JOBS_ACTIVOS?: boolean;
+  SLA_JOB_CRON?: string;
+  CORREOS_JOB_CRON?: string;
+  PURGA_JOB_CRON?: string;
 }
 
 const OBLIGATORIA = { error: 'es obligatoria' };
@@ -54,6 +59,11 @@ const envSchema = databaseEnvSchema.extend({
   RECUPERACION_LIMITE_POR_VENTANA: z.coerce.number().int().positive().default(5),
   // Carpeta de los adjuntos (SPEC 24). El backend la crea al arrancar si no existe.
   ADJUNTOS_DIR: z.string(OBLIGATORIA).min(1, OBLIGATORIA),
+  // Sin valor: activas fuera de NODE_ENV=test. app.ts nunca las inicia, solo server.ts.
+  JOBS_ACTIVOS: z.enum(['true', 'false'], { error: 'debe ser true o false' }).optional().transform((v) => (v === undefined ? undefined : v === 'true')),
+  SLA_JOB_CRON: z.string().min(1).default('*/5 * * * *'),
+  CORREOS_JOB_CRON: z.string().min(1).default('* * * * *'),
+  PURGA_JOB_CRON: z.string().min(1).default('0 3 * * *'),
 });
 
 function parse<T>(schema: z.ZodType<T>, source: NodeJS.ProcessEnv): T {
@@ -69,7 +79,8 @@ function parse<T>(schema: z.ZodType<T>, source: NodeJS.ProcessEnv): T {
 
 // Falla al arrancar si la configuración es inválida, en vez de en la primera consulta.
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  return parse(envSchema, source);
+  const env = parse(envSchema, source);
+  return { ...env, JOBS_ACTIVOS: env.JOBS_ACTIVOS ?? env.NODE_ENV !== 'test' };
 }
 
 // Solo la conexión: la CLI de Knex migra y siembra sin necesitar JWT_SECRET.
