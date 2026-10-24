@@ -16,6 +16,13 @@ export const RUTAS_PROTEGIDAS: readonly RutaProtegida[] = [
     enMenu: true,
   },
   {
+    // Detalle de una queja (SPEC 25): se llega desde "Mis quejas" o desde un enlace, no desde el menú.
+    path: '/tickets/:id',
+    roles: ['vecino', 'receptor', 'tecnico', 'coordinador', 'supervisor', 'administrador'],
+    etiqueta: 'comun:menu.tickets',
+    enMenu: false,
+  },
+  {
     path: '/tickets/nueva',
     roles: ['vecino', 'receptor', 'supervisor'],
     etiqueta: 'comun:menu.nuevoTicket',

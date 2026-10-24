@@ -11,6 +11,8 @@ describe('destinoTrasLogin', () => {
     ['vecino', { desde: '/tickets/nueva' }, '/tickets/nueva'],
     ['vecino', { desde: '/tickets?pagina=2' }, '/tickets?pagina=2'],
     ['supervisor', { desde: '/reportes' }, '/reportes'],
+    ['vecino', { desde: '/tickets/15' }, '/tickets/15'],
+    ['tecnico', { desde: '/tickets/15' }, '/tickets/15'],
     // Rutas que el rol no puede usar, o que no son protegidas.
     ['vecino', { desde: '/admin' }, '/tickets'],
     ['administrador', { desde: '/tickets/nueva' }, '/admin'],

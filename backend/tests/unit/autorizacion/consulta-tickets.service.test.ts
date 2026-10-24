@@ -3,15 +3,27 @@ import { ConsultaTicketsService } from '../../../src/application/services/consul
 import { cumpleFiltro, type FiltroTickets } from '../../../src/domain/autorizacion/alcance-tickets';
 import type {
   Pagina,
+  TicketDetalleLectura,
   TicketLecturaRepository,
+  TicketListado,
   TicketResumen,
 } from '../../../src/domain/repositories/ticket-lectura-repository';
+import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
+
+interface PasoHistorial {
+  ticketId: number;
+  estadoNuevo: EstadoTicket;
+  motivo: string | null;
+}
 
 // Aplica el filtro en memoria con la misma regla del dominio y registra lo que recibe.
 class TicketsEnMemoria implements TicketLecturaRepository {
   readonly filtrosRecibidos: FiltroTickets[] = [];
 
-  constructor(private readonly tickets: TicketResumen[]) {}
+  constructor(
+    private readonly tickets: TicketResumen[],
+    private readonly historial: PasoHistorial[] = [],
+  ) {}
 
   async listar(filtro: FiltroTickets, pagina: number, tamano: number): Promise<Pagina<TicketResumen>> {
     this.filtrosRecibidos.push(filtro);
@@ -22,6 +34,47 @@ class TicketsEnMemoria implements TicketLecturaRepository {
   async obtener(id: number, filtro: FiltroTickets): Promise<TicketResumen | null> {
     this.filtrosRecibidos.push(filtro);
     return this.tickets.find((t) => t.id === id && cumpleFiltro(t, filtro)) ?? null;
+  }
+
+  async listarConTitulo(filtro: FiltroTickets, pagina: number, tamano: number): Promise<Pagina<TicketListado>> {
+    this.filtrosRecibidos.push(filtro);
+    const datos = this.tickets
+      .filter((t) => cumpleFiltro(t, filtro))
+      .map((t) => ({
+        id: t.id,
+        numero: t.numero,
+        titulo: `Queja ${t.id}`,
+        estado: t.estado,
+        creadoEn: t.creadoEn,
+        esperaRespuesta: t.estado === 'en_espera',
+      }));
+    return { datos, pagina, tamano, total: datos.length };
+  }
+
+  // Misma regla que la consulta SQL: el motivo del último paso a en_espera, solo si sigue en espera.
+  async obtenerDetalle(id: number, filtro: FiltroTickets): Promise<TicketDetalleLectura | null> {
+    this.filtrosRecibidos.push(filtro);
+    const t = this.tickets.find((x) => x.id === id && cumpleFiltro(x, filtro));
+    if (!t) {
+      return null;
+    }
+    const esperas = this.historial.filter((h) => h.ticketId === id && h.estadoNuevo === 'en_espera');
+    return {
+      id: t.id,
+      numero: t.numero,
+      estado: t.estado,
+      titulo: `Queja ${t.id}`,
+      descripcion: 'Descripción',
+      categoria: { id: 1, nombre: 'Alumbrado' },
+      zona: { id: 1, nombre: 'Zona 1', tipo: 'zona' },
+      direccion: 'Dirección',
+      dependencia: t.dependenciaId === null ? null : { id: t.dependenciaId, nombre: 'Dependencia' },
+      creadoEn: t.creadoEn,
+      resueltoEn: null,
+      cerradoEn: null,
+      informacionSolicitada: t.estado === 'en_espera' ? (esperas.at(-1)?.motivo ?? null) : null,
+      solicitanteId: t.solicitanteId,
+    };
   }
 }
 
@@ -116,5 +169,86 @@ describe('ConsultaTicketsService', () => {
     const { servicio } = crear();
 
     expect(() => servicio.listar(coordinadorA, pagina, tamano)).toThrow(expect.objectContaining({ codigo: 'VALIDACION' }));
+  });
+
+  describe('detalle (SPEC 25)', () => {
+    const VECINO = 7;
+    const vecino: UsuarioAutenticado = {
+      id: VECINO,
+      nombre: 'Vecina',
+      rol: 'vecino',
+      dependenciaId: null,
+      permisos: { 'tickets.ver': 'propia' },
+    };
+
+    function conEstado(id: number, estado: EstadoTicket, solicitanteId = VECINO): TicketResumen {
+      return { ...ticket(id, DEP_A), estado, solicitanteId };
+    }
+
+    function crearDetalle() {
+      const repo = new TicketsEnMemoria(
+        [conEstado(1, 'en_espera'), conEstado(2, 'en_proceso'), conEstado(3, 'en_espera', 99)],
+        [
+          { ticketId: 1, estadoNuevo: 'en_espera', motivo: 'Envíe una foto' },
+          { ticketId: 1, estadoNuevo: 'en_proceso', motivo: null },
+          { ticketId: 1, estadoNuevo: 'en_espera', motivo: 'Envíe el número de contador' },
+          { ticketId: 2, estadoNuevo: 'en_espera', motivo: 'Ya respondido' },
+          { ticketId: 2, estadoNuevo: 'en_proceso', motivo: null },
+        ],
+      );
+      return { repo, servicio: new ConsultaTicketsService(repo) };
+    }
+
+    it('informacionSolicitada es el motivo del último paso a en_espera', async () => {
+      const { servicio } = crearDetalle();
+
+      const detalle = await servicio.detalle(vecino, 1);
+
+      expect(detalle.informacionSolicitada).toBe('Envíe el número de contador');
+      expect(detalle.creadoEn).toBe('2026-10-22T00:00:00.000Z');
+    });
+
+    it('informacionSolicitada es null si la queja ya no está en espera', async () => {
+      const { servicio } = crearDetalle();
+
+      await expect(servicio.detalle(vecino, 2)).resolves.toMatchObject({ estado: 'en_proceso', informacionSolicitada: null });
+    });
+
+    it('esSolicitante es true para el solicitante y false para otro usuario', async () => {
+      const { servicio } = crearDetalle();
+
+      await expect(servicio.detalle(vecino, 1)).resolves.toMatchObject({ esSolicitante: true });
+      await expect(servicio.detalle(coordinadorA, 1)).resolves.toMatchObject({ esSolicitante: false });
+    });
+
+    it('no expone el id del solicitante', async () => {
+      const { servicio } = crearDetalle();
+
+      expect(await servicio.detalle(vecino, 1)).not.toHaveProperty('solicitanteId');
+    });
+
+    it('fuera de alcance responde NO_ENCONTRADO, igual que un ticket inexistente', async () => {
+      const { repo, servicio } = crearDetalle();
+
+      await expect(servicio.detalle(vecino, 3)).rejects.toMatchObject({ name: 'ErrorDeAplicacion', codigo: 'NO_ENCONTRADO' });
+      await expect(servicio.detalle(vecino, 99)).rejects.toMatchObject({ codigo: 'NO_ENCONTRADO' });
+      expect(repo.filtrosRecibidos[0]).toEqual([{ campo: 'solicitanteId', valor: VECINO }]);
+    });
+
+    it('listarParaUsuario usa el filtro de tickets.ver y devuelve fechas ISO', async () => {
+      const { repo, servicio } = crearDetalle();
+
+      const pagina = await servicio.listarParaUsuario(vecino, 1, 20);
+
+      expect(repo.filtrosRecibidos).toEqual([[{ campo: 'solicitanteId', valor: VECINO }]]);
+      expect(pagina.datos.map((t) => t.id)).toEqual([1, 2]);
+      expect(pagina.datos[0]).toMatchObject({ esperaRespuesta: true, creadoEn: '2026-10-22T00:00:00.000Z' });
+    });
+
+    it('listarParaUsuario rechaza un tamano mayor que 50', async () => {
+      const { servicio } = crearDetalle();
+
+      await expect(servicio.listarParaUsuario(vecino, 1, 51)).rejects.toMatchObject({ codigo: 'VALIDACION' });
+    });
   });
 });

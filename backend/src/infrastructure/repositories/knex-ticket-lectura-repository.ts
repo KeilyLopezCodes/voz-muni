@@ -1,6 +1,12 @@
 import type { Knex } from 'knex';
 import type { FiltroTickets } from '../../domain/autorizacion/alcance-tickets';
-import type { Pagina, TicketLecturaRepository, TicketResumen } from '../../domain/repositories/ticket-lectura-repository';
+import type {
+  Pagina,
+  TicketDetalleLectura,
+  TicketLecturaRepository,
+  TicketListado,
+  TicketResumen,
+} from '../../domain/repositories/ticket-lectura-repository';
 import type { EstadoTicket } from '../../domain/ticket/estado-ticket';
 import { aplicarFiltro, COLUMNAS_TICKET } from './knex-filtro';
 
@@ -27,6 +33,64 @@ const COLUMNAS = [
   't.dependencia_id',
 ];
 
+interface FilaListado {
+  id: string;
+  numero: string;
+  titulo: string;
+  estado: EstadoTicket;
+  creado_en: Date;
+}
+
+interface FilaDetalle {
+  id: string;
+  numero: string;
+  estado: EstadoTicket;
+  titulo: string;
+  descripcion: string;
+  categoria_id: string;
+  categoria_nombre: string;
+  zona_id: string;
+  zona_nombre: string;
+  zona_tipo: string;
+  direccion: string;
+  dependencia_id: string | null;
+  dependencia_nombre: string | null;
+  creado_en: Date;
+  resuelto_en: Date | null;
+  cerrado_en: Date | null;
+  informacion_solicitada: string | null;
+  solicitante_id: string;
+}
+
+// Del solicitante solo el id: ni correo, ni teléfono, ni DPI (RNF-12). Tampoco prioridad, técnico,
+// coordenadas ni datos adicionales (SPEC 25).
+const COLUMNAS_DETALLE = [
+  't.id',
+  't.numero',
+  't.estado',
+  't.titulo',
+  't.descripcion',
+  't.categoria_id',
+  'c.nombre as categoria_nombre',
+  't.zona_id',
+  'z.nombre as zona_nombre',
+  'z.tipo as zona_tipo',
+  't.direccion',
+  't.dependencia_id',
+  'd.nombre as dependencia_nombre',
+  't.creado_en',
+  't.resuelto_en',
+  't.cerrado_en',
+  't.solicitante_id',
+];
+
+// Misma fuente que motivoEspera de SPEC 22: el motivo de la última entrada a en_espera, solo mientras sigue en espera.
+const INFORMACION_SOLICITADA = `(CASE WHEN t.estado = 'en_espera' THEN (
+   SELECT h.motivo FROM ticket_historial h
+   WHERE h.ticket_id = t.id AND h.estado_nuevo = 'en_espera'
+   ORDER BY h.creado_en DESC, h.id DESC LIMIT 1
+ ) END) as informacion_solicitada`;
+
 const numeroONull = (valor: string | null) => (valor === null ? null : Number(valor));
 
 function aResumen(fila: FilaTicket): TicketResumen {
@@ -39,6 +103,26 @@ function aResumen(fila: FilaTicket): TicketResumen {
     registradoPor: numeroONull(fila.registrado_por),
     asignadoA: numeroONull(fila.asignado_a),
     dependenciaId: numeroONull(fila.dependencia_id),
+  };
+}
+
+function aDetalle(fila: FilaDetalle): TicketDetalleLectura {
+  return {
+    id: Number(fila.id),
+    numero: fila.numero,
+    estado: fila.estado,
+    titulo: fila.titulo,
+    descripcion: fila.descripcion,
+    categoria: { id: Number(fila.categoria_id), nombre: fila.categoria_nombre },
+    zona: { id: Number(fila.zona_id), nombre: fila.zona_nombre, tipo: fila.zona_tipo },
+    direccion: fila.direccion,
+    dependencia:
+      fila.dependencia_id === null ? null : { id: Number(fila.dependencia_id), nombre: fila.dependencia_nombre ?? '' },
+    creadoEn: fila.creado_en,
+    resueltoEn: fila.resuelto_en,
+    cerradoEn: fila.cerrado_en,
+    informacionSolicitada: fila.informacion_solicitada,
+    solicitanteId: Number(fila.solicitante_id),
   };
 }
 
@@ -73,5 +157,44 @@ export class KnexTicketLecturaRepository implements TicketLecturaRepository {
       't',
     ).first(COLUMNAS);
     return fila ? aResumen(fila) : null;
+  }
+
+  async listarConTitulo(filtro: FiltroTickets, pagina: number, tamano: number): Promise<Pagina<TicketListado>> {
+    if (filtro === null) {
+      return { datos: [], pagina, tamano, total: 0 };
+    }
+    const consulta = aplicarFiltro(this.db('tickets as t'), filtro, COLUMNAS_TICKET, 't');
+    const [{ total }] = await consulta.clone().count({ total: '*' });
+    const filas: FilaListado[] = await consulta
+      .select(['t.id', 't.numero', 't.titulo', 't.estado', 't.creado_en'])
+      .orderByRaw(`(CASE WHEN t.estado = 'en_espera' THEN 0 ELSE 1 END), t.creado_en DESC, t.id DESC`)
+      .limit(tamano)
+      .offset((pagina - 1) * tamano);
+    const datos = filas.map((fila) => ({
+      id: Number(fila.id),
+      numero: fila.numero,
+      titulo: fila.titulo,
+      estado: fila.estado,
+      creadoEn: fila.creado_en,
+      esperaRespuesta: fila.estado === 'en_espera',
+    }));
+    return { datos, pagina, tamano, total: Number(total) };
+  }
+
+  async obtenerDetalle(id: number, filtro: FiltroTickets): Promise<TicketDetalleLectura | null> {
+    if (filtro === null) {
+      return null;
+    }
+    const fila: FilaDetalle | undefined = await aplicarFiltro(
+      this.db('tickets as t').where('t.id', id),
+      filtro,
+      COLUMNAS_TICKET,
+      't',
+    )
+      .join('categorias as c', 'c.id', 't.categoria_id')
+      .join('zonas as z', 'z.id', 't.zona_id')
+      .leftJoin('dependencias as d', 'd.id', 't.dependencia_id')
+      .first([...COLUMNAS_DETALLE, this.db.raw(INFORMACION_SOLICITADA)]);
+    return fila ? aDetalle(fila) : null;
   }
 }

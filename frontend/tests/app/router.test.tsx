@@ -13,8 +13,9 @@ import { SessionProvider } from '../../src/shared/auth/SessionProvider'
 import '../../src/shared/i18n/i18n'
 
 // Tabla de rutas de SPEC 06, escrita aparte de rutas.ts para detectar si divergen.
-const ACCESO: Record<string, { roles: readonly Rol[]; titulo: string }> = {
-  '/tickets': { roles: ROLES, titulo: tickets.listado.titulo },
+// `tituloPorRol` cubre las páginas que cambian según el rol: el vecino ve "Mis quejas" en /tickets (SPEC 25).
+const ACCESO: Record<string, { roles: readonly Rol[]; titulo: string; tituloPorRol?: Partial<Record<Rol, string>> }> = {
+  '/tickets': { roles: ROLES, titulo: tickets.listado.titulo, tituloPorRol: { vecino: tickets.misQuejas.titulo } },
   '/tickets/nueva': { roles: ['vecino', 'receptor', 'supervisor'], titulo: tickets.nuevo.titulo },
   '/triage': { roles: ['supervisor'], titulo: tickets.triage.titulo },
   '/asignacion': { roles: ['coordinador', 'supervisor'], titulo: tickets.asignacion.titulo },
@@ -57,16 +58,32 @@ describe('router', () => {
   describe.each(ROLES)('rol %s', (rol) => {
     it.each(Object.keys(ACCESO))('%s según la tabla de rutas', (path) => {
       const router = renderRuta(path, rol)
-      const { roles, titulo } = ACCESO[path]
+      const { roles, titulo, tituloPorRol } = ACCESO[path]
 
       if (roles.includes(rol)) {
         expect(router.state.location.pathname).toBe(path)
-        expect(tituloActual()).toBe(titulo)
+        expect(tituloActual()).toBe(tituloPorRol?.[rol] ?? titulo)
       } else {
         expect(router.state.location.pathname).toBe('/403')
         expect(tituloActual()).toBe(comun.errores.noAutorizado.titulo)
       }
     })
+  })
+
+  it.each(ROLES)('/tickets/:id abre el detalle con el rol %s (SPEC 25)', async (rol) => {
+    const router = renderRuta('/tickets/15', rol)
+    expect(router.state.location.pathname).toBe('/tickets/15')
+    expect(await screen.findByRole('link', { name: tickets.detalle.volver })).toHaveAttribute('href', '/tickets')
+  })
+
+  it('/tickets/nueva no la toma /tickets/:id', () => {
+    renderRuta('/tickets/nueva', 'vecino')
+    expect(tituloActual()).toBe(tickets.nuevo.titulo)
+  })
+
+  it('sin sesión, /tickets/:id redirige a /login', () => {
+    const router = renderRuta('/tickets/15', null)
+    expect(router.state.location.pathname).toBe('/login')
   })
 
   it('/ redirige a /admin con el rol administrador', () => {

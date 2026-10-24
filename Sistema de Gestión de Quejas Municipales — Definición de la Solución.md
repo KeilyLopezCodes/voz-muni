@@ -326,9 +326,9 @@ Campos adicionales por categoría (RF-09):
 | POST /api/v1/vecinos | Alta de un vecino nuevo en ventanilla (nombre, DPI y correo o teléfono), con invitación si da correo | Receptor, Supervisor |
 | GET /api/v1/public/tickets/:numero | Consulta de estado con dato de contacto | Público |
 | POST /api/v1/tickets | Registrar queja | Vecino, Receptor, Supervisor |
-| GET /api/v1/tickets | Listado filtrado y paginado, limitado por rol | Internos, Vecino |
+| GET /api/v1/tickets | Listado filtrado y paginado, limitado por rol. Primera versión (SPEC 25): paginado, sin filtros, con las quejas En espera primero; RF-36 agrega los filtros | Internos, Vecino |
 | GET /api/v1/tickets/triage | Bandeja de quejas en `nueva` y `en_revision`, de la más antigua a la más reciente | Supervisor |
-| GET /api/v1/tickets/:id | Detalle con línea de tiempo | Según visibilidad |
+| GET /api/v1/tickets/:id | Detalle con línea de tiempo. Primera versión (SPEC 25): datos básicos y la información solicitada si está En espera, sin línea de tiempo ni datos del solicitante; RF-25 la completa agregando campos sin quitar ni renombrar los existentes | Según visibilidad |
 | POST /api/v1/tickets/:id/transiciones | Cambiar estado con motivo. Campo `accion`: `tomar` (nueva → en_revision), `aceptar` (en_revision → asignada, con prioridad y categoría final) y `rechazar` (en_revision → rechazada, con motivo) | Según matriz de permisos (triage: Supervisor) |
 | GET /api/v1/tickets/por-asignar | Bandeja de quejas sin técnico (o abiertas), por prioridad y antigüedad | Coordinador, Supervisor |
 | PATCH /api/v1/tickets/:id/asignacion | Asignar o reasignar técnico. Cuerpo `{ tecnicoId, motivo? }`; el motivo es obligatorio al reasignar | Coordinador, Supervisor |

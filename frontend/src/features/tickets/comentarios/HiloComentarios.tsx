@@ -10,7 +10,7 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { type Ref, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '../../../shared/api/api-error'
 import type { Rol } from '../../../shared/auth/roles'
@@ -20,6 +20,7 @@ import {
   CLAVES_COMENTARIOS,
   comentar,
   type Comentario,
+  type ComentarioCreado,
   CUERPO_MAX,
   editarComentario,
   listarComentarios,
@@ -36,10 +37,21 @@ interface HiloComentariosProps {
   ticketId: number
   estadoTicket: string
   clavesBandeja: readonly unknown[] // la bandeja del panel, para recargarla si el comentario cambió el estado
+  nivelTitulo?: 'h2' | 'h3'
+  campoRef?: Ref<HTMLTextAreaElement> // la caja de texto, para llevarle el foco desde "Responder" (SPEC 25)
+  onComentado?: (respuesta: ComentarioCreado) => void
 }
 
-// Comentarios públicos y notas internas de una queja (SPEC 23), al pie de los paneles internos.
-export function HiloComentarios({ ticketId, estadoTicket, clavesBandeja }: HiloComentariosProps) {
+// Comentarios públicos y notas internas de una queja (SPEC 23), al pie de los paneles internos y en el detalle
+// del vecino (SPEC 25). Quien no tiene comentarios.interno (el vecino) no ve el selector de nota interna.
+export function HiloComentarios({
+  ticketId,
+  estadoTicket,
+  clavesBandeja,
+  nivelTitulo = 'h3',
+  campoRef,
+  onComentado,
+}: HiloComentariosProps) {
   const { t, i18n } = useTranslation('tickets')
   const session = useSession()
   const hilo = useQuery({ queryKey: CLAVES_COMENTARIOS.hilo(ticketId), queryFn: () => listarComentarios(ticketId) })
@@ -47,7 +59,7 @@ export function HiloComentarios({ ticketId, estadoTicket, clavesBandeja }: HiloC
 
   return (
     <Stack spacing={2} component="section" aria-label={t('comentarios.titulo')}>
-      <Typography variant="subtitle1" component="h3">
+      <Typography variant="subtitle1" component={nivelTitulo}>
         {t('comentarios.titulo')}
       </Typography>
       {hilo.isPending && <CircularProgress aria-label={t('comentarios.cargando')} />}
@@ -71,6 +83,8 @@ export function HiloComentarios({ ticketId, estadoTicket, clavesBandeja }: HiloC
         estadoTicket={estadoTicket}
         clavesBandeja={clavesBandeja}
         puedeNotas={session !== null && ROLES_CON_NOTAS.includes(session.rol)}
+        campoRef={campoRef}
+        onComentado={onComentado}
       />
     </Stack>
   )
@@ -198,11 +212,15 @@ function CajaComentario({
   estadoTicket,
   clavesBandeja,
   puedeNotas,
+  campoRef,
+  onComentado,
 }: {
   ticketId: number
   estadoTicket: string
   clavesBandeja: readonly unknown[]
   puedeNotas: boolean
+  campoRef?: Ref<HTMLTextAreaElement>
+  onComentado?: (respuesta: ComentarioCreado) => void
 }) {
   const { t } = useTranslation('tickets')
   const queryClient = useQueryClient()
@@ -221,6 +239,7 @@ function CajaComentario({
       if (respuesta.ticket.estado !== estadoTicket) {
         void queryClient.invalidateQueries({ queryKey: clavesBandeja })
       }
+      onComentado?.(respuesta)
     },
     onError: (fallo) => {
       setError(
@@ -258,6 +277,7 @@ function CajaComentario({
           label={t('comentarios.campo')}
           multiline
           minRows={2}
+          inputRef={campoRef}
           error={exceso}
           helperText={t('comentarios.contador', { actual: largo(texto), maximo: CUERPO_MAX })}
         />

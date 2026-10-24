@@ -8,6 +8,7 @@ import { RestablecerPage } from '../features/auth/pages/RestablecerPage'
 import { VerificarPage } from '../features/auth/pages/VerificarPage'
 import { ReportesPage } from '../features/reportes/pages/ReportesPage'
 import { ConsultaPage } from '../features/tickets/pages/ConsultaPage'
+import { DetalleTicketPage } from '../features/tickets/pages/DetalleTicketPage'
 import { NuevoTicketPage } from '../features/tickets/pages/NuevoTicketPage'
 import { TicketsPage } from '../features/tickets/pages/TicketsPage'
 import { AsignacionPage } from '../features/tickets/asignacion/AsignacionPage'
@@ -26,6 +27,7 @@ import { NoEncontradoPage } from '../shared/pages/NoEncontradoPage'
 // Página de cada ruta protegida. Los roles salen de RUTAS_PROTEGIDAS.
 const PAGINAS: Record<string, ComponentType> = {
   '/tickets': TicketsPage,
+  '/tickets/:id': DetalleTicketPage,
   '/tickets/nueva': NuevoTicketPage,
   '/triage': TriagePage,
   '/asignacion': AsignacionPage,
