@@ -20,3 +20,16 @@ export const registroTicketSchema = z
     lng: z.number().optional(),
   })
   .strict();
+
+// Query de GET /api/v1/tickets (SPEC 25). Los filtros llegan con RF-36: por ahora cualquier otro parámetro
+// responde VALIDACION.
+export const listadoTicketsSchema = z
+  .object({
+    pagina: z.coerce.number().int().min(1).default(1),
+    tamano: z.coerce.number().int().min(1).max(50).default(20),
+  })
+  .strict();
+
+export const idTicketSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});

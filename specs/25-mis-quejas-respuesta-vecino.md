@@ -1,6 +1,6 @@
 # SPEC 25 — "Mis quejas" del vecino y respuesta a solicitudes de información
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 11, SPEC 12, SPEC 17, SPEC 18, SPEC 23, SPEC 24
 > **Fecha:** 2026-10-22
 > **Objetivo:** Dar al vecino una lista de sus quejas en `/tickets` y un detalle en `/tickets/:id` donde ve el estado, lo que la municipalidad le pidió, los comentarios y adjuntos públicos, y responde con un comentario, mediante versiones mínimas de `GET /api/v1/tickets` y `GET /api/v1/tickets/:id`.

@@ -61,10 +61,6 @@ export function createApp(container: Container): Express {
   );
   app.use(
     '/api/v1/tickets',
-    ticketsRoutes(new TicketsController(container.registroTicketsService), autenticar(container.autorizacionService)),
-  );
-  app.use(
-    '/api/v1/tickets',
     transicionesRoutes(new TransicionesController(container.triageService, container.atencionService), autenticar(container.autorizacionService)),
   );
   app.use(
@@ -82,6 +78,14 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1/tickets',
     adjuntosRoutes(new AdjuntosController(container.adjuntosService), autenticar(container.autorizacionService)),
+  );
+  // Después de los routers con rutas fijas bajo /api/v1/tickets: su GET /:id las taparía (SPEC 25).
+  app.use(
+    '/api/v1/tickets',
+    ticketsRoutes(
+      new TicketsController(container.registroTicketsService, container.consultaTicketsService),
+      autenticar(container.autorizacionService),
+    ),
   );
   app.use(
     '/api/v1/vecinos',

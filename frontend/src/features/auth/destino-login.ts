@@ -1,3 +1,4 @@
+import { matchRoutes } from 'react-router'
 import { inicioPorRol } from '../../shared/auth/inicio-por-rol'
 import type { Rol } from '../../shared/auth/roles'
 import { RUTAS_PROTEGIDAS } from '../../shared/auth/rutas'
@@ -10,8 +11,9 @@ export function destinoTrasLogin(rol: Rol, estado: unknown): string {
     return inicioPorRol(rol)
   }
   const ruta = desde.split(/[?#]/, 1)[0]
-  const permitida = RUTAS_PROTEGIDAS.some((protegida) => protegida.path === ruta && protegida.roles.includes(rol))
-  return permitida ? desde : inicioPorRol(rol)
+  // matchRoutes elige la ruta como el router: /tickets/nueva antes que /tickets/:id (SPEC 25).
+  const protegida = matchRoutes([...RUTAS_PROTEGIDAS], ruta)?.[0]?.route
+  return protegida?.roles.includes(rol) ? desde : inicioPorRol(rol)
 }
 
 // Solo rutas internas: empieza con "/" y no con "//" ni "/\" (que el navegador trata como otro sitio).

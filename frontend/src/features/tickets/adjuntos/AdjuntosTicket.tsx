@@ -31,10 +31,12 @@ const IMAGENES = ['image/jpeg', 'image/png']
 interface AdjuntosTicketProps {
   ticketId: number
   estadoTicket: string
+  soloLectura?: boolean // el detalle del vecino (SPEC 25): ver y descargar, sin subir ni borrar
+  nivelTitulo?: 'h2' | 'h3'
 }
 
 // Adjuntos de una queja en los paneles internos (SPEC 24): lista, descarga, evidencias y borrado en 5 minutos.
-export function AdjuntosTicket({ ticketId, estadoTicket }: AdjuntosTicketProps) {
+export function AdjuntosTicket({ ticketId, estadoTicket, soloLectura = false, nivelTitulo = 'h3' }: AdjuntosTicketProps) {
   const { t, i18n } = useTranslation('tickets')
   const queryClient = useQueryClient()
   const session = useSession()
@@ -74,7 +76,7 @@ export function AdjuntosTicket({ ticketId, estadoTicket }: AdjuntosTicketProps) 
 
   return (
     <Stack spacing={1.5} component="section" aria-label={t('adjuntos.titulo')}>
-      <Typography variant="subtitle1" component="h3">
+      <Typography variant="subtitle1" component={nivelTitulo}>
         {t('adjuntos.titulo')}
       </Typography>
       {lista.isPending && <CircularProgress aria-label={t('adjuntos.cargando')} />}
@@ -106,7 +108,7 @@ export function AdjuntosTicket({ ticketId, estadoTicket }: AdjuntosTicketProps) 
             <Button size="small" onClick={() => void abrir(adjunto, false)}>
               {t('adjuntos.descargar')}
             </Button>
-            {adjunto.borrable && (
+            {adjunto.borrable && !soloLectura && (
               <Button size="small" color="error" disabled={borrado.isPending} onClick={() => borrado.mutate(adjunto.id)}>
                 {t('adjuntos.borrar')}
               </Button>
@@ -114,13 +116,15 @@ export function AdjuntosTicket({ ticketId, estadoTicket }: AdjuntosTicketProps) 
           </Stack>
         </Paper>
       ))}
-      <SubirEvidencia
-        ticketId={ticketId}
-        finalizada={ESTADOS_FINALES.includes(estadoTicket)}
-        puedeInterno={session !== null && ROLES_CON_NOTAS.includes(session.rol)}
-        restantes={Math.max(0, MAX_ARCHIVOS - evidencias)}
-        onSubido={recargar}
-      />
+      {!soloLectura && (
+        <SubirEvidencia
+          ticketId={ticketId}
+          finalizada={ESTADOS_FINALES.includes(estadoTicket)}
+          puedeInterno={session !== null && ROLES_CON_NOTAS.includes(session.rol)}
+          restantes={Math.max(0, MAX_ARCHIVOS - evidencias)}
+          onSubido={recargar}
+        />
+      )}
     </Stack>
   )
 }

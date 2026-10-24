@@ -507,5 +507,44 @@
       "red": "No pudimos conectar con el servidor. Intenta de nuevo.",
       "generico": "No pudimos completar la acción. Intenta de nuevo."
     }
+  },
+  "estados": {
+    "nueva": "Nueva",
+    "en_revision": "En revisión",
+    "asignada": "Asignada",
+    "en_proceso": "En proceso",
+    "en_espera": "En espera",
+    "resuelta": "Resuelta",
+    "cerrada": "Cerrada",
+    "rechazada": "Rechazada"
+  },
+  "misQuejas": {
+    "titulo": "Mis quejas",
+    "cargando": "Cargando tus quejas…",
+    "errorCarga": "No pudimos cargar tus quejas.",
+    "reintentar": "Reintentar",
+    "vacia": "Todavía no registraste quejas.",
+    "registrar": "Registrar una queja",
+    "abrir": "Ver la queja {{numero}}",
+    "necesitaRespuesta": "Necesita tu respuesta",
+    "paginacion": "Páginas de mis quejas"
+  },
+  "detalle": {
+    "volver": "Mis quejas",
+    "cargando": "Cargando la queja…",
+    "errorCarga": "No pudimos cargar la queja.",
+    "reintentar": "Reintentar",
+    "noEncontrada": "No encontramos esta queja.",
+    "descripcion": "Descripción",
+    "categoria": "Categoría",
+    "ubicacion": "Zona y dirección",
+    "dependencia": "Dependencia a cargo",
+    "sinDependencia": "Todavía en revisión",
+    "registrada": "Registrada",
+    "resuelta": "Resuelta",
+    "cerrada": "Cerrada",
+    "informacionSolicitada": "La municipalidad necesita: {{informacion}}",
+    "responder": "Responder",
+    "respuestaEnviada": "Gracias, enviamos tu respuesta."
   }
 }
