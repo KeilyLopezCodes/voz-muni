@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TicketPorAsignar } from '../../../src/features/tickets/api/asignacion-api'
 import { PanelAsignacion } from '../../../src/features/tickets/asignacion/PanelAsignacion'
@@ -32,7 +33,9 @@ function montar(ticket: TicketPorAsignar, asignar: Manejador = () => respuesta(2
   const onTerminar = vi.fn()
   render(
     <QueryClientProvider client={queryClient}>
-      <PanelAsignacion ticket={ticket} onCerrar={vi.fn()} onTerminar={onTerminar} />
+      <MemoryRouter>
+        <PanelAsignacion ticket={ticket} onCerrar={vi.fn()} onTerminar={onTerminar} />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
   return { fetchMock, invalidar, onTerminar }
@@ -142,7 +145,9 @@ describe('PanelAsignacion: traslado', () => {
     render(
       <QueryClientProvider client={queryClient}>
         <SessionProvider session={{ usuarioId: 1, nombre: 'Usuario Prueba', rol, dependenciaId: rol === 'coordinador' ? 4 : null }}>
-          <PanelAsignacion ticket={ticket} onCerrar={vi.fn()} onTerminar={onTerminar} />
+          <MemoryRouter>
+            <PanelAsignacion ticket={ticket} onCerrar={vi.fn()} onTerminar={onTerminar} />
+          </MemoryRouter>
         </SessionProvider>
       </QueryClientProvider>,
     )
@@ -207,5 +212,13 @@ describe('PanelAsignacion: traslado', () => {
 
     expect(await screen.findByText(traslados.panel.pendiente)).toBeInTheDocument()
     expect(onTerminar).not.toHaveBeenCalled()
+  })
+})
+
+describe('PanelAsignacion: enlace al detalle (SPEC 28)', () => {
+  it('"Ver detalle completo" lleva a /tickets/:id', () => {
+    const ticket = porAsignar()
+    montar(ticket)
+    expect(screen.getByRole('link', { name: tickets.lineaTiempo.detalleCompleto })).toHaveAttribute('href', `/tickets/${ticket.id}`)
   })
 })

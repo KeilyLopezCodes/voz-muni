@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TicketTriage } from '../../../src/features/tickets/api/triage-api'
 import { PanelTriage } from '../../../src/features/tickets/triage/PanelTriage'
@@ -21,7 +22,9 @@ function montar(ticket: TicketTriage, transicion: Manejador = () => respuesta(20
   const onTerminar = vi.fn()
   render(
     <QueryClientProvider client={queryClient}>
-      <PanelTriage ticket={ticket} onCerrar={vi.fn()} onTerminar={onTerminar} />
+      <MemoryRouter>
+        <PanelTriage ticket={ticket} onCerrar={vi.fn()} onTerminar={onTerminar} />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
   return { fetchMock, invalidar, onTerminar }
@@ -173,5 +176,13 @@ describe('PanelTriage: traslado reciente (SPEC 21)', () => {
   it('sin sugerencia dice "ninguna", y sin traslado no muestra nada', () => {
     montar(queja({ estado: 'en_revision', trasladoReciente: { dependenciaOrigen: 'Obras', dependenciaSugerida: null, motivo: 'X' } }))
     expect(screen.getByText('Trasladada desde Obras. Sugerencia: ninguna. Motivo: X')).toBeInTheDocument()
+  })
+})
+
+describe('PanelTriage: enlace al detalle (SPEC 28)', () => {
+  it('"Ver detalle completo" lleva a /tickets/:id', () => {
+    const ticket = queja()
+    montar(ticket)
+    expect(screen.getByRole('link', { name: tickets.lineaTiempo.detalleCompleto })).toHaveAttribute('href', `/tickets/${ticket.id}`)
   })
 })

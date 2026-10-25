@@ -927,6 +927,36 @@ describe('Esquema de base de datos', () => {
     });
   });
 
+  describe('línea de tiempo (0023)', () => {
+    async function indices(tabla: string): Promise<{ indexname: string; indexdef: string }[]> {
+      return db('pg_indexes').where({ schemaname: 'public', tablename: tabla }).select('indexname', 'indexdef');
+    }
+
+    it('crea los índices (ticket_id, creado_en) y quita adjuntos_ticket_idx', async () => {
+      const traslados = await indices('solicitudes_traslado');
+      const adjuntos = await indices('adjuntos');
+      expect(traslados.find((i) => i.indexname === 'solicitudes_traslado_ticket_creado_idx')!.indexdef).toContain(
+        '(ticket_id, creado_en)',
+      );
+      expect(adjuntos.find((i) => i.indexname === 'adjuntos_ticket_creado_idx')!.indexdef).toContain('(ticket_id, creado_en)');
+      expect(adjuntos.map((i) => i.indexname)).not.toContain('adjuntos_ticket_idx');
+    });
+
+    it('revertir 0023 restaura adjuntos_ticket_idx y quita los dos índices', async () => {
+      await db.migrate.down({ name: '0023_linea_tiempo.js' });
+      try {
+        const adjuntos = (await indices('adjuntos')).map((i) => i.indexname);
+        expect(adjuntos).toContain('adjuntos_ticket_idx');
+        expect(adjuntos).not.toContain('adjuntos_ticket_creado_idx');
+        expect((await indices('solicitudes_traslado')).map((i) => i.indexname)).not.toContain(
+          'solicitudes_traslado_ticket_creado_idx',
+        );
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
   describe('hijos del ticket', () => {
     it('rechaza una calificación fuera de 1 a 5', () =>
       withRollback(async (trx) => {

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TicketAtencion } from '../../../src/features/tickets/api/atencion-api'
 import { PanelAtencion } from '../../../src/features/tickets/atencion/PanelAtencion'
@@ -25,7 +26,9 @@ function montar(ticket: TicketAtencion, transicion: Manejador = () => respuesta(
   render(
     <QueryClientProvider client={queryClient}>
       <SessionProvider session={{ usuarioId: 30, nombre: 'Usuario Prueba', rol, dependenciaId: 4 }}>
-        <PanelAtencion ticket={ticket} onCerrar={vi.fn()} onTerminar={onTerminar} />
+        <MemoryRouter>
+          <PanelAtencion ticket={ticket} onCerrar={vi.fn()} onTerminar={onTerminar} />
+        </MemoryRouter>
       </SessionProvider>
     </QueryClientProvider>,
   )
@@ -151,5 +154,13 @@ describe('PanelAtencion', () => {
 
     await waitFor(() => expect(onTerminar).toHaveBeenCalledWith(atencion.avisos.cambioEstado))
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['tickets', 'atencion'] })
+  })
+})
+
+describe('PanelAtencion: enlace al detalle (SPEC 28)', () => {
+  it('"Ver detalle completo" lleva a /tickets/:id', () => {
+    const ticket = enAtencion()
+    montar(ticket)
+    expect(screen.getByRole('link', { name: tickets.lineaTiempo.detalleCompleto })).toHaveAttribute('href', `/tickets/${ticket.id}`)
   })
 })

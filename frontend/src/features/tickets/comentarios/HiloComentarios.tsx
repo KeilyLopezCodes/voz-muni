@@ -127,9 +127,11 @@ function ItemComentario({
 
   return (
     // Las notas internas llevan otro fondo y además la etiqueta de texto: no dependen solo del color (WCAG).
+    // id: destino de los enlaces del historial (SPEC 28).
     <Paper
       variant="outlined"
       component="article"
+      id={`comentario-${comentario.id}`}
       sx={{ p: 1.5, bgcolor: comentario.interno ? 'action.hover' : 'background.paper', overflowWrap: 'anywhere' }}
     >
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}>

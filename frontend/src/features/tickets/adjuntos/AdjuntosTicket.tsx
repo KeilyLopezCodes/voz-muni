@@ -21,6 +21,7 @@ import {
   listarAdjuntos,
   subirAdjuntos,
 } from '../api/adjuntos-api'
+import { CLAVES_LINEA_TIEMPO } from '../api/linea-tiempo-api'
 import { ACEPTA, etiquetaTipo, MAX_ARCHIVOS, problemaArchivo, tamanoLegible } from './validar-archivos'
 
 // Roles con comentarios.interno en la matriz de SPEC 08: decide si se ofrece "Interno". El backend valida.
@@ -42,7 +43,11 @@ export function AdjuntosTicket({ ticketId, estadoTicket, soloLectura = false, ni
   const session = useSession()
   const lista = useQuery({ queryKey: CLAVES_ADJUNTOS.lista(ticketId), queryFn: () => listarAdjuntos(ticketId) })
   const [aviso, setAviso] = useState<string | null>(null)
-  const recargar = () => void queryClient.invalidateQueries({ queryKey: CLAVES_ADJUNTOS.lista(ticketId) })
+  // Subir o borrar también cambia el historial del detalle (SPEC 28).
+  const recargar = () => {
+    void queryClient.invalidateQueries({ queryKey: CLAVES_ADJUNTOS.lista(ticketId) })
+    void queryClient.invalidateQueries({ queryKey: CLAVES_LINEA_TIEMPO.lista(ticketId) })
+  }
 
   // Descarga con el token (no es un enlace directo): se arma un Blob y se abre o se guarda.
   const abrir = async (adjunto: Adjunto, ver: boolean) => {
@@ -75,7 +80,8 @@ export function AdjuntosTicket({ ticketId, estadoTicket, soloLectura = false, ni
   const evidencias = (lista.data?.datos ?? []).filter((a) => a.origen === 'atencion').length
 
   return (
-    <Stack spacing={1.5} component="section" aria-label={t('adjuntos.titulo')}>
+    // id="adjuntos": destino de los enlaces del historial (SPEC 28).
+    <Stack spacing={1.5} component="section" id="adjuntos" aria-label={t('adjuntos.titulo')}>
       <Typography variant="subtitle1" component={nivelTitulo}>
         {t('adjuntos.titulo')}
       </Typography>
