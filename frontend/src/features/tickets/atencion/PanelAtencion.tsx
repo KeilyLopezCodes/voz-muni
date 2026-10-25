@@ -1,3 +1,4 @@
+import OpenInNewRounded from '@mui/icons-material/OpenInNewRounded'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -15,6 +16,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type ReactNode, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { ApiError } from '../../../shared/api/api-error'
 import {
   CLAVES_ATENCION,
@@ -54,6 +56,10 @@ export function PanelAtencion({ ticket, onCerrar, onTerminar }: PanelAtencionPro
             </Typography>
             <Button onClick={onCerrar}>{t('atencion.panel.cerrar')}</Button>
           </Stack>
+          {/* El historial completo vive en el detalle (SPEC 28), no en el panel. */}
+          <Button component={Link} to={`/tickets/${ticket.id}`} size="small" startIcon={<OpenInNewRounded />} sx={{ mb: 1 }}>
+            {t('lineaTiempo.detalleCompleto')}
+          </Button>
           {/* key: al cambiar de queja, los formularios empiezan de cero. */}
           <ContenidoPanel key={ticket.id} ticket={ticket} onTerminar={onTerminar} />
         </Box>

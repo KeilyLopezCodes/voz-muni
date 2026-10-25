@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { ApiError } from '../../../shared/api/api-error'
 import { fechaGuatemala } from '../antiguedad'
+import { CLAVES_LINEA_TIEMPO } from '../api/linea-tiempo-api'
 import {
   CLAVES_TICKETS,
   type ConfirmacionDetalle,
@@ -43,6 +44,7 @@ export function SolucionQueja({ ticketId, resolucion, confirmacion, esSolicitant
   const recargar = () => {
     void queryClient.invalidateQueries({ queryKey: CLAVES_TICKETS.detalle(ticketId) })
     void queryClient.invalidateQueries({ queryKey: CLAVES_TICKETS.listado })
+    void queryClient.invalidateQueries({ queryKey: CLAVES_LINEA_TIEMPO.lista(ticketId) })
   }
 
   const accion = useMutation({

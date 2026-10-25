@@ -580,5 +580,41 @@
       "cambio": "La queja cambió. Actualizamos la información.",
       "error": "No pudimos completar la acción. Intenta de nuevo."
     }
+  },
+  "lineaTiempo": {
+    "titulo": "Historial",
+    "cargando": "Cargando el historial…",
+    "errorCarga": "No pudimos cargar el historial.",
+    "reintentar": "Reintentar",
+    "vacio": "Todavía no hay movimientos.",
+    "verAnteriores": "Ver anteriores",
+    "cargandoAnteriores": "Cargando…",
+    "interno": "Interno",
+    "verComentario": "Ver comentario",
+    "verAdjuntos": "Ver adjuntos",
+    "actores": {
+      "tu": "Tú",
+      "municipalidad": "Municipalidad",
+      "sistema": "VozMuni",
+      "usuario": "{{nombre}} ({{rol}})"
+    },
+    "eventos": {
+      "registrada": "Se registró la queja",
+      "estado": "{{actor}} cambió el estado a {{estado}}",
+      "estado_tu": "Tú cambiaste el estado a {{estado}}",
+      "asignacion": "{{actor}} asignó a {{tecnico}}",
+      "reasignacion": "{{actor}} reasignó de {{anterior}} a {{nuevo}}",
+      "trasladoSolicitado": "{{actor}} solicitó trasladar a {{dependencia}}",
+      "trasladoSolicitadoOtra": "{{actor}} solicitó trasladar a otra dependencia",
+      "trasladoRechazado": "Se rechazó el traslado",
+      "trasladoRetirado": "Se retiró el traslado",
+      "trasladoSinEfecto": "El traslado quedó sin efecto",
+      "comentario": "{{actor}} comentó",
+      "comentario_tu": "Tú comentaste",
+      "notaInterna": "{{actor}} agregó una nota interna",
+      "adjunto": "{{actor}} adjuntó {{nombre}}",
+      "adjunto_tu": "Tú adjuntaste {{nombre}}"
+    },
+    "detalleCompleto": "Ver detalle completo"
   }
 }

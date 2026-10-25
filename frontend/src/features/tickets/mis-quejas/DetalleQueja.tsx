@@ -17,8 +17,10 @@ import { useSession } from '../../../shared/auth/session'
 import { AdjuntosTicket } from '../adjuntos/AdjuntosTicket'
 import { fechaGuatemala } from '../antiguedad'
 import type { ComentarioCreado } from '../api/comentarios-api'
+import { CLAVES_LINEA_TIEMPO } from '../api/linea-tiempo-api'
 import { CLAVES_TICKETS, obtenerTicket, type TicketDetalle } from '../api/tickets-api'
 import { HiloComentarios } from '../comentarios/HiloComentarios'
+import { LineaTiempo } from '../linea-tiempo/LineaTiempo'
 import { COLOR_ESTADO } from './estado-chip'
 import { SolucionQueja } from './SolucionQueja'
 
@@ -26,7 +28,7 @@ interface DetalleQuejaProps {
   ticketId: number | null // null: el id de la URL no es válido
 }
 
-// Detalle de una queja (SPEC 25): datos, lo que pidió la municipalidad, el hilo y los adjuntos. El vecino responde
+// Detalle de una queja (SPEC 25): datos, lo que pidió la municipalidad, el hilo, los adjuntos y el historial (SPEC 28). El vecino responde
 // con un comentario público (SPEC 23); si la queja estaba en espera, el backend la devuelve a en proceso.
 export function DetalleQueja({ ticketId }: DetalleQuejaProps) {
   const { t } = useTranslation('tickets')
@@ -80,6 +82,7 @@ function Contenido({ ticket }: { ticket: TicketDetalle }) {
   const fecha = (iso: string) => fechaGuatemala(iso, i18n.language)
 
   const alComentar = (respuesta: ComentarioCreado) => {
+    void queryClient.invalidateQueries({ queryKey: CLAVES_LINEA_TIEMPO.lista(ticket.id) })
     if (ticket.estado === 'en_espera' && respuesta.ticket.estado !== 'en_espera') {
       setAviso(t('detalle.respuestaEnviada'))
     }
@@ -180,6 +183,10 @@ function Contenido({ ticket }: { ticket: TicketDetalle }) {
           soloLectura={session?.rol === 'vecino'}
           nivelTitulo="h2"
         />
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <LineaTiempo ticketId={ticket.id} />
       </Paper>
     </>
   )

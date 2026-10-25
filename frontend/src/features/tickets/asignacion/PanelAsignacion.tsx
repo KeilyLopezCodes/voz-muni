@@ -1,3 +1,4 @@
+import OpenInNewRounded from '@mui/icons-material/OpenInNewRounded'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -17,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { ApiError } from '../../../shared/api/api-error'
 import {
   asignarTecnico,
@@ -60,6 +62,10 @@ export function PanelAsignacion({ ticket, onCerrar, onTerminar }: PanelAsignacio
             </Typography>
             <Button onClick={onCerrar}>{t('asignacion.panel.cerrar')}</Button>
           </Stack>
+          {/* El historial completo vive en el detalle (SPEC 28), no en el panel. */}
+          <Button component={Link} to={`/tickets/${ticket.id}`} size="small" startIcon={<OpenInNewRounded />} sx={{ mb: 1 }}>
+            {t('lineaTiempo.detalleCompleto')}
+          </Button>
           {/* key: al cambiar de queja, el formulario empieza de cero. */}
           <FormularioAsignacion key={ticket.id} ticket={ticket} onTerminar={onTerminar} />
           <Divider sx={{ my: 2 }} />

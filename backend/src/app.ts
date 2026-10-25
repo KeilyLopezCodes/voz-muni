@@ -8,6 +8,7 @@ import { CatalogosController } from './presentation/controllers/catalogos.contro
 import { ComentariosController } from './presentation/controllers/comentarios.controller';
 import { ParametrosController } from './presentation/controllers/parametros.controller';
 import { HealthController } from './presentation/controllers/health.controller';
+import { LineaTiempoController } from './presentation/controllers/linea-tiempo.controller';
 import { RecuperacionController } from './presentation/controllers/recuperacion.controller';
 import { RegistroController } from './presentation/controllers/registro.controller';
 import { TicketsController } from './presentation/controllers/tickets.controller';
@@ -84,6 +85,7 @@ export function createApp(container: Container): Express {
     '/api/v1/tickets',
     ticketsRoutes(
       new TicketsController(container.registroTicketsService, container.consultaTicketsService),
+      new LineaTiempoController(container.lineaTiempoService),
       autenticar(container.autorizacionService),
     ),
   );

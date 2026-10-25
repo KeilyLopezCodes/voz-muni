@@ -59,6 +59,7 @@ function montar({
     'GET /tickets/5': () => respuesta(200, ticket),
     'GET /tickets/5/comentarios': () => respuesta(200, { datos: [] }),
     'GET /tickets/5/adjuntos': () => respuesta(200, { datos: [ADJUNTO] }),
+    'GET /tickets/5/linea-tiempo': () => respuesta(200, { datos: [], siguienteCursor: null }),
     ...rutas,
   })
   renderConConsultas(

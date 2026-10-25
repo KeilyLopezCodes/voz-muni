@@ -1,6 +1,6 @@
 # SPEC 28 — Línea de tiempo de la queja
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 03, SPEC 11, SPEC 20, SPEC 21, SPEC 23, SPEC 24, SPEC 25
 > **Fecha:** 2026-10-23
 > **Objetivo:** Exponer en `GET /api/v1/tickets/:id/linea-tiempo` una lista paginada por cursor, de la más reciente a la más antigua, con los cambios de estado, las asignaciones, las solicitudes de traslado, los comentarios y los adjuntos de una queja, filtrada según quien la ve, y mostrarla como "Historial" en `/tickets/:id`.
