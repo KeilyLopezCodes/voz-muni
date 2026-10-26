@@ -84,6 +84,7 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
   beforeEach(async () => {
     await db('comentarios').del();
     await db('ticket_historial').del();
+    await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
     await db('tickets').del();
   });
 

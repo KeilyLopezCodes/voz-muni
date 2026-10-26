@@ -1,4 +1,4 @@
-import type { TokenService } from '../../domain/auth/token-service';
+import { type TokenService, VIGENCIA_RESTABLECIMIENTO_MS } from '../../domain/auth/token-service';
 import type { Clock } from '../../domain/health/clock';
 import type { Transaccion } from '../../domain/repositories/transaccion';
 import type { UsuarioAdminRepository, UsuarioInterno } from '../../domain/repositories/usuario-admin-repository';
@@ -18,7 +18,7 @@ import type {
   UsuarioInternoDto,
 } from '../dto/usuario-interno.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
-import type { EnvioCorreo } from './envio-correo';
+import type { NotificadorCorreo } from './notificador-correo.service';
 
 function aDto(usuario: UsuarioInterno): UsuarioInternoDto {
   return { ...usuario, bloqueadoHasta: usuario.bloqueadoHasta?.toISOString() ?? null };
@@ -36,7 +36,7 @@ export class UsuariosService {
   constructor(
     private readonly usuarios: UsuarioAdminRepository,
     private readonly transaccion: Transaccion,
-    private readonly correo: EnvioCorreo,
+    private readonly correo: NotificadorCorreo,
     private readonly tokens: TokenService,
     private readonly clock: Clock,
     private readonly appUrl: string, // APP_URL, sin barra final
@@ -64,19 +64,26 @@ export class UsuariosService {
 
       const ahora = this.clock.now();
       const token = this.tokens.generarRenovacion();
-      const usuario = await this.transaccion.ejecutar(async (repos) => {
+      const { usuario, correoId } = await this.transaccion.ejecutar(async (repos) => {
         const creado = await repos.usuariosAdmin.crear({ ...datos, rol, dpi });
         await repos.restablecimientos.crear(creado.id, this.tokens.hashRenovacion(token), 'invitacion', ahora);
-        return creado;
+        // La invitación se encola en la misma transacción (SPEC 34), con el vencimiento del enlace.
+        const id = await this.correo.encolar(
+          'invitacion_usuario',
+          { nombre: creado.nombre, rol: creado.rol, enlace: `${this.appUrl}/restablecer?token=${token}` },
+          {
+            para: creado.email,
+            usuarioId: creado.id,
+            expiraEn: new Date(ahora.getTime() + VIGENCIA_RESTABLECIMIENTO_MS.invitacion),
+          },
+          repos.correosSalientes,
+        );
+        return { usuario: creado, correoId: id };
       });
 
-      // Se espera el envío para avisar al administrador si falló; el usuario ya quedó creado.
-      const invitacionEnviada = await this.correo.intentar(
-        'invitacion_usuario',
-        usuario.email,
-        { nombre: usuario.nombre, rol: usuario.rol, enlace: `${this.appUrl}/restablecer?token=${token}` },
-        usuario.id,
-      );
+      // Se espera el primer intento para avisar al administrador si falló; el usuario ya quedó creado y el job de
+      // correos lo reintenta.
+      const invitacionEnviada = await this.correo.despacharYEsperar([correoId]);
       return { usuario: aDto(usuario), invitacionEnviada };
     });
   }
@@ -122,15 +129,21 @@ export class UsuariosService {
         return aDto(actual);
       }
       const ahora = this.clock.now();
-      const desactivado = await this.transaccion.ejecutar(async (repos) => {
+      const { desactivado, correoId } = await this.transaccion.ejecutar(async (repos) => {
         await this.protegerAdmins(repos.usuariosAdmin, actorId, actual, false);
         const resultado = await repos.usuariosAdmin.actualizar(id, { activo: false });
         await repos.sesiones.revocarTodasDelUsuario(id, ahora);
         await repos.restablecimientos.invalidarPendientes(id, ahora);
-        return resultado;
+        const correo = await this.correo.encolar(
+          'cuenta_desactivada',
+          { nombre: resultado.nombre },
+          { para: resultado.email, usuarioId: id },
+          repos.correosSalientes,
+        );
+        return { desactivado: resultado, correoId: correo };
       });
       // La desactivación ya ocurrió: no depende del correo.
-      this.correo.sinEsperar('cuenta_desactivada', desactivado.email, { nombre: desactivado.nombre }, id);
+      await this.correo.despachar([correoId]);
       return aDto(desactivado);
     });
   }

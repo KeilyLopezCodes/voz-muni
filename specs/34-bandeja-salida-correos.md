@@ -1,6 +1,6 @@
 # SPEC 34 — Bandeja de salida de correos con reintentos
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 03, SPEC 09, SPEC 10, SPEC 12, SPEC 13, SPEC 16, SPEC 19, SPEC 22, SPEC 27, SPEC 33
 > **Fecha:** 2026-10-23
 > **Objetivo:** Hacer que todo correo del sistema se encole ya renderizado en la tabla `correos_salientes`, dentro de la misma transacción del caso de uso, se intente enviar en cuanto se confirma y, si falla, lo reintente el job `correos.job.ts` hasta completar 3 intentos, conservando después solo los metadatos.

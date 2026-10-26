@@ -1,6 +1,6 @@
 # SPEC 35 — Correos nuevos al vecino sobre la bandeja de salida
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 12, SPEC 15, SPEC 20, SPEC 21, SPEC 22, SPEC 23, SPEC 34
 > **Fecha:** 2026-10-23
 > **Objetivo:** Avisar al vecino por correo, a través de la bandeja de salida de SPEC 34, cuando se le pide información, cuando se asigna el primer técnico, cuando se traslada su queja y cuando recibe comentarios públicos (como máximo un correo por queja en cada ventana configurable de 30 minutos).

@@ -1,6 +1,5 @@
 import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { ErrorDeAplicacion } from '../../../src/application/errors/error-de-aplicacion';
-import { EnvioCorreo } from '../../../src/application/services/envio-correo';
 import { TriageService } from '../../../src/application/services/triage.service';
 import type { FiltroTickets } from '../../../src/domain/autorizacion/alcance-tickets';
 import { InvalidTransitionError } from '../../../src/domain/errors/invalid-transition-error';
@@ -26,6 +25,7 @@ import {
   TransaccionEnMemoria,
 } from '../auth/dobles';
 import { SLA_VACIO, SlaNulo } from '../sla/dobles-sla';
+import { notificadorDePrueba } from '../notificaciones/dobles-correo';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
 
@@ -127,7 +127,7 @@ function armar() {
   const bandeja = new BandejaFalsa();
   const enviador = new EnviadorEnMemoria();
   const errores: string[] = [];
-  const correo = new EnvioCorreo(plantillasConTriage(), enviador, (mensaje) => errores.push(mensaje));
+  const correo = notificadorDePrueba(plantillasConTriage(), enviador, (mensaje) => errores.push(mensaje));
   const servicio = new TriageService(
     new TransaccionEnMemoria({ ticketsEscritura: tickets }),
     bandeja,

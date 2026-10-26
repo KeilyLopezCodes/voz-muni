@@ -210,6 +210,7 @@ describe('Políticas de SLA (SPEC 29)', () => {
       const antes = await db('tickets').select('*');
       expect((await put(ids.sinSla, { plazos: MATRIZ })).status).toBe(200);
       expect(await db('tickets').select('*')).toEqual(antes);
+      await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
       await db('tickets').del();
     });
   });

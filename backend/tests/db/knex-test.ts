@@ -33,6 +33,9 @@ export function envDePrueba(cambios: Partial<Env> = {}): Env {
     // El job de SLA nunca corre en las pruebas: se llama a cada servicio directamente (SPEC 31 y 32).
     SLA_JOB_ACTIVO: false,
     SLA_JOB_CRON: '*/5 * * * *',
+    // Ni el de correos: el primer envío es sincrónico y los reintentos se prueban llamando a procesar (SPEC 34).
+    CORREOS_JOB_ACTIVO: false,
+    CORREOS_JOB_CRON: '* * * * *',
     ...cambios,
   };
 }
@@ -47,6 +50,7 @@ export async function reiniciarEsquema(db: Knex): Promise<void> {
   }
   // Primero las tablas que apuntan a usuarios. La bitácora no se puede vaciar: el rollback la elimina.
   const tablas = [
+    'correos_salientes', // apunta a tickets y usuarios (SPEC 34)
     'solicitudes_traslado',
     'ticket_historial',
     'comentarios',

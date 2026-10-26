@@ -63,6 +63,7 @@ describe('API de recuperación /api/v1/auth/recuperar y /restablecer', () => {
     enviador.enviados.length = 0;
     await db('sesiones').delete();
     await db('restablecimientos').delete();
+    await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
     await db('usuarios').delete();
   });
 
@@ -122,6 +123,19 @@ describe('API de recuperación /api/v1/auth/recuperar y /restablecer', () => {
       expect(filas).toHaveLength(1);
       expect(filas[0].token_hash).toMatch(/^[0-9a-f]{64}$/);
       expect(filas[0].token_hash).not.toContain(token);
+
+      // SPEC 34: el envío deja su fila en la bandeja, sin el cuerpo (que llevaba el token).
+      const { id: usuarioId } = await db('usuarios').where({ email: 'ana@vozmuni.test' }).first('id');
+      expect(await db('correos_salientes').select('plantilla_clave', 'usuario_id', 'estado', 'texto', 'html', 'expira_en')).toEqual([
+        {
+          plantilla_clave: 'recuperacion_password',
+          usuario_id: usuarioId,
+          estado: 'enviado',
+          texto: null,
+          html: null,
+          expira_en: expect.any(Date),
+        },
+      ]);
     });
 
     it('un cambio del asunto en la base se usa en el siguiente correo sin reiniciar', async () => {

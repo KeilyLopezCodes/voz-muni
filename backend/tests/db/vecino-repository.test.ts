@@ -22,6 +22,7 @@ describe('KnexVecinoRepository.crear (SPEC 13)', () => {
   });
 
   beforeEach(async () => {
+    await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
     await db('usuarios').delete();
   });
 

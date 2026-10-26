@@ -1,4 +1,3 @@
-import { EnvioCorreo } from '../../../src/application/services/envio-correo';
 import { RecuperacionService } from '../../../src/application/services/recuperacion.service';
 import {
   correosPendientes,
@@ -18,6 +17,7 @@ import {
   usuario,
   VecinosEnMemoria,
 } from './dobles';
+import { notificadorDePrueba } from '../notificaciones/dobles-correo';
 
 const NUEVA = 'Nueva-clave-2026';
 
@@ -39,7 +39,7 @@ function crearEscenario(filas: UsuarioFalso[] = [usuario()]) {
       vecinos: new VecinosEnMemoria(usuarios),
       registroVecinos: new RegistroVecinosEnMemoria(usuarios),
     }),
-    new EnvioCorreo(new PlantillasEnMemoria(), enviador, (mensaje) => errores.push(mensaje)),
+    notificadorDePrueba(new PlantillasEnMemoria(), enviador, (mensaje) => errores.push(mensaje)),
     new HasherFalso(),
     new TokensFalsos(),
     reloj,

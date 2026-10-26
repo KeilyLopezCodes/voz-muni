@@ -172,6 +172,23 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['creado_en', 'timestamp with time zone'],
     ['datos', 'jsonb'],
   ],
+  correos_salientes: [
+    ['id', 'bigint'],
+    ['plantilla_clave', 'text'],
+    ['para', 'text'],
+    ['asunto', 'text'],
+    ['texto', 'text'],
+    ['html', 'text'],
+    ['ticket_id', 'bigint'],
+    ['usuario_id', 'bigint'],
+    ['estado', 'text'],
+    ['intentos', 'integer'],
+    ['proximo_intento_en', 'timestamp with time zone'],
+    ['expira_en', 'timestamp with time zone'],
+    ['ultimo_error', 'text'],
+    ['creado_en', 'timestamp with time zone'],
+    ['terminado_en', 'timestamp with time zone'],
+  ],
   bitacora: [
     ['id', 'bigint'],
     ['usuario_id', 'bigint'],
@@ -945,6 +962,56 @@ describe('Esquema de base de datos', () => {
     });
   });
 
+  describe('bandeja de salida de correos (0029)', () => {
+    const correo = (cambios: Record<string, unknown> = {}) => ({
+      plantilla_clave: 'queja_registrada',
+      para: 'ana@correo.gt',
+      asunto: 'VozMuni: registramos tu queja',
+      texto: 'Hola',
+      html: '<p>Hola</p>',
+      ...cambios,
+    });
+
+    it('un correo nuevo queda pendiente, sin intentos y con el cuerpo', () =>
+      withRollback(async (trx) => {
+        const [fila] = await trx('correos_salientes').insert(correo()).returning(['estado', 'intentos', 'terminado_en']);
+        expect(fila).toEqual({ estado: 'pendiente', intentos: 0, terminado_en: null });
+      }));
+
+    it.each<[string, Record<string, unknown>]>([
+      ['un enviado con texto', { estado: 'enviado', terminado_en: new Date() }],
+      ['un pendiente sin texto', { texto: null }],
+      ['un enviado sin terminado_en', { estado: 'enviado', texto: null, html: null }],
+      ['intentos = 4', { intentos: 4 }],
+      ['un estado desconocido', { estado: 'perdido', texto: null, html: null, terminado_en: new Date() }],
+    ])('rechaza %s', (_caso, cambios) =>
+      withRollback(async (trx) => {
+        await expect(trx('correos_salientes').insert(correo(cambios))).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }),
+    );
+
+    it('acepta un enviado sin cuerpo y con terminado_en', () =>
+      withRollback(async (trx) => {
+        await trx('correos_salientes').insert(correo({ estado: 'enviado', texto: null, html: null, terminado_en: new Date(), intentos: 1 }));
+      }));
+
+    it('crea el índice parcial de pendientes', async () => {
+      const indice = await db('pg_indexes')
+        .where({ schemaname: 'public', tablename: 'correos_salientes', indexname: 'correos_salientes_pendientes_idx' })
+        .first('indexdef');
+      expect(indice.indexdef).toContain("(proximo_intento_en) WHERE (estado = 'pendiente'::text)");
+    });
+
+    it('revertir 0029 elimina la tabla', async () => {
+      await db.migrate.down({ name: '0029_correos_salientes.js' });
+      try {
+        expect(await db.schema.hasTable('correos_salientes')).toBe(false);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
   describe('cierre automático (0028)', () => {
     const CLAVES_0028 = ['queja_resuelta', 'queja_cerrada_automaticamente'];
 
@@ -1617,7 +1684,7 @@ describe('Esquema de base de datos', () => {
         .where({ table_schema: 'public' })
         .whereIn('table_name', Object.keys(expectedColumns));
       expect(tables).toEqual([]);
-      expect(Object.keys(expectedColumns)).toHaveLength(21);
+      expect(Object.keys(expectedColumns)).toHaveLength(22);
 
       const tipos = await db('pg_type').select('typname').where({ typname: 'estado_ticket' });
       expect(tipos).toEqual([]);

@@ -1,6 +1,6 @@
 import type { PasswordHasher } from '../../domain/auth/password-hasher';
 import { validarPassword } from '../../domain/auth/politica-password';
-import type { TokenService } from '../../domain/auth/token-service';
+import { type TokenService, VIGENCIA_RESTABLECIMIENTO_MS } from '../../domain/auth/token-service';
 import type { Clock } from '../../domain/health/clock';
 import type { RestablecimientoRepository } from '../../domain/repositories/restablecimiento-repository';
 import type { Transaccion } from '../../domain/repositories/transaccion';
@@ -8,7 +8,7 @@ import type { UsuarioRepository } from '../../domain/repositories/usuario-reposi
 import type { RespuestaSesion, UsuarioSesion } from '../dto/auth.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 import { abrirSesion } from './emision-sesion';
-import type { EnvioCorreo } from './envio-correo';
+import type { NotificadorCorreo } from './notificador-correo.service';
 
 const TOKEN_INVALIDO = 'El enlace de recuperación no existe, venció o ya se usó';
 // Los enlaces que acepta /auth/restablecer. Los de verificación de correo van a /auth/verificar (SPEC 16).
@@ -20,7 +20,7 @@ export class RecuperacionService {
     private readonly usuarios: UsuarioRepository,
     private readonly restablecimientos: RestablecimientoRepository,
     private readonly transaccion: Transaccion,
-    private readonly correo: EnvioCorreo,
+    private readonly correo: NotificadorCorreo,
     private readonly hasher: PasswordHasher,
     private readonly tokens: TokenService,
     private readonly clock: Clock,
@@ -43,7 +43,13 @@ export class RecuperacionService {
     await this.restablecimientos.crear(usuario.id, this.tokens.hashRenovacion(token), 'recuperacion', ahora);
 
     const enlace = `${this.appUrl}/restablecer?token=${token}`;
-    this.correo.sinEsperar('recuperacion_password', email, { nombre: usuario.nombre, enlace }, usuario.id);
+    // Con el vencimiento del enlace: si no sale a tiempo, se descarta en lugar de enviarse (SPEC 34).
+    const correoId = await this.correo.encolar(
+      'recuperacion_password',
+      { nombre: usuario.nombre, enlace },
+      { para: email, usuarioId: usuario.id, expiraEn: new Date(ahora.getTime() + VIGENCIA_RESTABLECIMIENTO_MS.recuperacion) },
+    );
+    await this.correo.despachar([correoId]);
   }
 
   async restablecer(token: string, password: string): Promise<RespuestaSesion> {
@@ -88,7 +94,9 @@ export class RecuperacionService {
     // La primera contraseña, definida con una invitación, no lleva aviso de cambio (SPEC 10).
     const email = vigente.tipo === 'recuperacion' ? await this.usuarios.emailDe(usuario.id) : null;
     if (email) {
-      this.correo.sinEsperar('password_cambiado', email, { nombre: usuario.nombre }, usuario.id);
+      // La contraseña ya cambió: el aviso se encola después, fuera de la transacción.
+      const correoId = await this.correo.encolar('password_cambiado', { nombre: usuario.nombre }, { para: email, usuarioId: usuario.id });
+      await this.correo.despachar([correoId]);
     }
     return respuesta;
   }

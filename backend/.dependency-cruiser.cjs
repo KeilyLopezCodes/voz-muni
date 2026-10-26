@@ -27,6 +27,19 @@ module.exports = {
       to: { path: '^node_modules' },
     },
     {
+      name: 'correo-solo-por-la-bandeja',
+      comment:
+        'Todo correo pasa por la bandeja de salida (SPEC 34): solo NotificadorCorreo y DespachoCorreosService usan ' +
+        'EnviadorCorreo, además del adaptador que lo implementa y del contenedor que lo conecta.',
+      severity: 'error',
+      from: {
+        path: '^src/',
+        pathNot:
+          '^src/(application/services/(notificador-correo|despacho-correos)\\.service|infrastructure/mail/nodemailer-enviador-correo|container|domain/notificaciones/enviador-correo)\\.ts$',
+      },
+      to: { path: '^src/domain/notificaciones/enviador-correo\\.ts$' },
+    },
+    {
       name: 'application-no-capas-externas',
       comment: 'La aplicación usa puertos del dominio, no adaptadores ni HTTP.',
       severity: 'error',

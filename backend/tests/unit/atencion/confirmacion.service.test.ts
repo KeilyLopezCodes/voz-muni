@@ -1,6 +1,5 @@
 import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { ConfirmacionService } from '../../../src/application/services/confirmacion.service';
-import { EnvioCorreo } from '../../../src/application/services/envio-correo';
 import type { Alcance } from '../../../src/domain/auth/permisos';
 import type { FiltroTickets } from '../../../src/domain/autorizacion/alcance-tickets';
 import { InvalidTransitionError } from '../../../src/domain/errors/invalid-transition-error';
@@ -18,6 +17,7 @@ import {
   TransaccionEnMemoria,
 } from '../auth/dobles';
 import { SLA_VACIO, SlaNulo } from '../sla/dobles-sla';
+import { notificadorDePrueba } from '../notificaciones/dobles-correo';
 
 const AHORA = new Date('2026-11-05T15:00:00.000Z');
 const VENCE = new Date('2026-11-10T05:59:59.999Z');
@@ -107,7 +107,7 @@ function armar({ maxReaperturas = 2, ahora = AHORA }: { maxReaperturas?: number;
   const servicio = new ConfirmacionService(
     new TransaccionEnMemoria({ ticketsEscritura: tickets as unknown as TicketEscrituraRepository }),
     { maxReaperturas: async () => maxReaperturas },
-    new EnvioCorreo(plantillas(), enviador, (mensaje) => errores.push(mensaje)),
+    notificadorDePrueba(plantillas(), enviador, (mensaje) => errores.push(mensaje)),
     new RelojFalso(ahora),
     'https://vozmuni.test',
     new SlaNulo(),

@@ -1,6 +1,5 @@
 import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { AtencionService } from '../../../src/application/services/atencion.service';
-import { EnvioCorreo } from '../../../src/application/services/envio-correo';
 import type { FiltroTickets } from '../../../src/domain/autorizacion/alcance-tickets';
 import { InvalidTransitionError } from '../../../src/domain/errors/invalid-transition-error';
 import { ReglaDeNegocioError } from '../../../src/domain/errors/regla-de-negocio-error';
@@ -16,6 +15,7 @@ import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { type ResultadoTransicion, Ticket } from '../../../src/domain/ticket/ticket';
 import { correosPendientes, EnviadorEnMemoria, PlantillasEnMemoria, RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
 import { SLA_VACIO, SlaNulo } from '../sla/dobles-sla';
+import { notificadorDePrueba } from '../notificaciones/dobles-correo';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
 const VENCE_CONFIRMACION = new Date('2026-10-31T05:59:59.999Z');
@@ -104,7 +104,7 @@ function armar(vencimiento: (ahora: Date) => Promise<Date> = async () => VENCE_C
       return vencimiento(ahora);
     },
     new SlaNulo(),
-    new EnvioCorreo(plantillas, enviador, (mensaje) => errores.push(mensaje)),
+    notificadorDePrueba(plantillas, enviador, (mensaje) => errores.push(mensaje)),
     'https://vozmuni.test',
   );
   return { tickets, bandeja, servicio, pedidos, enviador, errores };

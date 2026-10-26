@@ -35,6 +35,7 @@ describe('API de autenticación /api/v1/auth', () => {
   afterAll(async () => {
     try {
       await db('sesiones').delete();
+      await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
       await db('usuarios').delete();
     } finally {
       await container.dispose();
@@ -44,6 +45,7 @@ describe('API de autenticación /api/v1/auth', () => {
 
   beforeEach(async () => {
     await db('sesiones').delete();
+    await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
     await db('usuarios').delete();
   });
 
