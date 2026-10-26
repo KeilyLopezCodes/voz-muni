@@ -61,6 +61,8 @@ const COLUMNAS_SLA: Readonly<Record<keyof CambiosSla, string>> = {
   alertaResolucionEn: 'alerta_resolucion_en',
   alertaRespuestaEnviadaEn: 'alerta_respuesta_enviada_en',
   alertaResolucionEnviadaEn: 'alerta_resolucion_enviada_en',
+  minutosRespuesta: 'minutos_respuesta', // SPEC 43
+  minutosResolucion: 'minutos_resolucion',
 };
 
 interface FilaCategoria {

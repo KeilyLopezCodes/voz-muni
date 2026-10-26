@@ -63,6 +63,7 @@ export type CodigoError =
   | 'LIMITE_REAPERTURAS'
   | 'MATRIZ_SLA_INVALIDA'
   | 'SLA_NO_CONFIGURADO'
+  | 'RANGO_INVALIDO' // SPEC 43
   | 'NO_AUTENTICADO'
   | 'TOKEN_INVALIDO'
   | 'CREDENCIALES_INVALIDAS'
@@ -76,6 +77,7 @@ export type CodigoError =
 
 // Códigos de ReglaDeNegocioError del dominio que la API expone tal cual.
 const CODIGOS_DE_REGLA: readonly CodigoError[] = [
+  'RANGO_INVALIDO',
   'POLITICA_PASSWORD',
   'DEPENDENCIA_REQUERIDA',
   'DEPENDENCIA_NO_PERMITIDA',

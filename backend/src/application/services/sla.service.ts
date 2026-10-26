@@ -10,6 +10,7 @@ import {
   alPonerEnEspera,
   alReabrir,
   alReanudar,
+  alResolver,
   type CambiosSla,
   CLAVE_UMBRAL_ALERTA,
   type EstadoSla,
@@ -39,8 +40,18 @@ export class SlaService {
     return conReglasDeNegocio(async () => alAceptar(ticket, await this.plazo(ticket), await this.reloj()));
   }
 
-  alIniciar(ticket: EstadoSla, ahora: Date): CambiosSla {
-    return alIniciar(ticket, ahora);
+  // La primera vez también guarda los minutos de respuesta del tablero (SPEC 43).
+  alIniciar(ticket: EstadoSla, ahora: Date): Promise<CambiosSla> {
+    return conReglasDeNegocio(async () => alIniciar(ticket, ahora, await this.reloj()));
+  }
+
+  // Los minutos del último ciclo de resolución (SPEC 43). Sin inicio de resolución (queja anterior a SPEC 30) no lee
+  // nada.
+  alResolver(ticket: EstadoSla, resueltoEn: Date): Promise<CambiosSla> {
+    if (ticket.inicioResolucion === null) {
+      return Promise.resolve({});
+    }
+    return conReglasDeNegocio(async () => alResolver(ticket, resueltoEn, await this.reloj()));
   }
 
   alPonerEnEspera(ticket: EstadoSla, ahora: Date): Promise<CambiosSla> {

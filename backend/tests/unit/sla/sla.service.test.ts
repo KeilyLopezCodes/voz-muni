@@ -173,11 +173,42 @@ describe('SlaService', () => {
     });
   });
 
-  it('iniciar no lee nada', () => {
-    const servicio = new SlaService(new ParametrosFalsos(null), new CalendarioFalso([]), politicas);
-    expect(servicio.alIniciar(ticket(), gt('2026-10-26', '11:00'))).toEqual({
-      primeraRespuestaEn: gt('2026-10-26', '11:00'),
-      alertaRespuestaEn: null,
+  describe('minutos del tablero (SPEC 43)', () => {
+    const servicio = () => new SlaService(new ParametrosFalsos(), new CalendarioFalso(), politicas);
+
+    it('registrada el lunes 15:00 e iniciada el martes 09:00 → minutosRespuesta = 120', async () => {
+      expect(await servicio().alIniciar(ticket({ creadoEn: gt('2026-10-26', '15:00') }), gt('2026-10-27', '09:00'))).toEqual({
+        primeraRespuestaEn: gt('2026-10-27', '09:00'),
+        alertaRespuestaEn: null,
+        minutosRespuesta: 120,
+      });
+    });
+
+    it('un segundo iniciar no cambia minutosRespuesta', async () => {
+      const respondida = ticket({ creadoEn: gt('2026-10-26', '15:00'), primeraRespuestaEn: gt('2026-10-27', '09:00') });
+      expect(await servicio().alIniciar(respondida, gt('2026-10-29', '09:00'))).toEqual({ alertaRespuestaEn: null });
+    });
+
+    it('al resolver descuenta los 60 minutos hábiles en espera', async () => {
+      // Del lunes 10:00 al martes 10:00 hay 480 minutos hábiles.
+      const resuelta = ticket({ inicioResolucion: gt('2026-10-26', '10:00'), pausaMinutos: 60 });
+      expect(await servicio().alResolver(resuelta, gt('2026-10-27', '10:00'))).toEqual({ minutosResolucion: 420 });
+    });
+
+    it('al reabrir vuelve a null, y al resolver de nuevo cuenta solo desde la reapertura', async () => {
+      const reapertura = gt('2026-10-28', '09:00');
+      const cambios = await servicio().alReabrir(
+        ticket({ inicioResolucion: gt('2026-10-26', '10:00'), pausaMinutos: 60 }),
+        reapertura,
+      );
+      expect(cambios.minutosResolucion).toBeNull();
+      const reabierta = ticket({ inicioResolucion: cambios.inicioResolucion!, pausaMinutos: cambios.pausaMinutos! });
+      expect(await servicio().alResolver(reabierta, gt('2026-10-28', '11:30'))).toEqual({ minutosResolucion: 150 });
+    });
+
+    it('sin inicio de resolución (queja anterior a SPEC 30) resolver no lee nada', async () => {
+      const sinParametros = new SlaService(new ParametrosFalsos(null), new CalendarioFalso([]), politicas);
+      expect(await sinParametros.alResolver(ticket(), gt('2026-10-27', '10:00'))).toEqual({});
     });
   });
 });

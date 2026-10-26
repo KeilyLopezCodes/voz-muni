@@ -13,6 +13,7 @@
     "postbuild": "node -e \"for (const dir of ['migrations', 'seeds']) require('node:fs').mkdirSync('dist/infrastructure/database/' + dir, { recursive: true })\"",
     "test": "jest",
     "test:db": "npm run build && node --env-file-if-exists=.env node_modules/jest/bin/jest.js --config jest.db.config.js --runInBand",
+    "test:rendimiento": "npm run build && node --env-file-if-exists=.env node_modules/jest/bin/jest.js --config jest.rendimiento.config.js --runInBand",
     "start": "node --env-file-if-exists=.env dist/server.js",
     "migrate:latest": "node --env-file-if-exists=.env node_modules/knex/bin/cli.js --knexfile dist/infrastructure/database/knexfile.js migrate:latest",
     "migrate:rollback": "node --env-file-if-exists=.env node_modules/knex/bin/cli.js --knexfile dist/infrastructure/database/knexfile.js migrate:rollback",

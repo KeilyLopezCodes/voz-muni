@@ -51,7 +51,7 @@ export class AtencionService {
     private readonly bandeja: AtencionLecturaRepository,
     private readonly clock: Clock,
     private readonly vencimientoConfirmacion: CalcularVencimientoConfirmacion,
-    private readonly sla: Pick<SlaService, 'alIniciar' | 'alPonerEnEspera' | 'alReanudar'>,
+    private readonly sla: Pick<SlaService, 'alIniciar' | 'alPonerEnEspera' | 'alReanudar' | 'alResolver'>,
     private readonly correo: NotificadorCorreo,
     private readonly appUrl: string, // APP_URL, sin barra final
   ) {}
@@ -148,7 +148,7 @@ export class AtencionService {
     );
   }
 
-  // Resolver no mueve los vencimientos.
+  // Resolver no mueve los vencimientos: solo mide el ciclo de resolución (SPEC 43).
   private async cambiosSla(comando: ComandoAtencion, sla: TicketConPolitica, ahora: Date): Promise<CambiosSla> {
     switch (comando.accion) {
       case 'iniciar':
@@ -158,7 +158,7 @@ export class AtencionService {
       case 'reanudar':
         return this.sla.alReanudar(sla, ahora);
       case 'resolver':
-        return {};
+        return this.sla.alResolver(sla, ahora);
     }
   }
 

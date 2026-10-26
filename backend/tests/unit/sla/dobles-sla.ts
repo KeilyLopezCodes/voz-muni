@@ -19,7 +19,9 @@ export const SLA_VACIO: EstadoSla = {
 
 // SlaService que no calcula nada y registra a qué momento lo llamaron. Las pruebas del cálculo están en
 // sla.service.test.ts y contra Postgres en tests/db/sla.api.test.ts.
-export class SlaNulo implements Pick<SlaService, 'alAceptar' | 'alIniciar' | 'alPonerEnEspera' | 'alReanudar' | 'alReabrir'> {
+export class SlaNulo
+  implements Pick<SlaService, 'alAceptar' | 'alIniciar' | 'alPonerEnEspera' | 'alReanudar' | 'alReabrir' | 'alResolver'>
+{
   readonly llamadas: string[] = [];
 
   async alAceptar(): Promise<CambiosSla> {
@@ -27,8 +29,13 @@ export class SlaNulo implements Pick<SlaService, 'alAceptar' | 'alIniciar' | 'al
     return {};
   }
 
-  alIniciar(): CambiosSla {
+  async alIniciar(): Promise<CambiosSla> {
     this.llamadas.push('alIniciar');
+    return {};
+  }
+
+  async alResolver(): Promise<CambiosSla> {
+    this.llamadas.push('alResolver');
     return {};
   }
 

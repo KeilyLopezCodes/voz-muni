@@ -105,6 +105,8 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['escalado_por', 'text'],
     ['aviso_comentario_en', 'timestamp with time zone'],
     ['avisos_comentario_pendientes', 'integer'],
+    ['minutos_respuesta', 'integer'], // SPEC 43
+    ['minutos_resolucion', 'integer'],
   ],
   ticket_historial: [
     ['id', 'bigint'],
@@ -1000,6 +1002,39 @@ describe('Esquema de base de datos', () => {
         expect(
           await db('information_schema.table_constraints').where({ constraint_name: 'bitacora_accion_formato' }).select('constraint_name'),
         ).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
+  describe('indicadores del tablero (0036)', () => {
+    it('minutos_respuesta y minutos_resolucion aceptan 0 y NULL', () =>
+      withRollback(async (trx) => {
+        await expect(insertTicket(trx, { minutos_respuesta: 0, minutos_resolucion: null })).resolves.toEqual(expect.any(String));
+      }));
+
+    it.each(['minutos_respuesta', 'minutos_resolucion'])('%s rechaza un valor negativo', (columna) =>
+      withRollback(async (trx) => {
+        await expect(insertTicket(trx, { [columna]: -1 })).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+
+    it('crea los índices por fecha de registro; revertir 0036 quita columnas e índices', async () => {
+      const indices = async () =>
+        (
+          await db('pg_indexes')
+            .where({ tablename: 'tickets' })
+            .whereIn('indexname', ['tickets_creado_en_idx', 'tickets_categoria_creado_idx'])
+            .orderBy('indexname')
+            .select('indexname')
+        ).map((f: { indexname: string }) => f.indexname);
+      expect(await indices()).toEqual(['tickets_categoria_creado_idx', 'tickets_creado_en_idx']);
+
+      await db.migrate.down({ name: '0036_indicadores.js' });
+      try {
+        expect(await indices()).toEqual([]);
+        expect(await db.schema.hasColumn('tickets', 'minutos_respuesta')).toBe(false);
+        expect(await db.schema.hasColumn('tickets', 'minutos_resolucion')).toBe(false);
       } finally {
         await db.migrate.latest();
       }

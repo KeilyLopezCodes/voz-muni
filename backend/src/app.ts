@@ -4,6 +4,7 @@ import { AdjuntosController } from './presentation/controllers/adjuntos.controll
 import { AsignacionController } from './presentation/controllers/asignacion.controller';
 import { AuthController } from './presentation/controllers/auth.controller';
 import { BitacoraController } from './presentation/controllers/bitacora.controller';
+import { ReportesController } from './presentation/controllers/reportes.controller';
 import { CatalogosAdminController } from './presentation/controllers/catalogos-admin.controller';
 import { CamposExtraController } from './presentation/controllers/campos-extra.controller';
 import { CatalogosController } from './presentation/controllers/catalogos.controller';
@@ -33,6 +34,7 @@ import { adjuntosRoutes } from './presentation/routes/adjuntos.routes';
 import { asignacionRoutes } from './presentation/routes/asignacion.routes';
 import { authRoutes } from './presentation/routes/auth.routes';
 import { bitacoraRoutes } from './presentation/routes/bitacora.routes';
+import { reportesRoutes } from './presentation/routes/reportes.routes';
 import { catalogosAdminRoutes } from './presentation/routes/catalogos-admin.routes';
 import { camposExtraRoutes } from './presentation/routes/campos-extra.routes';
 import { catalogosRoutes } from './presentation/routes/catalogos.routes';
@@ -153,6 +155,10 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1/bitacora',
     bitacoraRoutes(new BitacoraController(container.bitacoraService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1/reportes',
+    reportesRoutes(new ReportesController(container.reportesService), autenticar(container.autorizacionService)),
   );
   app.use(
     '/api/v1',

@@ -23,7 +23,11 @@ export interface EstadoSla {
   alertaResolucionEnviadaEn: Date | null;
 }
 
-export type CambiosSla = Partial<Omit<EstadoSla, 'creadoEn'>>;
+// Además de los vencimientos, los minutos hábiles que miden los indicadores del tablero (RF-39, SPEC 43).
+export type CambiosSla = Partial<Omit<EstadoSla, 'creadoEn'>> & {
+  minutosRespuesta?: number; // del registro a la primera respuesta
+  minutosResolucion?: number | null; // del último ciclo de resolución, sin la espera; null al reabrir
+};
 
 // Lo que leen las bandejas y el detalle de los internos (SPEC 30).
 export interface SlaLectura {
@@ -88,10 +92,22 @@ export async function alAceptar(estado: EstadoSla, plazo: PlazoHoras, reloj: Rel
 }
 
 // La primera vez que pasa a en_proceso. Los vencimientos no cambian; la alerta de respuesta ya no hace falta.
-export function alIniciar(estado: EstadoSla, ahora: Date): CambiosSla {
-  return estado.primeraRespuestaEn === null
-    ? { primeraRespuestaEn: ahora, alertaRespuestaEn: null }
-    : { alertaRespuestaEn: null };
+export async function alIniciar(estado: EstadoSla, ahora: Date, reloj: RelojHabil): Promise<CambiosSla> {
+  if (estado.primeraRespuestaEn !== null) {
+    return { alertaRespuestaEn: null };
+  }
+  // SPEC 43: los minutos de respuesta se miden una sola vez, con la primera respuesta.
+  return { primeraRespuestaEn: ahora, alertaRespuestaEn: null, minutosRespuesta: await reloj.entre(estado.creadoEn, ahora) };
+}
+
+// Resolver no mueve los vencimientos (SPEC 30). Solo mide el último ciclo de resolución sin el tiempo en espera
+// (SPEC 43): desde el registro o la última reapertura, menos la pausa acumulada. Una queja sin inicio de resolución
+// (aceptada antes de SPEC 30) no se mide.
+export async function alResolver(estado: EstadoSla, resueltoEn: Date, reloj: RelojHabil): Promise<CambiosSla> {
+  if (estado.inicioResolucion === null) {
+    return {};
+  }
+  return { minutosResolucion: Math.max(0, (await reloj.entre(estado.inicioResolucion, resueltoEn)) - estado.pausaMinutos) };
 }
 
 // Congela lo que falta de la resolución (0 si ya venció), y su alerta. Una queja sin vencimiento (aceptada antes
@@ -146,5 +162,6 @@ export async function alReabrir(
     venceResolucion: await reloj.sumar(ahora, resolucion),
     alertaResolucionEn: await reloj.sumar(ahora, alUmbral(resolucion, plazo.umbralAlerta)),
     alertaResolucionEnviadaEn: null,
+    minutosResolucion: null, // se vuelve a medir en la siguiente resolución (SPEC 43)
   };
 }
