@@ -9,6 +9,7 @@ import { KnexCierreAutomaticoRepository } from './knex-cierre-automatico-reposit
 import { KnexComentarioRepository } from './knex-comentario-repository';
 import { KnexCorreoSalienteRepository } from './knex-correo-saliente-repository';
 import { KnexDestinatariosRepository } from './knex-destinatarios-repository';
+import { KnexEncuestaRepository } from './knex-encuesta-repository';
 import { KnexEscalamientoRepository } from './knex-escalamiento-repository';
 import { KnexNotificacionRepository } from './knex-notificacion-repository';
 import { KnexPoliticaSlaRepository } from './knex-politica-sla-repository';
@@ -48,6 +49,7 @@ export class KnexTransaccion implements Transaccion {
         correosSalientes: new KnexCorreoSalienteRepository(trx),
         avisosComentarios: new KnexAvisosComentariosRepository(trx),
         destinatarios: new KnexDestinatariosRepository(trx),
+        encuestas: new KnexEncuestaRepository(trx),
       }),
     );
   }

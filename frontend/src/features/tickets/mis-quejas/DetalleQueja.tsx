@@ -136,6 +136,15 @@ function Contenido({ ticket }: { ticket: TicketDetalle }) {
               ? { automatico: ticket.cierreAutomatico, cerradoEn: ticket.cerradoEn }
               : null
           }
+          encuesta={
+            ticket.estado === 'cerrada'
+              ? {
+                  encuesta: ticket.encuesta ?? null,
+                  puedeCalificar: ticket.puedeCalificar ?? false,
+                  encuestaVenceEn: ticket.encuestaVenceEn ?? null,
+                }
+              : null
+          }
         />
       )}
 

@@ -23,6 +23,7 @@ import type { AlertasSlaService } from '../../../src/application/services/alerta
 import type { AvisosComentariosService } from '../../../src/application/services/avisos-comentarios.service';
 import type { CierreAutomaticoService } from '../../../src/application/services/cierre-automatico.service';
 import type { DespachoCorreosService } from '../../../src/application/services/despacho-correos.service';
+import type { EncuestasService } from '../../../src/application/services/encuestas.service';
 import type { EscaladasService } from '../../../src/application/services/escaladas.service';
 import type { EscalamientoService } from '../../../src/application/services/escalamiento.service';
 import type { LineaTiempoService } from '../../../src/application/services/linea-tiempo.service';
@@ -47,6 +48,7 @@ function buildTestContainer(): Container {
     recuperacionLimitePorVentana: 5,
     consultaLimitePorVentana: 10,
     consultaPublicaService: {} as ConsultaPublicaService,
+    encuestasService: {} as EncuestasService,
     healthService: new HealthService({ now: () => new Date() }, { isUp: async () => true }),
     // Estas pruebas fallan antes de llegar a los servicios de auth.
     authService: {} as AuthService,

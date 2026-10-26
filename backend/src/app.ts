@@ -7,6 +7,7 @@ import { CamposExtraController } from './presentation/controllers/campos-extra.c
 import { CatalogosController } from './presentation/controllers/catalogos.controller';
 import { ConsultaPublicaController } from './presentation/controllers/consulta-publica.controller';
 import { ComentariosController } from './presentation/controllers/comentarios.controller';
+import { EncuestasController } from './presentation/controllers/encuestas.controller';
 import { EscaladasController } from './presentation/controllers/escaladas.controller';
 import { NotificacionesController } from './presentation/controllers/notificaciones.controller';
 import { ParametrosController } from './presentation/controllers/parametros.controller';
@@ -31,6 +32,7 @@ import { authRoutes } from './presentation/routes/auth.routes';
 import { camposExtraRoutes } from './presentation/routes/campos-extra.routes';
 import { catalogosRoutes } from './presentation/routes/catalogos.routes';
 import { comentariosRoutes } from './presentation/routes/comentarios.routes';
+import { encuestasRoutes } from './presentation/routes/encuestas.routes';
 import { escaladasRoutes } from './presentation/routes/escaladas.routes';
 import { notificacionesRoutes } from './presentation/routes/notificaciones.routes';
 import { parametrosRoutes } from './presentation/routes/parametros.routes';
@@ -96,6 +98,10 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1/tickets',
     adjuntosRoutes(new AdjuntosController(container.adjuntosService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1/tickets',
+    encuestasRoutes(new EncuestasController(container.encuestasService), autenticar(container.autorizacionService)),
   );
   app.use(
     '/api/v1/tickets',

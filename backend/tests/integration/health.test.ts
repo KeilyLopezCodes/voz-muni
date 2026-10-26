@@ -21,6 +21,7 @@ import type { AlertasSlaService } from '../../src/application/services/alertas-s
 import type { AvisosComentariosService } from '../../src/application/services/avisos-comentarios.service';
 import type { CierreAutomaticoService } from '../../src/application/services/cierre-automatico.service';
 import type { DespachoCorreosService } from '../../src/application/services/despacho-correos.service';
+import type { EncuestasService } from '../../src/application/services/encuestas.service';
 import type { EscaladasService } from '../../src/application/services/escaladas.service';
 import type { EscalamientoService } from '../../src/application/services/escalamiento.service';
 import type { LineaTiempoService } from '../../src/application/services/linea-tiempo.service';
@@ -48,6 +49,7 @@ function buildTestContainer(databaseUp: boolean): Container {
     recuperacionLimitePorVentana: 5,
     consultaLimitePorVentana: 10,
     consultaPublicaService: {} as ConsultaPublicaService,
+    encuestasService: {} as EncuestasService,
     healthService: new HealthService(clock, databaseHealthCheck),
     // /health no los usa.
     authService: {} as AuthService,

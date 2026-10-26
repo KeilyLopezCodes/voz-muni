@@ -119,6 +119,9 @@ describe('Historial en el detalle', () => {
     resolucion: null,
     confirmacion: null,
     cierreAutomatico: false,
+    encuesta: null, // SPEC 39
+    puedeCalificar: false,
+    encuestaVenceEn: null,
     sla: null,
   }
 

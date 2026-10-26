@@ -116,6 +116,7 @@ describe('CampanaNotificaciones', () => {
     ['traslado_resuelto', { solicitudId: 5, resultado: 'aprobada' }, 'Se aprobó el traslado de Q-2026-000001'],
     ['traslado_resuelto', { solicitudId: 5, resultado: 'rechazada' }, 'Se rechazó el traslado de Q-2026-000001'],
     ['traslado_resuelto', { solicitudId: 5, resultado: 'sin_efecto' }, 'El traslado de Q-2026-000001 quedó sin efecto'],
+    ['encuesta_baja', { calificacion: 2 }, 'La queja Q-2026-000001 recibió una calificación de 2 de 5'],
   ])('%s con %j muestra su texto y abre /tickets/:id (SPEC 36)', async (tipo, datos, texto) => {
     simularBackend([notificacion(1, { tipo, datos })])
     const router = montar()

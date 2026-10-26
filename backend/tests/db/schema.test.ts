@@ -965,6 +965,47 @@ describe('Esquema de base de datos', () => {
     });
   });
 
+  describe('encuestas (0032)', () => {
+    it('rechaza un comentario vacío', () =>
+      withRollback(async (trx) => {
+        const ticketId = await insertTicket(trx);
+        await expect(trx('encuestas').insert({ ticket_id: ticketId, calificacion: 4, comentario: '' })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }));
+
+    it('acepta un comentario NULL o de 1000 caracteres, y rechaza 1001', () =>
+      withRollback(async (trx) => {
+        const ticketId = await insertTicket(trx);
+        await trx.raw('SAVEPOINT largo');
+        await expect(trx('encuestas').insert({ ticket_id: ticketId, calificacion: 4, comentario: 'a'.repeat(1001) })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+        await trx.raw('ROLLBACK TO SAVEPOINT largo');
+        await trx('encuestas').insert({ ticket_id: ticketId, calificacion: 4, comentario: 'a'.repeat(1000) });
+        await trx('encuestas').where({ ticket_id: ticketId }).update({ comentario: null });
+      }));
+
+    it('carga encuesta_plazo_dias = 30 y encuesta_umbral_alerta = 2; revertir 0032 los quita junto con el CHECK', async () => {
+      const claves = ['encuesta_plazo_dias', 'encuesta_umbral_alerta'];
+      expect(await db('parametros').whereIn('clave', claves).orderBy('clave').select('clave', 'valor')).toEqual([
+        { clave: 'encuesta_plazo_dias', valor: 30 },
+        { clave: 'encuesta_umbral_alerta', valor: 2 },
+      ]);
+      await db.migrate.down({ name: '0032_encuestas.js' });
+      try {
+        expect(await db('parametros').whereIn('clave', claves).select('clave')).toEqual([]);
+        expect(
+          await db('information_schema.table_constraints')
+            .where({ table_name: 'encuestas', constraint_name: 'encuestas_comentario_largo' })
+            .select('constraint_name'),
+        ).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
   describe('notificaciones internas (0031)', () => {
     async function notificacion(trx: Knex.Transaction, cambios: Record<string, unknown> = {}) {
       const ticketId = await insertTicket(trx);

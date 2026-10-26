@@ -44,6 +44,9 @@ interface FilaListado {
   estado: EstadoTicket;
   creado_en: Date;
   confirmacion_vence_en: Date | null;
+  cerrado_en: Date | null;
+  solicitante_id: string;
+  tiene_encuesta: boolean;
 }
 
 interface FilaDetalle {
@@ -71,6 +74,9 @@ interface FilaDetalle {
   confirmacion_vence_en: Date | null;
   reaperturas: number;
   solicitante_id: string;
+  encuesta_calificacion: number | null;
+  encuesta_comentario: string | null;
+  encuesta_creado_en: Date | null;
 }
 
 // Del solicitante solo el id: ni correo, ni teléfono, ni DPI (RNF-12). Tampoco prioridad, técnico,
@@ -99,6 +105,9 @@ const COLUMNAS_DETALLE = [
   't.reaperturas',
   ...COLUMNAS_SLA_LECTURA,
   't.solicitante_id',
+  'en.calificacion as encuesta_calificacion',
+  'en.comentario as encuesta_comentario',
+  'en.creado_en as encuesta_creado_en',
 ];
 
 // La resolución vigente solo se muestra en resuelta o cerrada (SPEC 26).
@@ -166,6 +175,10 @@ function aDetalle(fila: FilaDetalle & FilaSlaLectura): TicketDetalleLectura {
     reaperturas: fila.reaperturas,
     sla: slaDeFila(fila),
     solicitanteId: Number(fila.solicitante_id),
+    encuesta:
+      fila.encuesta_calificacion === null
+        ? null
+        : { calificacion: fila.encuesta_calificacion, comentario: fila.encuesta_comentario, creadoEn: fila.encuesta_creado_en! },
   };
 }
 
@@ -230,7 +243,17 @@ export class KnexTicketLecturaRepository implements TicketLecturaRepository {
     }
     const [{ total }] = await consulta.clone().count({ total: '*' });
     const filas: FilaListado[] = await consulta
-      .select(['t.id', 't.numero', 't.titulo', 't.estado', 't.creado_en', 't.confirmacion_vence_en'])
+      .select([
+        't.id',
+        't.numero',
+        't.titulo',
+        't.estado',
+        't.creado_en',
+        't.confirmacion_vence_en',
+        't.cerrado_en',
+        't.solicitante_id',
+        this.db.raw('EXISTS (SELECT 1 FROM encuestas en WHERE en.ticket_id = t.id) as tiene_encuesta'),
+      ])
       // Lo que pide acción primero (SPEC 38): la respuesta del vecino y la confirmación con plazo vigente.
       .orderByRaw(
         `(CASE WHEN t.estado = 'en_espera' THEN 0
@@ -248,6 +271,9 @@ export class KnexTicketLecturaRepository implements TicketLecturaRepository {
       creadoEn: fila.creado_en,
       esperaRespuesta: fila.estado === 'en_espera',
       confirmacionVenceEn: fila.estado === 'resuelta' ? fila.confirmacion_vence_en : null,
+      cerradoEn: fila.cerrado_en,
+      tieneEncuesta: fila.tiene_encuesta,
+      solicitanteId: Number(fila.solicitante_id),
     }));
     return { datos, pagina, tamano, total: Number(total) };
   }
@@ -283,6 +309,7 @@ export class KnexTicketLecturaRepository implements TicketLecturaRepository {
       .join('zonas as z', 'z.id', 't.zona_id')
       .leftJoin('dependencias as d', 'd.id', 't.dependencia_id')
       .leftJoin('usuarios as rp', 'rp.id', 't.resuelto_por')
+      .leftJoin('encuestas as en', 'en.ticket_id', 't.id')
       .first([...COLUMNAS_DETALLE, this.db.raw(INFORMACION_SOLICITADA), this.db.raw(CIERRE_AUTOMATICO)]);
     return fila ? aDetalle(fila) : null;
   }

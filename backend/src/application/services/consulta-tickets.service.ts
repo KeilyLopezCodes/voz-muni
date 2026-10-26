@@ -1,6 +1,7 @@
 import { exigeMotivoAlConfirmar, puedeConfirmar } from '../../domain/atencion/acciones-confirmacion';
 import type { Accion } from '../../domain/auth/permisos';
 import { filtroTicketsParaAccion } from '../../domain/autorizacion/alcance-tickets';
+import { CLAVE_PLAZO_ENCUESTA, esCalificable, plazoEncuestaValido, venceEncuesta } from '../../domain/encuestas/encuesta';
 import type { Clock } from '../../domain/health/clock';
 import { interpretarBusqueda } from '../../domain/ticket/busqueda';
 import type {
@@ -9,6 +10,7 @@ import type {
   TicketLecturaRepository,
   TicketResumen,
 } from '../../domain/repositories/ticket-lectura-repository';
+import type { ParametroRepository } from '../../domain/repositories/parametro-repository';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type {
   ConfirmacionDetalleDto,
@@ -38,6 +40,7 @@ export class ConsultaTicketsService {
     private readonly tickets: TicketLecturaRepository,
     private readonly plazos: Pick<PlazosConfirmacionService, 'maxReaperturas'>,
     private readonly clock: Clock,
+    private readonly parametros: ParametroRepository, // el plazo de la encuesta (SPEC 39)
   ) {}
 
   listar(usuario: UsuarioAutenticado, pagina: number, tamano: number): Promise<Pagina<TicketResumen>> {
@@ -64,19 +67,25 @@ export class ConsultaTicketsService {
     tamano: number,
   ): Promise<Pagina<TicketListadoDto>> {
     validarPaginacion(pagina, tamano, TAMANO_MAXIMO_LISTADO);
+    const ahora = this.clock.now();
+    const plazoEncuesta = await this.plazoEncuesta();
     const resultado = await this.tickets.listarConTitulo(
       filtroTicketsParaAccion(usuario, 'tickets.ver'),
       { estados: filtros.estados, busqueda: filtros.q === undefined ? null : interpretarBusqueda(filtros.q) },
       pagina,
       tamano,
-      this.clock.now(),
+      ahora,
     );
     return {
       ...resultado,
-      datos: resultado.datos.map((t) => ({
+      datos: resultado.datos.map(({ cerradoEn, tieneEncuesta, solicitanteId, ...t }) => ({
         ...t,
         creadoEn: t.creadoEn.toISOString(),
         confirmacionVenceEn: isoONull(t.confirmacionVenceEn),
+        pendienteCalificar:
+          solicitanteId === usuario.id &&
+          plazoEncuesta !== null &&
+          esCalificable(t.estado, cerradoEn, tieneEncuesta, ahora, plazoEncuesta),
       })),
     };
   }
@@ -98,8 +107,24 @@ export class ConsultaTicketsService {
     if (!ticket) {
       throw new ErrorDeAplicacion('NO_ENCONTRADO', `No existe el ticket ${id}`);
     }
-    const { solicitanteId, creadoEn, resueltoEn, cerradoEn, resolucion, confirmacionVenceEn, reaperturas, sla, ...resto } =
-      ticket;
+    const {
+      solicitanteId,
+      creadoEn,
+      resueltoEn,
+      cerradoEn,
+      resolucion,
+      confirmacionVenceEn,
+      reaperturas,
+      sla,
+      encuesta,
+      ...resto
+    } = ticket;
+    // Solo el solicitante califica (SPEC 39), y solo dentro del plazo. La encuesta la ve quien ve la queja.
+    const plazoEncuesta = await this.plazoEncuesta();
+    const puedeCalificar =
+      solicitanteId === usuario.id &&
+      plazoEncuesta !== null &&
+      esCalificable(ticket.estado, cerradoEn, encuesta !== null, this.clock.now(), plazoEncuesta);
     // Con el alcance propia (el vecino) no se expone quién resolvió, como el técnico en SPEC 25. Depende del
     // alcance, no del nombre del rol (SPEC 26).
     const verQuienResolvio = usuario.permisos['tickets.ver'] !== 'propia';
@@ -120,7 +145,16 @@ export class ConsultaTicketsService {
       confirmacion: await this.confirmacion(usuario, ticket),
       // Los vencimientos son para los internos: con el alcance propia (el vecino) no se envían (SPEC 30).
       sla: verQuienResolvio ? aSlaDto(sla, ticket.estado) : null,
+      encuesta: encuesta === null ? null : { ...encuesta, creadoEn: encuesta.creadoEn.toISOString() },
+      puedeCalificar,
+      encuestaVenceEn: puedeCalificar ? isoONull(venceEncuesta(cerradoEn, plazoEncuesta!)) : null,
     };
+  }
+
+  // Un plazo que falta o no es válido no rompe la lectura: la queja simplemente no se ofrece para calificar (al
+  // calificar, POST /encuesta responde 409 PARAMETRO_INVALIDO).
+  private async plazoEncuesta(): Promise<number | null> {
+    return plazoEncuestaValido(await this.parametros.obtener(CLAVE_PLAZO_ENCUESTA));
   }
 
   // Solo en resuelta y con vencimiento (SPEC 27). El alcance que decide es el de tickets.cambiar_estado: el técnico,

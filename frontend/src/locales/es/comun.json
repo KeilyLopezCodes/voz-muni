@@ -90,7 +90,8 @@
         "aprobada": "Se aprobó el traslado de {{numero}}",
         "rechazada": "Se rechazó el traslado de {{numero}}",
         "sin_efecto": "El traslado de {{numero}} quedó sin efecto"
-      }
+      },
+      "encuesta_baja": "La queja {{numero}} recibió una calificación de {{calificacion}} de 5"
     },
     "plazos": {
       "respuesta": "respuesta",

@@ -34,6 +34,7 @@ const TIPOS_CONOCIDOS = [
   'queja_reabierta',
   'traslado_solicitado',
   'traslado_resuelto',
+  'encuesta_baja', // SPEC 39
 ]
 const RESULTADOS_TRASLADO = ['aprobada', 'rechazada', 'sin_efecto']
 
@@ -65,6 +66,8 @@ export function textoNotificacion(notificacion: Notificacion, t: T, idioma: stri
     umbral: datos.umbral,
     // sla_escalamiento (SPEC 32): qué plazo venció.
     plazo: typeof datos.plazo === 'string' ? t(`notificaciones.plazos.${datos.plazo}`) : '',
+    // encuesta_baja (SPEC 39): la calificación que dejó el vecino.
+    calificacion: datos.calificacion,
     fecha,
   })
 }

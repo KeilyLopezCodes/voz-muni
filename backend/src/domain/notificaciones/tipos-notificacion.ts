@@ -13,6 +13,7 @@ export const TIPOS_NOTIFICACION_INTERNA = [
   'queja_reabierta', // {}
   'traslado_solicitado', // { solicitudId }
   'traslado_resuelto', // { solicitudId, resultado }
+  'encuesta_baja', // { calificacion }, a los coordinadores (SPEC 39)
 ] as const;
 
 export const TIPOS_NOTIFICACION = [...TIPOS_NOTIFICACION_SLA, ...TIPOS_NOTIFICACION_INTERNA] as const;
