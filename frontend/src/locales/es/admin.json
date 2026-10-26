@@ -5,6 +5,18 @@
     "sla": {
       "titulo": "Políticas de SLA",
       "descripcion": "Plazos de primera respuesta y de resolución de cada categoría y prioridad, en horas hábiles."
+    },
+    "dependencias": {
+      "titulo": "Dependencias",
+      "descripcion": "Las áreas de la municipalidad que atienden las quejas."
+    },
+    "categorias": {
+      "titulo": "Categorías",
+      "descripcion": "Los tipos de queja y la dependencia que recibe cada uno."
+    },
+    "zonas": {
+      "titulo": "Zonas",
+      "descripcion": "Zonas, colonias y aldeas que el vecino elige al registrar una queja."
     }
   },
   "sla": {
@@ -51,6 +63,70 @@
         "PRIORIDAD_FALTANTE": "Falta esta prioridad.",
         "PRIORIDAD_DUPLICADA": "Esta prioridad está repetida."
       }
+    }
+  },
+  "catalogos": {
+    "volver": "Volver a administración",
+    "cargando": "Cargando…",
+    "errorCarga": "No pudimos cargar la lista.",
+    "reintentar": "Reintentar",
+    "mostrarInactivas": "Mostrar inactivas",
+    "vacio": "No hay registros para mostrar.",
+    "nombre": "Nombre",
+    "estado": "Estado",
+    "acciones": "Acciones",
+    "activa": "Activa",
+    "inactiva": "Inactiva",
+    "editar": "Editar",
+    "activar": "Activar",
+    "desactivar": "Desactivar",
+    "guardar": "Guardar",
+    "cancelar": "Cancelar",
+    "guardado": "Cambios guardados.",
+    "confirmarTitulo": "¿Desactivar {{nombre}}?",
+    "confirmarTexto": "{{nombre}} dejará de estar disponible para quejas nuevas. Las quejas que ya la tienen no cambian.",
+    "errores": {
+      "NOMBRE_DUPLICADO": "Ya existe un registro con ese nombre.",
+      "NOMBRE_INVALIDO": "El nombre debe tener de 1 a 120 caracteres.",
+      "DEPENDENCIA_EN_USO": "No se puede desactivar: tiene categorías activas. Desactívalas o muévelas a otra dependencia primero.",
+      "DEPENDENCIA_INACTIVA": "La dependencia está inactiva. Elige una dependencia activa.",
+      "SLA_INCOMPLETO": "Para activarla, define primero sus plazos de SLA.",
+      "NO_ENCONTRADO": "El registro ya no existe. Recarga la página.",
+      "GENERICO": "No pudimos guardar los cambios. Intenta de nuevo."
+    },
+    "irSla": "Definir el SLA",
+    "dependencias": {
+      "titulo": "Dependencias",
+      "descripcion": "Las dependencias se desactivan, nunca se borran: las quejas históricas las siguen mostrando.",
+      "nueva": "Nueva dependencia",
+      "editarTitulo": "Editar dependencia",
+      "categoriasActivas": "Categorías activas",
+      "usuarios": "Usuarios",
+      "quejasAbiertas": "Quejas abiertas",
+      "editarCategoria": "Editar {{nombre}}"
+    },
+    "categorias": {
+      "titulo": "Categorías",
+      "descripcion": "Cada categoría define la dependencia que recibe sus quejas. Una categoría nueva nace inactiva y se activa cuando tiene su SLA.",
+      "nueva": "Nueva categoría",
+      "editarTitulo": "Editar categoría",
+      "dependencia": "Dependencia",
+      "dependenciaInactiva": "Inactiva",
+      "sinSla": "Sin SLA",
+      "camposExtra_one": "{{count}} campo adicional",
+      "camposExtra_other": "{{count}} campos adicionales",
+      "avisoMover": "Las quejas ya aceptadas siguen en su dependencia actual. Solo las nuevas irán a {{dependencia}}.",
+      "nuevaInactiva": "La categoría se crea inactiva. Actívala cuando tenga su SLA.",
+      "sla": "SLA",
+      "slaCompleto": "Completo",
+      "columnaCampos": "Campos adicionales"
+    },
+    "zonas": {
+      "titulo": "Zonas",
+      "descripcion": "Las zonas, colonias y aldeas que el vecino elige al registrar una queja.",
+      "nueva": "Nueva zona",
+      "editarTitulo": "Editar zona",
+      "tipo": "Tipo"
     }
   }
 }

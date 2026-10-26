@@ -3,6 +3,7 @@ import type { Container } from './container';
 import { AdjuntosController } from './presentation/controllers/adjuntos.controller';
 import { AsignacionController } from './presentation/controllers/asignacion.controller';
 import { AuthController } from './presentation/controllers/auth.controller';
+import { CatalogosAdminController } from './presentation/controllers/catalogos-admin.controller';
 import { CamposExtraController } from './presentation/controllers/campos-extra.controller';
 import { CatalogosController } from './presentation/controllers/catalogos.controller';
 import { ConsultaPublicaController } from './presentation/controllers/consulta-publica.controller';
@@ -29,6 +30,7 @@ import { manejadorErrores, rutaNoEncontrada } from './presentation/middlewares/m
 import { adjuntosRoutes } from './presentation/routes/adjuntos.routes';
 import { asignacionRoutes } from './presentation/routes/asignacion.routes';
 import { authRoutes } from './presentation/routes/auth.routes';
+import { catalogosAdminRoutes } from './presentation/routes/catalogos-admin.routes';
 import { camposExtraRoutes } from './presentation/routes/campos-extra.routes';
 import { catalogosRoutes } from './presentation/routes/catalogos.routes';
 import { comentariosRoutes } from './presentation/routes/comentarios.routes';
@@ -134,6 +136,10 @@ export function createApp(container: Container): Express {
       new NotificacionesController(container.notificacionesService),
       autenticar(container.autorizacionService),
     ),
+  );
+  app.use(
+    '/api/v1/admin',
+    catalogosAdminRoutes(new CatalogosAdminController(container.catalogosAdminService), autenticar(container.autorizacionService)),
   );
   app.use(
     '/api/v1/admin',

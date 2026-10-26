@@ -1,6 +1,9 @@
 import type { ComponentType } from 'react'
 import { Navigate, type RouteObject } from 'react-router'
 import { AdminPage } from '../features/admin/pages/AdminPage'
+import { CategoriasPage } from '../features/admin/catalogos/CategoriasPage'
+import { DependenciasPage } from '../features/admin/catalogos/DependenciasPage'
+import { ZonasPage } from '../features/admin/catalogos/ZonasPage'
 import { PoliticasSlaPage } from '../features/admin/sla/PoliticasSlaPage'
 import { LoginPage } from '../features/auth/pages/LoginPage'
 import { RecuperarPage } from '../features/auth/pages/RecuperarPage'
@@ -39,6 +42,9 @@ const PAGINAS: Record<string, ComponentType> = {
   '/reportes': ReportesPage,
   '/admin': AdminPage,
   '/admin/sla': PoliticasSlaPage,
+  '/admin/dependencias': DependenciasPage,
+  '/admin/categorias': CategoriasPage,
+  '/admin/zonas': ZonasPage,
 }
 
 function RedirigirAlInicio() {

@@ -26,11 +26,12 @@ export interface Zona {
 export interface CatalogoLecturaRepository {
   // La categoría existe y está activa, y su dependencia también.
   categoriaRegistrable(categoriaId: number): Promise<boolean>;
+  // Existe y está activa (SPEC 40).
   zonaExiste(zonaId: number): Promise<boolean>;
   // Solo las activas con dependencia activa, ordenadas por nombre.
   listarCategoriasActivas(): Promise<CategoriaConDependencia[]>;
   // Dependencias activas ordenadas por nombre, para sugerir el destino de un traslado (SPEC 21).
   listarDependenciasActivas(): Promise<DependenciaActiva[]>;
-  // Ordenadas por tipo y nombre.
+  // Solo las activas (SPEC 40), ordenadas por tipo y nombre.
   listarZonas(): Promise<Zona[]>;
 }

@@ -1,4 +1,4 @@
-import { ApiError, type DetalleError } from './api-error'
+import { ApiError, type DetalleError, type RegistroError } from './api-error'
 
 const TIEMPO_LIMITE_MS = 15_000
 
@@ -46,13 +46,19 @@ const esDetalle = (valor: unknown): valor is DetalleError =>
   typeof (valor as DetalleError).campo === 'string' &&
   typeof (valor as DetalleError).problema === 'string'
 
-// Cuerpo de error del backend: { "codigo": "...", "mensaje": "...", "detalles"?: [{ campo, problema }] }.
+const esRegistro = (valor: unknown): valor is RegistroError =>
+  typeof valor === 'object' &&
+  valor !== null &&
+  typeof (valor as RegistroError).id === 'number' &&
+  typeof (valor as RegistroError).nombre === 'string'
+
+// Cuerpo de error del backend: { "codigo": "...", "mensaje": "...", "detalles"?: [{ campo, problema } | { id, nombre }] }.
 async function errorDeRespuesta(response: Response): Promise<ApiError> {
   try {
     const cuerpo: unknown = await response.json()
     if (cuerpo && typeof cuerpo === 'object' && 'codigo' in cuerpo && typeof cuerpo.codigo === 'string') {
-      const detalles = 'detalles' in cuerpo && Array.isArray(cuerpo.detalles) ? cuerpo.detalles.filter(esDetalle) : []
-      return new ApiError(response.status, cuerpo.codigo, detalles)
+      const lista: unknown[] = 'detalles' in cuerpo && Array.isArray(cuerpo.detalles) ? cuerpo.detalles : []
+      return new ApiError(response.status, cuerpo.codigo, lista.filter(esDetalle), lista.filter(esRegistro))
     }
   } catch {
     // Cuerpo vacío o no JSON: se usa el código genérico.

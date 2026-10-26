@@ -4,6 +4,7 @@ import { KnexAdjuntoRepository } from './knex-adjunto-repository';
 import { KnexAlertasSlaRepository } from './knex-alertas-sla-repository';
 import { KnexAsignacionRepository } from './knex-asignacion-repository';
 import { KnexAvisosComentariosRepository } from './knex-avisos-comentarios-repository';
+import { KnexCatalogosAdminRepository } from './knex-catalogos-admin-repository';
 import { KnexCategoriaAdminRepository } from './knex-categoria-admin-repository';
 import { KnexCierreAutomaticoRepository } from './knex-cierre-automatico-repository';
 import { KnexComentarioRepository } from './knex-comentario-repository';
@@ -50,6 +51,7 @@ export class KnexTransaccion implements Transaccion {
         avisosComentarios: new KnexAvisosComentariosRepository(trx),
         destinatarios: new KnexDestinatariosRepository(trx),
         encuestas: new KnexEncuestaRepository(trx),
+        catalogosAdmin: new KnexCatalogosAdminRepository(trx),
       }),
     );
   }
