@@ -19,6 +19,7 @@ export interface Env extends DatabaseEnv {
   MAIL_FROM: string;
   APP_URL: string;
   RECUPERACION_LIMITE_POR_VENTANA: number;
+  CONSULTA_LIMITE_POR_VENTANA: number;
   ADJUNTOS_DIR: string;
   SLA_JOB_ACTIVO: boolean;
   SLA_JOB_CRON: string;
@@ -68,6 +69,8 @@ const envSchema = databaseEnvSchema.extend({
     .url({ protocol: /^https?$/, error: 'debe ser una URL http:// o https://' })
     .refine((url) => !url.endsWith('/'), { error: 'no debe terminar en /' }),
   RECUPERACION_LIMITE_POR_VENTANA: z.coerce.number().int().positive().default(5),
+  // Consultas públicas por IP cada 15 minutos (SPEC 37).
+  CONSULTA_LIMITE_POR_VENTANA: z.coerce.number().int().positive().default(10),
   // Carpeta de los adjuntos (SPEC 24). El backend la crea al arrancar si no existe.
   ADJUNTOS_DIR: z.string(OBLIGATORIA).min(1, OBLIGATORIA),
   // Job de SLA: alertas y escalamiento (SPEC 31 y 32). Sin valor, corre salvo en NODE_ENV=test.

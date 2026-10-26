@@ -27,6 +27,7 @@ import type { LineaTiempoService } from '../../src/application/services/linea-ti
 import type { NotificadorCorreo } from '../../src/application/services/notificador-correo.service';
 import type { NotificacionesService } from '../../src/application/services/notificaciones.service';
 import type { PoliticasSlaService } from '../../src/application/services/politicas-sla.service';
+import type { ConsultaPublicaService } from '../../src/application/services/consulta-publica.service';
 import type { ConsultaTicketsService } from '../../src/application/services/consulta-tickets.service';
 import type { BitacoraLecturaRepository } from '../../src/domain/repositories/bitacora-lectura-repository';
 import type { ReporteLecturaRepository } from '../../src/domain/repositories/reporte-lectura-repository';
@@ -45,6 +46,8 @@ function buildTestContainer(databaseUp: boolean): Container {
     port: 0,
     loginLimitePorVentana: 10,
     recuperacionLimitePorVentana: 5,
+    consultaLimitePorVentana: 10,
+    consultaPublicaService: {} as ConsultaPublicaService,
     healthService: new HealthService(clock, databaseHealthCheck),
     // /health no los usa.
     authService: {} as AuthService,

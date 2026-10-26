@@ -178,7 +178,49 @@
     }
   },
   "consulta": {
-    "titulo": "Consultar el estado de una queja"
+    "titulo": "Consultar el estado de una queja",
+    "instrucciones": "Escribe el número de tu queja y el correo o teléfono con que la registraste.",
+    "campos": {
+      "numero": "Número de queja",
+      "numeroAyuda": "Tiene la forma Q-AAAA-NNNNNN, por ejemplo Q-2026-000123",
+      "contacto": "Correo o teléfono con que la registraste"
+    },
+    "validacion": {
+      "numero": "Escribe el número con la forma Q-AAAA-NNNNNN",
+      "contacto": "Escribe el correo o el teléfono"
+    },
+    "consultar": "Consultar",
+    "consultando": "Consultando…",
+    "errores": {
+      "CONSULTA_NO_ENCONTRADA": "No encontramos una queja con esos datos. Revisa el número y el correo o teléfono.",
+      "DEMASIADAS_PETICIONES": "Hiciste demasiadas consultas. Espera unos minutos.",
+      "VALIDACION": "Revisa los datos: el número debe tener la forma Q-AAAA-NNNNNN y el teléfono, 8 dígitos.",
+      "GENERICO": "No pudimos hacer la consulta. Intenta de nuevo en unos minutos."
+    },
+    "registrada": "Registrada el {{fecha}}",
+    "cerradaEl": "cerrada el {{fecha}}",
+    "esperaRespuesta": "La municipalidad necesita información tuya para continuar.",
+    "plazo": "Tienes hasta el {{fecha}} para confirmar la solución o reabrir la queja en el portal.",
+    "plazoVencido": "El plazo para confirmar venció.",
+    "cierreAutomatico": "Cerrada automáticamente porque venció el plazo de confirmación.",
+    "portal": {
+      "responder": "Inicia sesión para responder",
+      "confirmar": "Inicia sesión para confirmar o reabrir",
+      "ver": "Ver en Mis quejas"
+    },
+    "historial": "Historial",
+    "evento": {
+      "registro": "{{actor}} registró la queja",
+      "cambio": "{{actor}}: pasó a {{estado}}"
+    },
+    "actores": {
+      "vecino": "Vecino",
+      "municipalidad": "Municipalidad",
+      "sistema": "VozMuni"
+    },
+    "comentarios": "Comentarios",
+    "sinComentarios": "Todavía no hay comentarios.",
+    "editado": "editado"
   },
   "triage": {
     "titulo": "Triage",

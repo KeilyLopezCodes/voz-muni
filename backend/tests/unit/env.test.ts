@@ -20,6 +20,7 @@ describe('loadEnv', () => {
     SMTP_PORT: 587,
     SMTP_SECURE: false,
     RECUPERACION_LIMITE_POR_VENTANA: 5,
+    CONSULTA_LIMITE_POR_VENTANA: 10,
     SLA_JOB_ACTIVO: true,
     SLA_JOB_CRON: '*/5 * * * *',
     CORREOS_JOB_ACTIVO: true,
@@ -37,6 +38,7 @@ describe('loadEnv', () => {
         SMTP_PORT: '465',
         SMTP_SECURE: 'true',
         RECUPERACION_LIMITE_POR_VENTANA: '3',
+        CONSULTA_LIMITE_POR_VENTANA: '4',
         SLA_JOB_ACTIVO: 'false',
         SLA_JOB_CRON: '* * * * *',
         CORREOS_JOB_ACTIVO: 'false',
@@ -51,6 +53,7 @@ describe('loadEnv', () => {
       SMTP_PORT: 465,
       SMTP_SECURE: true,
       RECUPERACION_LIMITE_POR_VENTANA: 3,
+      CONSULTA_LIMITE_POR_VENTANA: 4,
       SLA_JOB_ACTIVO: false,
       SLA_JOB_CRON: '* * * * *',
       CORREOS_JOB_ACTIVO: false,
@@ -165,6 +168,11 @@ describe('loadEnv', () => {
   it('acepta MAIL_FROM como correo solo y rechaza uno sin correo', () => {
     expect(loadEnv({ ...minimo, MAIL_FROM: 'no-responder@vozmuni.test' }).MAIL_FROM).toBe('no-responder@vozmuni.test');
     expect(() => loadEnv({ ...minimo, MAIL_FROM: 'VozMuni <sin-arroba>' })).toThrow(/MAIL_FROM/);
+  });
+
+  it('rechaza un CONSULTA_LIMITE_POR_VENTANA que no es un entero mayor que 0 (SPEC 37)', () => {
+    expect(() => loadEnv({ ...minimo, CONSULTA_LIMITE_POR_VENTANA: '0' })).toThrow(/CONSULTA_LIMITE_POR_VENTANA/);
+    expect(() => loadEnv({ ...minimo, CONSULTA_LIMITE_POR_VENTANA: '2.5' })).toThrow(/CONSULTA_LIMITE_POR_VENTANA/);
   });
 
   it('rechaza un RECUPERACION_LIMITE_POR_VENTANA que no es mayor que 0', () => {

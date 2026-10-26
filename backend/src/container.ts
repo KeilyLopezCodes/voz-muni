@@ -15,6 +15,7 @@ import { ParametrosService } from './application/services/parametros.service';
 import { PlazosConfirmacionService } from './application/services/plazos-confirmacion.service';
 import { PoliticasSlaService } from './application/services/politicas-sla.service';
 import { SlaService } from './application/services/sla.service';
+import { ConsultaPublicaService } from './application/services/consulta-publica.service';
 import { ConsultaTicketsService } from './application/services/consulta-tickets.service';
 import { DespachoCorreosService } from './application/services/despacho-correos.service';
 import { NotificacionesInternasService } from './application/services/notificaciones-internas.service';
@@ -47,6 +48,7 @@ import { NodemailerEnviadorCorreo } from './infrastructure/mail/nodemailer-envia
 import { KnexAtencionLecturaRepository } from './infrastructure/repositories/knex-atencion-lectura-repository';
 import { KnexBitacoraLecturaRepository } from './infrastructure/repositories/knex-bitacora-lectura-repository';
 import { KnexCatalogoLecturaRepository } from './infrastructure/repositories/knex-catalogo-lectura-repository';
+import { KnexConsultaPublicaRepository } from './infrastructure/repositories/knex-consulta-publica-repository';
 import { KnexCorreoSalienteRepository } from './infrastructure/repositories/knex-correo-saliente-repository';
 import { KnexCierreAutomaticoRepository } from './infrastructure/repositories/knex-cierre-automatico-repository';
 import { KnexEscaladasLecturaRepository } from './infrastructure/repositories/knex-escaladas-lectura-repository';
@@ -74,6 +76,8 @@ export interface Container {
   port: number;
   loginLimitePorVentana: number;
   recuperacionLimitePorVentana: number;
+  consultaLimitePorVentana: number; // SPEC 37
+  consultaPublicaService: ConsultaPublicaService;
   healthService: HealthService;
   authService: AuthService;
   autorizacionService: AutorizacionService;
@@ -206,6 +210,8 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     port: env.PORT,
     loginLimitePorVentana: env.LOGIN_LIMITE_POR_VENTANA,
     recuperacionLimitePorVentana: env.RECUPERACION_LIMITE_POR_VENTANA,
+    consultaLimitePorVentana: env.CONSULTA_LIMITE_POR_VENTANA,
+    consultaPublicaService: new ConsultaPublicaService(new KnexConsultaPublicaRepository(db), clock),
     healthService: new HealthService(clock, new KnexDatabaseHealthCheck(db)),
     authService: new AuthService(usuarios, sesiones, hasher, tokens, clock),
     autorizacionService: new AutorizacionService(usuarios, tokens, clock),

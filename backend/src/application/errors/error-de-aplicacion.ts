@@ -61,6 +61,7 @@ export type CodigoError =
   | 'SESION_INVALIDA'
   | 'PERMISO_DENEGADO'
   | 'NO_ENCONTRADO'
+  | 'CONSULTA_NO_ENCONTRADA' // SPEC 37: el mismo para un número inexistente y un contacto que no coincide
   | 'CUENTA_BLOQUEADA'
   | 'DEMASIADAS_PETICIONES'
   | 'ERROR_INTERNO';

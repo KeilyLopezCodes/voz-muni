@@ -325,7 +325,7 @@ Campos adicionales por categoría (RF-09):
 | POST /api/v1/auth/recuperar, /restablecer | Pedir el enlace de recuperación y definir la contraseña nueva | Público |
 | GET /api/v1/vecinos | Buscar un vecino por correo, teléfono o DPI exactos, con el contacto enmascarado | Receptor, Supervisor |
 | POST /api/v1/vecinos | Alta de un vecino nuevo en ventanilla (nombre, DPI y correo o teléfono), con invitación si da correo | Receptor, Supervisor |
-| GET /api/v1/public/tickets/:numero | Consulta de estado con dato de contacto | Público |
+| GET /api/v1/public/tickets/:numero?contacto= | Consulta de estado sin sesión: `contacto` es el correo (sin distinguir mayúsculas) o el teléfono (8 dígitos) del solicitante. Responde el estado, el título, la categoría, la zona, las fechas, la solución, el plazo de confirmación, si el cierre fue automático, los cambios de estado (con el motivo solo en las transiciones dirigidas al vecino) y los comentarios públicos, con autor "Vecino" o "Municipalidad". Nunca datos personales, dirección, coordenadas, datos adicionales, dependencia, prioridad, técnico, ids ni vencimientos. Un número inexistente y un contacto que no coincide responden el mismo 404 `CONSULTA_NO_ENCONTRADA`. Hasta 10 consultas por IP cada 15 minutos (`CONSULTA_LIMITE_POR_VENTANA`); `Cache-Control: no-store`; la query nunca se escribe en los logs | Público |
 | POST /api/v1/tickets | Registrar queja | Vecino, Receptor, Supervisor |
 | GET /api/v1/tickets | Listado filtrado y paginado, limitado por rol. Primera versión (SPEC 25): paginado, sin filtros, con las quejas En espera primero; RF-36 agrega los filtros | Internos, Vecino |
 | GET /api/v1/tickets/triage | Bandeja de quejas en `nueva` y `en_revision`, de la más antigua a la más reciente | Supervisor |

@@ -1,6 +1,6 @@
 # SPEC 38 — Panel del vecino con sus quejas filtradas por estado
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 11, SPEC 25, SPEC 27
 > **Fecha:** 2026-10-23
 > **Objetivo:** Ampliar "Mis quejas" (`/tickets`) con filtros por grupos de estado pensados para el vecino, con contadores, búsqueda por número o título, la marca "Confirma la solución" y el filtro en la URL, sobre `GET /api/v1/tickets` con `estado` y `q`, y el nuevo `GET /api/v1/tickets/resumen`.

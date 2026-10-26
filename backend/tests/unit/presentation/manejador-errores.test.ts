@@ -29,6 +29,7 @@ import type { LineaTiempoService } from '../../../src/application/services/linea
 import type { NotificadorCorreo } from '../../../src/application/services/notificador-correo.service';
 import type { NotificacionesService } from '../../../src/application/services/notificaciones.service';
 import type { PoliticasSlaService } from '../../../src/application/services/politicas-sla.service';
+import type { ConsultaPublicaService } from '../../../src/application/services/consulta-publica.service';
 import type { ConsultaTicketsService } from '../../../src/application/services/consulta-tickets.service';
 import type { BitacoraLecturaRepository } from '../../../src/domain/repositories/bitacora-lectura-repository';
 import type { ReporteLecturaRepository } from '../../../src/domain/repositories/reporte-lectura-repository';
@@ -44,6 +45,8 @@ function buildTestContainer(): Container {
     port: 0,
     loginLimitePorVentana: 10,
     recuperacionLimitePorVentana: 5,
+    consultaLimitePorVentana: 10,
+    consultaPublicaService: {} as ConsultaPublicaService,
     healthService: new HealthService({ now: () => new Date() }, { isUp: async () => true }),
     // Estas pruebas fallan antes de llegar a los servicios de auth.
     authService: {} as AuthService,
@@ -161,6 +164,27 @@ describe('manejadorErrores', () => {
     expect(res.body).toEqual({ codigo: 'ERROR_INTERNO', mensaje: 'Error interno' });
     expect(JSON.stringify(res.body)).not.toContain('stack');
     expect(JSON.stringify(res.body)).not.toContain('línea 42');
+  });
+
+  it('en /api/v1/public el log de un error interno no lleva el mensaje ni la query (SPEC 37)', async () => {
+    const app = express();
+    app.get('/api/v1/public/tickets/:numero', () => {
+      throw new Error('select … where email = ana@correo.gt');
+    });
+    app.use(manejadorErrores);
+
+    const res = await request(app).get('/api/v1/public/tickets/Q-2026-000001?contacto=ana@correo.gt');
+
+    expect(res.status).toBe(500);
+    const logs = jest.mocked(console.error).mock.calls.map((llamada) => llamada.map(String).join(' ')).join('\n');
+    expect(logs).toBe('Error interno en GET /api/v1/public/tickets/Q-2026-000001: Error');
+  });
+
+  it('una ruta pública desconocida responde 404 sin la query en el mensaje (SPEC 37)', async () => {
+    const res = await request(createApp(buildTestContainer())).get('/api/v1/public/otra?contacto=ana@correo.gt');
+
+    expect(res.status).toBe(404);
+    expect(res.body.mensaje).toBe('No existe GET /api/v1/public/otra');
   });
 
   it('/health no cambia', async () => {
