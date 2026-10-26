@@ -1,5 +1,6 @@
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '../../src/features/auth/AuthProvider'
@@ -11,6 +12,13 @@ import { SessionProvider } from '../../src/shared/auth/SessionProvider'
 import '../../src/shared/i18n/i18n'
 import { RUTAS_PROTEGIDAS } from '../../src/shared/auth/rutas'
 import { AppLayout, ICONO_POR_RUTA } from '../../src/shared/layout/AppLayout'
+
+// La campana de notificaciones (SPEC 31) usa TanStack Query.
+function ConConsultas({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{children}</QueryClientProvider>
+  )
+}
 
 // Rutas con enMenu = true de la tabla de SPEC 06, por rol.
 const MENU_ESPERADO: Record<Rol, string[]> = {
@@ -32,6 +40,7 @@ describe('AppLayout', () => {
           </AppLayout>
         </MemoryRouter>
       </SessionProvider>,
+      { wrapper: ConConsultas },
     )
 
     // El menú permanente está oculto con CSS en pantallas chicas, pero existe en el DOM.
@@ -54,6 +63,7 @@ describe('AppLayout', () => {
           </AppLayout>
         </MemoryRouter>
       </SessionProvider>,
+      { wrapper: ConConsultas },
     )
 
     const menu = screen.getByRole('navigation', { name: comun.menu.principal, hidden: true })
@@ -79,10 +89,31 @@ describe('AppLayout', () => {
           </AppLayout>
         </MemoryRouter>
       </SessionProvider>,
+      { wrapper: ConConsultas },
     )
 
     expect(screen.queryByRole('button', { name: comun.menuUsuario.abrir })).not.toBeInTheDocument()
     expect(screen.queryByText(comun.menu.cerrarSesion)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Notificaciones/ })).not.toBeInTheDocument()
+  })
+
+  it('con sesión muestra la campana de notificaciones (SPEC 31)', () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockRejectedValue(new TypeError('Failed to fetch')))
+    try {
+      render(
+        <SessionProvider session={{ usuarioId: 1, nombre: 'Usuario Prueba', rol: 'tecnico', dependenciaId: null }}>
+          <MemoryRouter>
+            <AppLayout>
+              <p>contenido</p>
+            </AppLayout>
+          </MemoryRouter>
+        </SessionProvider>,
+        { wrapper: ConConsultas },
+      )
+      expect(screen.getByRole('button', { name: 'Notificaciones, 0 sin leer' })).toBeInTheDocument()
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })
 
@@ -116,9 +147,11 @@ describe('AppLayout: cerrar sesión', () => {
     )
     const irALogin = vi.fn(() => void router.navigate('/login'))
     render(
-      <AuthProvider queryClient={queryClient} irALogin={irALogin}>
-        <RouterProvider router={router} />
-      </AuthProvider>,
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider queryClient={queryClient} irALogin={irALogin}>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </QueryClientProvider>,
     )
     return { queryClient, router, irALogin }
   }

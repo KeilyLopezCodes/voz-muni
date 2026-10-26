@@ -1,9 +1,11 @@
 import type { Knex } from 'knex';
 import type { ReposTransaccionales, Transaccion } from '../../domain/repositories/transaccion';
 import { KnexAdjuntoRepository } from './knex-adjunto-repository';
+import { KnexAlertasSlaRepository } from './knex-alertas-sla-repository';
 import { KnexAsignacionRepository } from './knex-asignacion-repository';
 import { KnexCategoriaAdminRepository } from './knex-categoria-admin-repository';
 import { KnexComentarioRepository } from './knex-comentario-repository';
+import { KnexNotificacionRepository } from './knex-notificacion-repository';
 import { KnexPoliticaSlaRepository } from './knex-politica-sla-repository';
 import { KnexRegistroVecinoRepository } from './knex-registro-vecino-repository';
 import { KnexRestablecimientoRepository } from './knex-restablecimiento-repository';
@@ -34,6 +36,8 @@ export class KnexTransaccion implements Transaccion {
         comentarios: new KnexComentarioRepository(trx),
         adjuntos: new KnexAdjuntoRepository(trx),
         politicasSla: new KnexPoliticaSlaRepository(trx),
+        alertasSla: new KnexAlertasSlaRepository(trx),
+        notificaciones: new KnexNotificacionRepository(trx),
       }),
     );
   }

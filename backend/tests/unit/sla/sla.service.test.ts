@@ -14,10 +14,13 @@ function gt(fecha: string, hora: string): Date {
 }
 
 class ParametrosFalsos implements ParametroRepository {
-  constructor(public jornada: unknown = { inicio: '08:00', fin: '16:00' }) {}
+  constructor(
+    public jornada: unknown = { inicio: '08:00', fin: '16:00' },
+    public umbral: unknown = 80,
+  ) {}
 
   async obtener(clave: string): Promise<unknown | null> {
-    return clave === 'jornada_laboral' ? this.jornada : null;
+    return { jornada_laboral: this.jornada, sla_umbral_alerta: this.umbral }[clave] ?? null;
   }
 
   async guardar(): Promise<void> {}
@@ -67,6 +70,10 @@ function ticket(cambios: Partial<TicketConPolitica> = {}): TicketConPolitica {
     pausaMinutos: 0,
     pausadoDesde: null,
     restanteMinutos: null,
+    alertaRespuestaEn: null,
+    alertaResolucionEn: null,
+    alertaRespuestaEnviadaEn: null,
+    alertaResolucionEnviadaEn: null,
     categoriaId: 4,
     prioridad: 'alta',
     ...cambios,
@@ -80,14 +87,21 @@ describe('SlaService', () => {
       inicioResolucion: gt('2026-10-26', '10:00'),
       venceRespuesta: gt('2026-10-27', '10:00'),
       venceResolucion: gt('2026-10-28', '10:00'),
+      // Al 80 %: 384 min de respuesta y 768 de resolución.
+      alertaRespuestaEn: gt('2026-10-27', '08:24'),
+      alertaResolucionEn: gt('2026-10-27', '14:48'),
+      alertaRespuestaEnviadaEn: null,
+      alertaResolucionEnviadaEn: null,
     });
   });
 
   it('pide ceil(minutos / jornada) + 1 días desde la fecha local de inicio', async () => {
     const calendario = new CalendarioFalso();
     await new SlaService(new ParametrosFalsos(), calendario, politicas).alAceptar(ticket());
-    // 8 h = 480 min → 1 + 1 días; 16 h = 960 min → 2 + 1 días.
+    // 8 h = 480 min → 1 + 1 días; 16 h = 960 min → 2 + 1 días. Las alertas: 384 min → 1 + 1; 768 min → 2 + 1.
     expect(calendario.pedidosDesde).toEqual([
+      ['2026-10-26', 2],
+      ['2026-10-26', 3],
       ['2026-10-26', 2],
       ['2026-10-26', 3],
     ]);
@@ -112,6 +126,20 @@ describe('SlaService', () => {
     await expect(servicio.alAceptar(ticket())).rejects.toMatchObject({ codigo: 'PARAMETRO_INVALIDO' });
   });
 
+  it.each([
+    ['ausente', null],
+    ['0', 0],
+    ['100', 100],
+  ])('con el umbral de alerta %s → PARAMETRO_INVALIDO', async (_caso, umbral) => {
+    const servicio = new SlaService(new ParametrosFalsos(undefined, umbral), new CalendarioFalso(), politicas);
+    await expect(servicio.alAceptar(ticket())).rejects.toMatchObject({ codigo: 'PARAMETRO_INVALIDO' });
+  });
+
+  it('reanudar sin pausa abierta no lee la política ni los parámetros', async () => {
+    const servicio = new SlaService(new ParametrosFalsos(null, null), new CalendarioFalso([]), politicas);
+    expect(await servicio.alReanudar(ticket({ categoriaId: 99 }), gt('2026-10-27', '10:00'))).toEqual({});
+  });
+
   it('con el calendario corto → CALENDARIO_INCOMPLETO, al sumar y al contar', async () => {
     const servicio = new SlaService(new ParametrosFalsos(), new CalendarioFalso(['2026-10-26']), politicas);
     await expect(servicio.alAceptar(ticket())).rejects.toMatchObject({
@@ -128,11 +156,18 @@ describe('SlaService', () => {
   it('poner en espera y reanudar usan el mismo reloj hábil', async () => {
     const servicio = new SlaService(new ParametrosFalsos(), new CalendarioFalso(), politicas);
     const enEspera = await servicio.alPonerEnEspera(ticket({ venceResolucion: gt('2026-10-28', '10:00') }), gt('2026-10-27', '10:00'));
-    expect(enEspera).toEqual({ restanteMinutos: 480, pausadoDesde: gt('2026-10-27', '10:00'), venceResolucion: null });
+    expect(enEspera).toEqual({
+      restanteMinutos: 480,
+      pausadoDesde: gt('2026-10-27', '10:00'),
+      venceResolucion: null,
+      alertaResolucionEn: null,
+    });
     const reanudada = await servicio.alReanudar(ticket(enEspera), gt('2026-10-27', '15:00'));
     expect(reanudada).toEqual({
       pausaMinutos: 300,
       venceResolucion: gt('2026-10-28', '15:00'),
+      // Faltaban 480 min y el 20 % de 960 son 192: la alerta queda a 288 min de las 15:00.
+      alertaResolucionEn: gt('2026-10-28', '11:48'),
       pausadoDesde: null,
       restanteMinutos: null,
     });
@@ -140,6 +175,9 @@ describe('SlaService', () => {
 
   it('iniciar no lee nada', () => {
     const servicio = new SlaService(new ParametrosFalsos(null), new CalendarioFalso([]), politicas);
-    expect(servicio.alIniciar(ticket(), gt('2026-10-26', '11:00'))).toEqual({ primeraRespuestaEn: gt('2026-10-26', '11:00') });
+    expect(servicio.alIniciar(ticket(), gt('2026-10-26', '11:00'))).toEqual({
+      primeraRespuestaEn: gt('2026-10-26', '11:00'),
+      alertaRespuestaEn: null,
+    });
   });
 });

@@ -11,6 +11,10 @@ export const SLA_VACIO: EstadoSla = {
   pausaMinutos: 0,
   pausadoDesde: null,
   restanteMinutos: null,
+  alertaRespuestaEn: null,
+  alertaResolucionEn: null,
+  alertaRespuestaEnviadaEn: null,
+  alertaResolucionEnviadaEn: null,
 };
 
 // SlaService que no calcula nada y registra a qué momento lo llamaron. Las pruebas del cálculo están en

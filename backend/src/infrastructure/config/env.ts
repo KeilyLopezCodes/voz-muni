@@ -1,3 +1,4 @@
+import { validate as esCronValido } from 'node-cron';
 import { z } from 'zod';
 import 'dotenv/config';
 
@@ -19,6 +20,8 @@ export interface Env extends DatabaseEnv {
   APP_URL: string;
   RECUPERACION_LIMITE_POR_VENTANA: number;
   ADJUNTOS_DIR: string;
+  SLA_ALERTAS_ACTIVO: boolean;
+  SLA_ALERTAS_CRON: string;
 }
 
 const OBLIGATORIA = { error: 'es obligatoria' };
@@ -54,7 +57,21 @@ const envSchema = databaseEnvSchema.extend({
   RECUPERACION_LIMITE_POR_VENTANA: z.coerce.number().int().positive().default(5),
   // Carpeta de los adjuntos (SPEC 24). El backend la crea al arrancar si no existe.
   ADJUNTOS_DIR: z.string(OBLIGATORIA).min(1, OBLIGATORIA),
+  // Job de alertas al umbral del SLA (SPEC 31). Sin valor, corre salvo en NODE_ENV=test.
+  SLA_ALERTAS_ACTIVO: z
+    .enum(['true', 'false'], { error: 'debe ser true o false' })
+    .optional()
+    .transform((valor) => (valor === undefined ? undefined : valor === 'true')),
+  SLA_ALERTAS_CRON: z
+    .string()
+    .default('*/5 * * * *')
+    .refine((expresion) => esCronValido(expresion), { error: 'debe ser una expresión válida de node-cron' }),
 });
+
+// Lo que depende de otras variables se resuelve después de validarlas.
+const envCompletoSchema = envSchema.transform(
+  (env): Env => ({ ...env, SLA_ALERTAS_ACTIVO: env.SLA_ALERTAS_ACTIVO ?? env.NODE_ENV !== 'test' }),
+);
 
 function parse<T>(schema: z.ZodType<T>, source: NodeJS.ProcessEnv): T {
   const result = schema.safeParse(source);
@@ -69,7 +86,7 @@ function parse<T>(schema: z.ZodType<T>, source: NodeJS.ProcessEnv): T {
 
 // Falla al arrancar si la configuración es inválida, en vez de en la primera consulta.
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  return parse(envSchema, source);
+  return parse(envCompletoSchema, source);
 }
 
 // Solo la conexión: la CLI de Knex migra y siembra sin necesitar JWT_SECRET.

@@ -96,6 +96,10 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['sla_pausa_minutos', 'integer'],
     ['sla_pausado_desde', 'timestamp with time zone'],
     ['sla_restante_minutos', 'integer'],
+    ['alerta_respuesta_en', 'timestamp with time zone'],
+    ['alerta_resolucion_en', 'timestamp with time zone'],
+    ['alerta_respuesta_enviada_en', 'timestamp with time zone'],
+    ['alerta_resolucion_enviada_en', 'timestamp with time zone'],
   ],
   ticket_historial: [
     ['id', 'bigint'],
@@ -164,6 +168,7 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['tipo', 'text'],
     ['leida', 'boolean'],
     ['creado_en', 'timestamp with time zone'],
+    ['datos', 'jsonb'],
   ],
   bitacora: [
     ['id', 'bigint'],
@@ -928,6 +933,58 @@ describe('Esquema de base de datos', () => {
         expect(
           await db('information_schema.columns').where({ table_name: 'comentarios', column_name: 'editado_en' }).select('column_name'),
         ).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
+  describe('alertas del SLA (0026)', () => {
+    async function indices(tabla: string): Promise<{ indexname: string; indexdef: string }[]> {
+      return db('pg_indexes').where({ schemaname: 'public', tablename: tabla }).select('indexname', 'indexdef');
+    }
+
+    it('crea los dos índices parciales de alertas pendientes', async () => {
+      const deTickets = await indices('tickets');
+      const respuesta = deTickets.find((i) => i.indexname === 'tickets_alerta_respuesta_pendiente_idx')!;
+      const resolucion = deTickets.find((i) => i.indexname === 'tickets_alerta_resolucion_pendiente_idx')!;
+      expect(respuesta.indexdef).toContain('(alerta_respuesta_en) WHERE (alerta_respuesta_enviada_en IS NULL)');
+      expect(resolucion.indexdef).toContain('(alerta_resolucion_en) WHERE (alerta_resolucion_enviada_en IS NULL)');
+    });
+
+    it('notificaciones.datos es jsonb NOT NULL con {} por defecto, con el índice (usuario_id, creado_en)', async () => {
+      const columna = await db('information_schema.columns')
+        .where({ table_name: 'notificaciones', column_name: 'datos' })
+        .first('is_nullable', 'column_default');
+      expect(columna).toEqual({ is_nullable: 'NO', column_default: "'{}'::jsonb" });
+      const indice = (await indices('notificaciones')).find((i) => i.indexname === 'notificaciones_usuario_creado_idx')!;
+      expect(indice.indexdef).toContain('(usuario_id, creado_en)');
+    });
+
+    it('carga sla_umbral_alerta = 80', async () => {
+      expect(await db('parametros').where({ clave: 'sla_umbral_alerta' }).first('valor')).toEqual({ valor: 80 });
+    });
+
+    it('revertir 0026 quita las columnas, los índices y el parámetro', async () => {
+      await db.migrate.down({ name: '0026_alertas_sla.js' });
+      try {
+        expect(
+          await db('information_schema.columns')
+            .whereIn('table_name', ['tickets', 'notificaciones'])
+            .whereIn('column_name', [
+              'alerta_respuesta_en',
+              'alerta_resolucion_en',
+              'alerta_respuesta_enviada_en',
+              'alerta_resolucion_enviada_en',
+              'datos',
+            ])
+            .select('column_name'),
+        ).toEqual([]);
+        const nombres = [...(await indices('tickets')), ...(await indices('notificaciones'))].map((i) => i.indexname);
+        expect(nombres).not.toContain('tickets_alerta_respuesta_pendiente_idx');
+        expect(nombres).not.toContain('tickets_alerta_resolucion_pendiente_idx');
+        expect(nombres).not.toContain('notificaciones_usuario_creado_idx');
+        expect(await db('parametros').where({ clave: 'sla_umbral_alerta' }).select('clave')).toEqual([]);
       } finally {
         await db.migrate.latest();
       }

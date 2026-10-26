@@ -22,6 +22,7 @@ import { NavLink } from 'react-router'
 import { RUTAS_PROTEGIDAS } from '../auth/rutas'
 import { useSession } from '../auth/session'
 import { Logo } from '../marca/Logo'
+import { CampanaNotificaciones } from '../notificaciones/CampanaNotificaciones'
 import { MenuUsuario } from './MenuUsuario'
 
 const ANCHO_MENU = 248
@@ -102,6 +103,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <Logo tamano={28} />
           </Box>
           <Box sx={{ flexGrow: 1 }} />
+          {session && <CampanaNotificaciones />}
           {session && <MenuUsuario session={session} />}
         </Toolbar>
       </AppBar>

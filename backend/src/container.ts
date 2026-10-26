@@ -1,5 +1,6 @@
 import knex from 'knex';
 import { AdjuntosService } from './application/services/adjuntos.service';
+import { AlertasSlaService } from './application/services/alertas-sla.service';
 import { AsignacionService } from './application/services/asignacion.service';
 import { AtencionService } from './application/services/atencion.service';
 import { AuthService } from './application/services/auth.service';
@@ -16,6 +17,7 @@ import { ConsultaTicketsService } from './application/services/consulta-tickets.
 import { EnvioCorreo } from './application/services/envio-correo';
 import { HealthService } from './application/services/health.service';
 import { LineaTiempoService } from './application/services/linea-tiempo.service';
+import { NotificacionesService } from './application/services/notificaciones.service';
 import { RecuperacionService } from './application/services/recuperacion.service';
 import { RegistroTicketsService } from './application/services/registro-tickets.service';
 import { RegistroVecinosService } from './application/services/registro-vecinos.service';
@@ -33,11 +35,13 @@ import { SystemClock } from './infrastructure/clock/system-clock';
 import { type Env, loadEnv } from './infrastructure/config/env';
 import { buildKnexConfig } from './infrastructure/database/knex-config';
 import { KnexDatabaseHealthCheck } from './infrastructure/database/knex-database-health-check';
+import { iniciarJobAlertasSla } from './infrastructure/jobs/alertas-sla.job';
 import { NodemailerEnviadorCorreo } from './infrastructure/mail/nodemailer-enviador-correo';
 import { KnexAtencionLecturaRepository } from './infrastructure/repositories/knex-atencion-lectura-repository';
 import { KnexBitacoraLecturaRepository } from './infrastructure/repositories/knex-bitacora-lectura-repository';
 import { KnexCatalogoLecturaRepository } from './infrastructure/repositories/knex-catalogo-lectura-repository';
 import { KnexLineaTiempoRepository } from './infrastructure/repositories/knex-linea-tiempo-repository';
+import { KnexNotificacionRepository } from './infrastructure/repositories/knex-notificacion-repository';
 import { KnexParametroRepository } from './infrastructure/repositories/knex-parametro-repository';
 import { KnexCalendarioRepository } from './infrastructure/repositories/knex-calendario-repository';
 import { KnexPorAsignarLecturaRepository } from './infrastructure/repositories/knex-por-asignar-lectura-repository';
@@ -84,6 +88,12 @@ export interface Container {
   adjuntosService: AdjuntosService;
   lineaTiempoService: LineaTiempoService;
   politicasSlaService: PoliticasSlaService;
+  // Lo llama el job de alertas (SPEC 31); server.ts lo programa, app.ts no.
+  alertasSlaService: AlertasSlaService;
+  notificacionesService: NotificacionesService;
+  // SLA_ALERTAS_ACTIVO. server.ts programa el job después de listen; devuelve la función que lo detiene.
+  alertasSlaActivo: boolean;
+  iniciarAlertasSla(): () => void;
   // Crea ADJUNTOS_DIR si no existe; server.ts lo llama antes de escuchar.
   prepararAlmacen(): Promise<void>;
   dispose(): Promise<void>;
@@ -128,6 +138,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     new KnexCalendarioRepository(db),
     new KnexPoliticaSlaRepository(db),
   );
+  const alertasSla = new AlertasSlaService(transaccion, new KnexParametroRepository(db), (mensaje) => console.error(mensaje));
   const almacen = new DiscoAlmacenArchivos(env.ADJUNTOS_DIR);
   const consultaTickets = new ConsultaTicketsService(new KnexTicketLecturaRepository(db), plazosConfirmacion, clock);
   const correo = new EnvioCorreo(new KnexPlantillaRepository(db), enviadorCorreo, (mensaje) => console.error(mensaje));
@@ -188,6 +199,10 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     ),
     lineaTiempoService: new LineaTiempoService(consultaTickets, new KnexLineaTiempoRepository(db)),
     politicasSlaService: new PoliticasSlaService(new KnexPoliticaSlaRepository(db), transaccion, clock),
+    alertasSlaService: alertasSla,
+    notificacionesService: new NotificacionesService(new KnexNotificacionRepository(db)),
+    alertasSlaActivo: env.SLA_ALERTAS_ACTIVO,
+    iniciarAlertasSla: () => iniciarJobAlertasSla(alertasSla, { cron: env.SLA_ALERTAS_CRON }, clock),
     prepararAlmacen: () => almacen.preparar(),
     dispose: () => db.destroy(),
   };

@@ -40,6 +40,10 @@ interface FilaTicket {
   sla_pausa_minutos: number;
   sla_pausado_desde: Date | null;
   sla_restante_minutos: number | null;
+  alerta_respuesta_en: Date | null;
+  alerta_resolucion_en: Date | null;
+  alerta_respuesta_enviada_en: Date | null;
+  alerta_resolucion_enviada_en: Date | null;
 }
 
 // Campo de CambiosSla → columna de tickets (SPEC 30).
@@ -51,6 +55,10 @@ const COLUMNAS_SLA: Readonly<Record<keyof CambiosSla, string>> = {
   pausaMinutos: 'sla_pausa_minutos',
   pausadoDesde: 'sla_pausado_desde',
   restanteMinutos: 'sla_restante_minutos',
+  alertaRespuestaEn: 'alerta_respuesta_en',
+  alertaResolucionEn: 'alerta_resolucion_en',
+  alertaRespuestaEnviadaEn: 'alerta_respuesta_enviada_en',
+  alertaResolucionEnviadaEn: 'alerta_resolucion_enviada_en',
 };
 
 interface FilaCategoria {
@@ -109,6 +117,10 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
         't.sla_pausa_minutos',
         't.sla_pausado_desde',
         't.sla_restante_minutos',
+        't.alerta_respuesta_en',
+        't.alerta_resolucion_en',
+        't.alerta_respuesta_enviada_en',
+        't.alerta_resolucion_enviada_en',
       );
     if (!fila) {
       return null;
@@ -141,6 +153,10 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
         pausaMinutos: fila.sla_pausa_minutos,
         pausadoDesde: fila.sla_pausado_desde,
         restanteMinutos: fila.sla_restante_minutos,
+        alertaRespuestaEn: fila.alerta_respuesta_en,
+        alertaResolucionEn: fila.alerta_resolucion_en,
+        alertaRespuestaEnviadaEn: fila.alerta_respuesta_enviada_en,
+        alertaResolucionEnviadaEn: fila.alerta_resolucion_enviada_en,
       },
     };
   }
