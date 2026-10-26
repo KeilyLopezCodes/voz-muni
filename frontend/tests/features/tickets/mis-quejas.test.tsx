@@ -28,6 +28,7 @@ function queja(cambios: Partial<TicketListado> = {}): TicketListado {
     creadoEn: '2026-10-20T15:00:00.000Z',
     esperaRespuesta: false,
     confirmacionVenceEn: null,
+    pendienteCalificar: false,
     ...cambios,
   }
 }
@@ -240,6 +241,18 @@ describe('MisQuejas', () => {
 
       expect(await tarjeta('Q-2026-000001')).toHaveTextContent(/Confirma la solución antes del 30 oct 2099.*23:59/)
       expect(await tarjeta('Q-2026-000002')).not.toHaveTextContent('Confirma la solución')
+    })
+
+    it('la marca "Califica la atención" aparece solo en las quejas con pendienteCalificar (SPEC 39)', async () => {
+      simular({
+        'GET /tickets': () =>
+          respuesta(200, pagina([queja({ estado: 'cerrada', pendienteCalificar: true }), queja({ id: 2, numero: 'Q-2026-000002', estado: 'cerrada' })])),
+      })
+
+      montar()
+
+      expect(within(await tarjeta('Q-2026-000001')).getByText(misQuejas.califica)).toBeInTheDocument()
+      expect(await tarjeta('Q-2026-000002')).not.toHaveTextContent(misQuejas.califica)
     })
 
     it('distingue un grupo vacío y una búsqueda sin resultados, con "Limpiar búsqueda"', async () => {

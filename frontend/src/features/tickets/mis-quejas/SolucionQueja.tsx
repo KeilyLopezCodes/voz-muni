@@ -18,6 +18,7 @@ import {
   type ResolucionDetalle,
 } from '../api/tickets-api'
 import { DialogoConfirmar } from './DialogoConfirmar'
+import { CalificarAtencion, type CalificarAtencionProps } from './CalificarAtencion'
 import { DialogoReabrir } from './DialogoReabrir'
 
 type Accion = { accion: 'confirmar'; motivo?: string } | { accion: 'reabrir'; motivo: string }
@@ -29,6 +30,7 @@ interface SolucionQuejaProps {
   esSolicitante: boolean
   onHecho: (mensaje: string) => void // el aviso lo muestra el detalle
   cierre?: { automatico: boolean; cerradoEn: string } | null // solo en cerrada (SPEC 33)
+  encuesta?: Omit<CalificarAtencionProps, 'ticketId' | 'esSolicitante'> | null // en cerrada (SPEC 39)
 }
 
 // La resolución vigente de la queja (SPEC 26), con el plazo y las acciones de confirmar o reabrir (SPEC 27). La
@@ -41,6 +43,7 @@ export function SolucionQueja({
   esSolicitante,
   onHecho,
   cierre = null,
+  encuesta = null,
 }: SolucionQuejaProps) {
   const { t, i18n } = useTranslation('tickets')
   const queryClient = useQueryClient()
@@ -104,6 +107,9 @@ export function SolucionQueja({
           <time dateTime={cierre.cerradoEn}>{t('detalle.cierre.el', { fecha: fecha(cierre.cerradoEn) })}</time>
         </Typography>
       )}
+
+      {/* Aparece en cuanto el vecino confirma: confirmar invalida el detalle (SPEC 39). */}
+      {encuesta && <CalificarAtencion ticketId={ticketId} esSolicitante={esSolicitante} {...encuesta} />}
 
       {error && (
         <Alert severity="warning" sx={{ mt: 1.5 }}>

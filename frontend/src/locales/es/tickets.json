@@ -587,7 +587,8 @@
       "limpiar": "Limpiar búsqueda"
     },
     "vacioGrupo": "No tienes quejas en este grupo.",
-    "vacioBusqueda": "No encontramos quejas con «{{q}}»."
+    "vacioBusqueda": "No encontramos quejas con «{{q}}».",
+    "califica": "Califica la atención"
   },
   "detalle": {
     "volver": "Mis quejas",
@@ -644,6 +645,23 @@
       "automatica": "Cerrada automáticamente porque venció el plazo de confirmación",
       "confirmada": "Solución confirmada",
       "el": "el {{fecha}}"
+    },
+    "encuesta": {
+      "titulo": "Califica la atención",
+      "plazo": "Puedes calificar hasta el {{fecha}}.",
+      "estrella": "{{calificacion}} de {{max}}",
+      "comentario": "¿Quieres contarnos algo más? (opcional)",
+      "contador": "{{cantidad}}/{{max}}",
+      "enviar": "Enviar calificación",
+      "gracias": "Gracias por tu opinión.",
+      "tuCalificacion": "Tu calificación: {{calificacion}} de {{max}}",
+      "delVecino": "Calificación del vecino: {{calificacion}} de {{max}}",
+      "errores": {
+        "ENCUESTA_EXISTENTE": "Esta queja ya tiene una calificación.",
+        "ENCUESTA_VENCIDA": "Pasó el plazo para calificar esta queja.",
+        "ENCUESTA_NO_DISPONIBLE": "Esta queja ya no se puede calificar.",
+        "GENERICO": "No pudimos enviar tu calificación. Intenta de nuevo."
+      }
     }
   },
   "lineaTiempo": {

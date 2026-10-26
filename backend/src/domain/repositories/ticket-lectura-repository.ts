@@ -1,6 +1,7 @@
 import type { SlaLectura } from '../sla/vencimientos';
 import type { FiltroTickets, TicketAlcance } from '../autorizacion/alcance-tickets';
 import type { Busqueda } from '../ticket/busqueda';
+import type { Encuesta } from './encuesta-repository';
 import type { EstadoTicket } from '../ticket/estado-ticket';
 
 export interface TicketResumen extends TicketAlcance {
@@ -19,6 +20,10 @@ export interface TicketListado {
   creadoEn: Date;
   esperaRespuesta: boolean; // estado === 'en_espera'
   confirmacionVenceEn: Date | null; // solo en resuelta (SPEC 38)
+  // Para decidir pendienteCalificar (SPEC 39); el servicio no los expone.
+  cerradoEn: Date | null;
+  tieneEncuesta: boolean;
+  solicitanteId: number;
 }
 
 // Filtros del listado (RF-36, SPEC 38): estados genéricos y una búsqueda. Los grupos del vecino viven en el frontend.
@@ -56,6 +61,7 @@ export interface TicketDetalleLectura {
   reaperturas: number;
   solicitanteId: number;
   sla: SlaLectura; // vencimientos (SPEC 30)
+  encuesta: Encuesta | null; // SPEC 39
 }
 
 export interface Pagina<T> {

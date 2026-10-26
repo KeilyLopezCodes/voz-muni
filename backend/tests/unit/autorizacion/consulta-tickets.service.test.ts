@@ -28,7 +28,10 @@ interface PasoHistorial {
 }
 
 function servicioCon(repo: TicketLecturaRepository, maxReaperturas = 2): ConsultaTicketsService {
-  return new ConsultaTicketsService(repo, { maxReaperturas: async () => maxReaperturas }, new RelojFalso(AHORA));
+  return new ConsultaTicketsService(repo, { maxReaperturas: async () => maxReaperturas }, new RelojFalso(AHORA), {
+    obtener: async (clave) => (clave === 'encuesta_plazo_dias' ? 30 : null),
+    guardar: async () => {},
+  });
 }
 
 // Aplica el filtro en memoria con la misma regla del dominio y registra lo que recibe.
@@ -75,6 +78,9 @@ class TicketsEnMemoria implements TicketLecturaRepository {
         creadoEn: t.creadoEn,
         esperaRespuesta: t.estado === 'en_espera',
         confirmacionVenceEn: t.estado === 'resuelta' ? (this.plazos[t.id]?.venceEn ?? null) : null,
+        cerradoEn: null,
+        tieneEncuesta: false,
+        solicitanteId: t.solicitanteId,
       }));
     return { datos, pagina, tamano, total: datos.length };
   }
@@ -117,6 +123,7 @@ class TicketsEnMemoria implements TicketLecturaRepository {
       reaperturas: this.plazos[id]?.reaperturas ?? 0,
       solicitanteId: t.solicitanteId,
       sla: { venceRespuesta: null, primeraRespuestaEn: null, venceResolucion: null, restanteMinutosEnPausa: null, escalado: false, escaladoEn: null, escaladoPor: null },
+      encuesta: null,
     };
   }
 }
@@ -286,6 +293,10 @@ describe('ConsultaTicketsService', () => {
       expect(repo.filtrosRecibidos).toEqual([[{ campo: 'solicitanteId', valor: VECINO }]]);
       expect(pagina.datos.map((t) => t.id)).toEqual([1, 2]);
       expect(pagina.datos[0]).toMatchObject({ esperaRespuesta: true, creadoEn: '2026-10-22T00:00:00.000Z', confirmacionVenceEn: null });
+      // Los campos internos de SPEC 39 no salen; solo pendienteCalificar.
+      expect(pagina.datos[0]).not.toHaveProperty('solicitanteId');
+      expect(pagina.datos[0]).not.toHaveProperty('tieneEncuesta');
+      expect(pagina.datos[0].pendienteCalificar).toBe(false);
     });
 
     it('listarParaUsuario pasa los estados, la búsqueda interpretada y la hora actual (SPEC 38)', async () => {

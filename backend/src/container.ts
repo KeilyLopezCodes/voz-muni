@@ -21,6 +21,7 @@ import { DespachoCorreosService } from './application/services/despacho-correos.
 import { NotificacionesInternasService } from './application/services/notificaciones-internas.service';
 import { NotificadorCorreo } from './application/services/notificador-correo.service';
 import { EscaladasService } from './application/services/escaladas.service';
+import { EncuestasService } from './application/services/encuestas.service';
 import { EscalamientoService } from './application/services/escalamiento.service';
 import { HealthService } from './application/services/health.service';
 import { LineaTiempoService } from './application/services/linea-tiempo.service';
@@ -78,6 +79,7 @@ export interface Container {
   recuperacionLimitePorVentana: number;
   consultaLimitePorVentana: number; // SPEC 37
   consultaPublicaService: ConsultaPublicaService;
+  encuestasService: EncuestasService; // SPEC 39
   healthService: HealthService;
   authService: AuthService;
   autorizacionService: AutorizacionService;
@@ -170,7 +172,12 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
   const alertasSla = new AlertasSlaService(transaccion, new KnexParametroRepository(db), (mensaje) => console.error(mensaje));
   const escalamiento = new EscalamientoService(transaccion, (mensaje) => console.error(mensaje));
   const almacen = new DiscoAlmacenArchivos(env.ADJUNTOS_DIR);
-  const consultaTickets = new ConsultaTicketsService(new KnexTicketLecturaRepository(db), plazosConfirmacion, clock);
+  const consultaTickets = new ConsultaTicketsService(
+    new KnexTicketLecturaRepository(db),
+    plazosConfirmacion,
+    clock,
+    new KnexParametroRepository(db),
+  );
   // Bandeja de salida (SPEC 34): todo correo se encola en la transacción del caso de uso y se despacha después.
   const despachoCorreos = new DespachoCorreosService(transaccion, enviadorCorreo, (mensaje) => console.error(mensaje));
   const correo = new NotificadorCorreo(
@@ -212,6 +219,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     recuperacionLimitePorVentana: env.RECUPERACION_LIMITE_POR_VENTANA,
     consultaLimitePorVentana: env.CONSULTA_LIMITE_POR_VENTANA,
     consultaPublicaService: new ConsultaPublicaService(new KnexConsultaPublicaRepository(db), clock),
+    encuestasService: new EncuestasService(transaccion, new KnexParametroRepository(db), clock, notificacionesInternas),
     healthService: new HealthService(clock, new KnexDatabaseHealthCheck(db)),
     authService: new AuthService(usuarios, sesiones, hasher, tokens, clock),
     autorizacionService: new AutorizacionService(usuarios, tokens, clock),

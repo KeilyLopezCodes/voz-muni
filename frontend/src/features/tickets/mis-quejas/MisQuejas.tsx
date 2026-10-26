@@ -1,5 +1,6 @@
 import EventAvailableRounded from '@mui/icons-material/EventAvailableRounded'
 import ReplyRounded from '@mui/icons-material/ReplyRounded'
+import StarRounded from '@mui/icons-material/StarRounded'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
@@ -172,6 +173,16 @@ export function MisQuejas() {
                     icon={<EventAvailableRounded />}
                     label={t('misQuejas.confirmaAntes', { fecha: fechaGuatemala(ticket.confirmacionVenceEn!, i18n.language) })}
                     sx={{ mt: 1, maxWidth: '100%' }}
+                  />
+                )}
+                {ticket.pendienteCalificar && (
+                  <Chip
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    icon={<StarRounded />}
+                    label={t('misQuejas.califica')}
+                    sx={{ mt: 1 }}
                   />
                 )}
               </CardContent>

@@ -1,6 +1,6 @@
 # SPEC 40 — Administración de dependencias, categorías y zonas
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 03, SPEC 05, SPEC 08, SPEC 12, SPEC 14, SPEC 19, SPEC 21, SPEC 29
 > **Fecha:** 2026-10-23
 > **Objetivo:** Permitir que el administrador cree, renombre, active y desactive dependencias, categorías (con su dependencia, que es la regla de asignación) y zonas, sin borrar nunca, mediante `/api/v1/admin/{dependencias,categorias,zonas}` y las pantallas `/admin/dependencias`, `/admin/categorias` y `/admin/zonas`.

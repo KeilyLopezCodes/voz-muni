@@ -10,9 +10,18 @@ export interface ResolucionDetalleDto {
 }
 
 // Fila de GET /api/v1/tickets (SPEC 25).
-export interface TicketListadoDto extends Omit<TicketListado, 'creadoEn' | 'confirmacionVenceEn'> {
+export interface TicketListadoDto
+  extends Omit<TicketListado, 'creadoEn' | 'confirmacionVenceEn' | 'cerradoEn' | 'tieneEncuesta' | 'solicitanteId'> {
   creadoEn: string; // ISO 8601 en UTC
   confirmacionVenceEn: string | null; // ISO 8601 en UTC, solo en resuelta (SPEC 38)
+  pendienteCalificar: boolean; // el usuario es el solicitante y puede calificarla (SPEC 39)
+}
+
+// La encuesta de la queja (SPEC 39).
+export interface EncuestaDetalleDto {
+  calificacion: number;
+  comentario: string | null;
+  creadoEn: string; // ISO 8601 en UTC
 }
 
 // Filtros de GET /api/v1/tickets (SPEC 38), ya validados: estados sin repetir y `q` recortado de 2 a 100 caracteres.
@@ -50,6 +59,7 @@ export interface TicketDetalleDto
     | 'reaperturas'
     | 'solicitanteId'
     | 'sla'
+    | 'encuesta'
   > {
   creadoEn: string; // ISO 8601 en UTC
   resueltoEn: string | null;
@@ -58,4 +68,7 @@ export interface TicketDetalleDto
   resolucion: ResolucionDetalleDto | null;
   confirmacion: ConfirmacionDetalleDto | null; // solo si estado === 'resuelta' y hay vencimiento (SPEC 27)
   sla: SlaDto | null; // null con el alcance propia de tickets.ver: el vecino no ve los vencimientos (SPEC 30)
+  encuesta: EncuestaDetalleDto | null; // la ven el solicitante y los internos con alcance (SPEC 39)
+  puedeCalificar: boolean; // solicitante, cerrada, sin encuesta y dentro del plazo
+  encuestaVenceEn: string | null; // solo si puedeCalificar
 }

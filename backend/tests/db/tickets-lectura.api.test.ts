@@ -82,6 +82,7 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
   });
 
   beforeEach(async () => {
+    await db('encuestas').del(); // apunta a tickets (SPEC 39)
     await db('comentarios').del();
     await db('ticket_historial').del();
     await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
@@ -176,6 +177,7 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
       creadoEn: '2026-09-01T15:00:00.000Z',
       esperaRespuesta: true,
       confirmacionVenceEn: null, // SPEC 38
+      pendienteCalificar: false, // SPEC 39
     });
     expect(res.body.datos[1].esperaRespuesta).toBe(false);
   });
@@ -277,6 +279,58 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
     });
   });
 
+  describe('encuesta (SPEC 39)', () => {
+    const DIA = 24 * 60 * 60 * 1000;
+    async function cerrada(haceDias = 2): Promise<number> {
+      const id = await ticket({ estado: 'cerrada', resolucion: 'Se rellenó', resueltoPor: ids.tecnico });
+      await db('tickets').where({ id }).update({ cerrado_en: new Date(Date.now() - haceDias * DIA) });
+      return id;
+    }
+    const pendiente = async (id: number) =>
+      (await listar('vecino')).body.datos.find((t: { id: number }) => t.id === id).pendienteCalificar;
+
+    it('el solicitante de una cerrada sin encuesta puede calificar, con la fecha límite', async () => {
+      const id = await cerrada();
+
+      const res = await detalle(id, 'vecino');
+
+      expect(res.body).toMatchObject({ encuesta: null, puedeCalificar: true, encuestaVenceEn: expect.any(String) });
+      const vence = new Date(res.body.encuestaVenceEn).getTime();
+      const cerradoEn = new Date(res.body.cerradoEn).getTime();
+      expect(vence - cerradoEn).toBe(30 * DIA);
+      expect(await pendiente(id)).toBe(true);
+    });
+
+    it('después de calificar ya no puede, y la encuesta la ven él y el coordinador', async () => {
+      const id = await cerrada();
+      const calificacion = await request(app)
+        .post(`/api/v1/tickets/${id}/encuesta`)
+        .set(auth('vecino'))
+        .send({ calificacion: 4, comentario: 'Bien' });
+      expect(calificacion.status).toBe(201);
+
+      const delVecino = await detalle(id, 'vecino');
+      expect(delVecino.body).toMatchObject({
+        encuesta: { calificacion: 4, comentario: 'Bien', creadoEn: expect.any(String) },
+        puedeCalificar: false,
+        encuestaVenceEn: null,
+      });
+      expect(await pendiente(id)).toBe(false);
+      expect((await detalle(id, 'coordinador')).body).toMatchObject({ encuesta: { calificacion: 4 }, puedeCalificar: false });
+    });
+
+    it('el coordinador de una cerrada sin encuesta no puede calificar', async () => {
+      const id = await cerrada();
+      expect((await detalle(id, 'coordinador')).body).toMatchObject({ encuesta: null, puedeCalificar: false, encuestaVenceEn: null });
+    });
+
+    it('fuera de plazo, puedeCalificar y pendienteCalificar son false', async () => {
+      const id = await cerrada(31);
+      expect((await detalle(id, 'vecino')).body.puedeCalificar).toBe(false);
+      expect(await pendiente(id)).toBe(false);
+    });
+  });
+
   it('pagina el listado y rechaza un tamano mayor que 50 o un parámetro desconocido', async () => {
     await ticket();
     await ticket();
@@ -338,6 +392,9 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
       resolucion: null,
       confirmacion: null,
       sla: null, // el vecino no ve los vencimientos (SPEC 30)
+      encuesta: null, // SPEC 39
+      puedeCalificar: false,
+      encuestaVenceEn: null,
     });
   });
 

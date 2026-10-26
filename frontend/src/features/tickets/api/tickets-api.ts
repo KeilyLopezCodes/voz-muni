@@ -26,7 +26,18 @@ export interface TicketListado {
   creadoEn: string // ISO 8601 en UTC
   esperaRespuesta: boolean // estado === 'en_espera'
   confirmacionVenceEn: string | null // ISO 8601 en UTC; solo en resuelta (SPEC 38)
+  pendienteCalificar: boolean // el vecino puede calificar esta queja cerrada (SPEC 39)
 }
+
+// La encuesta de satisfacción de una queja cerrada (SPEC 39).
+export interface EncuestaDetalle {
+  calificacion: number
+  comentario: string | null
+  creadoEn: string // ISO 8601 en UTC
+}
+
+export const CALIFICACION_MAX = 5
+export const COMENTARIO_ENCUESTA_MAX = 1000
 
 // GET /tickets/resumen (SPEC 38): cuántas hay en cada estado, con la misma búsqueda que el listado.
 export interface ResumenTickets {
@@ -101,6 +112,9 @@ export interface TicketDetalle {
   confirmacion: ConfirmacionDetalle | null
   sla: SlaDto | null // null para el vecino (SPEC 30)
   cierreAutomatico: boolean // cerrada por el job de SLA al vencer el plazo de confirmación (SPEC 33)
+  encuesta: EncuestaDetalle | null // SPEC 39
+  puedeCalificar: boolean // solo el solicitante, en cerrada, sin encuesta y dentro del plazo
+  encuestaVenceEn: string | null // solo si puedeCalificar
 }
 
 export const TAMANO_PAGINA = 20
@@ -157,4 +171,9 @@ export function confirmarSolucion(id: number, motivo?: string): Promise<Confirma
 
 export function reabrirQueja(id: number, motivo: string): Promise<ConfirmacionHecha> {
   return apiClient.post<ConfirmacionHecha>(`/tickets/${id}/transiciones`, { accion: 'reabrir', motivo })
+}
+
+// POST /tickets/:id/encuesta (SPEC 39): una sola vez, solo el solicitante.
+export function enviarEncuesta(id: number, calificacion: number, comentario?: string): Promise<EncuestaDetalle> {
+  return apiClient.post<EncuestaDetalle>(`/tickets/${id}/encuesta`, comentario === undefined ? { calificacion } : { calificacion, comentario })
 }
