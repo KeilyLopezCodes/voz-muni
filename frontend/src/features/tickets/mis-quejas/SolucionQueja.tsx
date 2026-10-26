@@ -28,12 +28,20 @@ interface SolucionQuejaProps {
   confirmacion: ConfirmacionDetalle | null // solo en resuelta (SPEC 27)
   esSolicitante: boolean
   onHecho: (mensaje: string) => void // el aviso lo muestra el detalle
+  cierre?: { automatico: boolean; cerradoEn: string } | null // solo en cerrada (SPEC 33)
 }
 
 // La resolución vigente de la queja (SPEC 26), con el plazo y las acciones de confirmar o reabrir (SPEC 27). La
 // descripción es texto plano: React la escapa, nunca se interpreta como HTML. Los botones salen de los permisos
 // que calcula el backend.
-export function SolucionQueja({ ticketId, resolucion, confirmacion, esSolicitante, onHecho }: SolucionQuejaProps) {
+export function SolucionQueja({
+  ticketId,
+  resolucion,
+  confirmacion,
+  esSolicitante,
+  onHecho,
+  cierre = null,
+}: SolucionQuejaProps) {
   const { t, i18n } = useTranslation('tickets')
   const queryClient = useQueryClient()
   const idTitulo = useId()
@@ -87,6 +95,14 @@ export function SolucionQueja({ ticketId, resolucion, confirmacion, esSolicitant
         <time dateTime={resolucion.resueltaEn}>{t('detalle.solucion.resueltaEl', { fecha: fecha(resolucion.resueltaEn) })}</time>
         {resolucion.resueltaPor && <> {t('detalle.solucion.por', { nombre: resolucion.resueltaPor.nombre })}</>}
       </Typography>
+
+      {/* Cómo terminó la queja (SPEC 33): por el sistema al vencer el plazo, o con la solución confirmada. */}
+      {cierre && (
+        <Typography variant="body2" sx={{ mt: 1.5, fontWeight: 600 }}>
+          {t(cierre.automatico ? 'detalle.cierre.automatica' : 'detalle.cierre.confirmada')}{' '}
+          <time dateTime={cierre.cerradoEn}>{t('detalle.cierre.el', { fecha: fecha(cierre.cerradoEn) })}</time>
+        </Typography>
+      )}
 
       {error && (
         <Alert severity="warning" sx={{ mt: 1.5 }}>

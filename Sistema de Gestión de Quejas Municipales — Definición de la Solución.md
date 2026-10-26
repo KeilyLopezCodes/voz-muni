@@ -267,7 +267,7 @@ backend/src/
     repositories/      # implementaciones PostgreSQL de las interfaces
     mail/              # adaptador Nodemailer
     storage/           # adaptador de archivos
-    jobs/              # tareas node-cron de SLA y cierre automático (sla.job.ts, cada 5 minutos: alertas al umbral y después escalamiento al vencer)
+    jobs/              # tareas node-cron de SLA y cierre automático (sla.job.ts, cada 5 minutos: alertas al umbral, escalamiento al vencer y cierre automático de las resueltas con el plazo de confirmación vencido)
   container.ts         # composición: instancia repositorios y servicios
   app.ts
   server.ts
@@ -296,7 +296,7 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | notificaciones | id, usuario\_id, ticket\_id, tipo, leida, creado\_en, datos (jsonb con lo que necesita el texto; la frase la arma la interfaz con las traducciones). Tipos: `sla_alerta_respuesta` y `sla_alerta_resolucion`, con `{ vence, umbral }`, y `sla_escalamiento`, con `{ plazo, vence }` |
 | calendario\_laboral | fecha, es\_habil, descripcion |
 | bitacora | id, usuario\_id, accion, entidad, entidad\_id, detalle (jsonb), ip, creado\_en, dependencia\_id (para la bitácora por dependencia; nulo en acciones sin dependencia) |
-| plantillas\_notificacion | id, clave (única), asunto, cuerpo\_texto, cuerpo\_html, actualizado\_en |
+| plantillas\_notificacion | id, clave (única), asunto, cuerpo\_texto, cuerpo\_html, actualizado\_en. Entre otras: `queja_resuelta` (al resolver: la solución, la fecha límite para confirmar y el enlace al detalle) y `queja_cerrada_automaticamente` (al cerrar por vencimiento del plazo de confirmación) |
 | parametros | clave (PK), valor (jsonb), actualizado\_en: parámetros municipales que configura el administrador, como `limites_municipio`, `plazo_confirmacion_dias_habiles` (5, de 1 a 30) `max_reaperturas` (2, de 0 a 10) `jornada_laboral` (`{ inicio: '08:00', fin: '16:00' }`, la misma para todos los días hábiles de calendario\_laboral, en America/Guatemala) y `sla_umbral_alerta` (80, el porcentaje del plazo en que se avisa, de 1 a 99) |
 | correlativos | anio (PK), ultimo: último correlativo del año (en America/Guatemala) para el número Q-AAAA-NNNNNN |
 | restablecimientos | id, usuario\_id, token\_hash (SHA-256 del token, único), tipo (recuperacion, invitacion, verificacion), expira\_en, usado\_en, invalidado\_en, creado\_en |

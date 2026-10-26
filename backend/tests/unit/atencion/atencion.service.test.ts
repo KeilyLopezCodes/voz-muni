@@ -1,5 +1,6 @@
 import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { AtencionService } from '../../../src/application/services/atencion.service';
+import { EnvioCorreo } from '../../../src/application/services/envio-correo';
 import type { FiltroTickets } from '../../../src/domain/autorizacion/alcance-tickets';
 import { InvalidTransitionError } from '../../../src/domain/errors/invalid-transition-error';
 import { ReglaDeNegocioError } from '../../../src/domain/errors/regla-de-negocio-error';
@@ -13,7 +14,7 @@ import type {
 } from '../../../src/domain/repositories/ticket-escritura-repository';
 import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { type ResultadoTransicion, Ticket } from '../../../src/domain/ticket/ticket';
-import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { correosPendientes, EnviadorEnMemoria, PlantillasEnMemoria, RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
 import { SLA_VACIO, SlaNulo } from '../sla/dobles-sla';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
@@ -31,6 +32,7 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
   readonly tickets = new Map<number, Ticket>();
   readonly guardadas: ResultadoTransicion[] = [];
   readonly filtros: FiltroTickets[] = [];
+  email: string | null = null;
 
   agregar(id: number, estado: EstadoTicket, asignadoA: number | null = 30): void {
     this.tickets.set(
@@ -61,7 +63,7 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
     if (!ticket || filtro === null || filtro.some((c) => c.campo === 'asignadoA' && c.valor !== ticket.asignadoA)) {
       return null;
     }
-    return { ticket, titulo: 'Bache', categoria: { id: 1, nombre: 'Baches' }, solicitante: { id: 7, nombre: 'Ana', email: null }, sla: SLA_VACIO };
+    return { ticket, titulo: 'Bache', categoria: { id: 1, nombre: 'Baches' }, solicitante: { id: 7, nombre: 'Ana', email: this.email }, sla: SLA_VACIO };
   }
 
   async guardarTransicion(resultado: ResultadoTransicion): Promise<void> {
@@ -84,6 +86,15 @@ function armar(vencimiento: (ahora: Date) => Promise<Date> = async () => VENCE_C
   const tickets = new TicketsEnMemoria();
   const bandeja = new BandejaFalsa();
   const pedidos: Date[] = [];
+  const plantillas = new PlantillasEnMemoria();
+  plantillas.plantillas.set('queja_resuelta', {
+    clave: 'queja_resuelta',
+    asunto: 'Resuelta {{numero}}',
+    cuerpoTexto: '{{nombre}} {{titulo}} {{solucion}} hasta {{fecha_limite}} en {{enlace}}',
+    cuerpoHtml: '<p>{{solucion}}</p><a href="{{enlace}}">{{fecha_limite}}</a>',
+  });
+  const enviador = new EnviadorEnMemoria();
+  const errores: string[] = [];
   const servicio = new AtencionService(
     new TransaccionEnMemoria({ ticketsEscritura: tickets as unknown as TicketEscrituraRepository }),
     bandeja,
@@ -93,8 +104,10 @@ function armar(vencimiento: (ahora: Date) => Promise<Date> = async () => VENCE_C
       return vencimiento(ahora);
     },
     new SlaNulo(),
+    new EnvioCorreo(plantillas, enviador, (mensaje) => errores.push(mensaje)),
+    'https://vozmuni.test',
   );
-  return { tickets, bandeja, servicio, pedidos };
+  return { tickets, bandeja, servicio, pedidos, enviador, errores };
 }
 
 function capturar(promesa: Promise<unknown>): Promise<unknown> {
@@ -239,5 +252,61 @@ describe('AtencionService', () => {
     expect(bandeja.llamadas).toEqual([
       { filtro: [{ campo: 'asignadoA', valor: 30 }, { campo: 'asignadoA', valor: 30 }], estados: ['en_espera'] },
     ]);
+  });
+});
+
+describe('AtencionService: correo al resolver (SPEC 33)', () => {
+  it('el solicitante con correo recibe queja_resuelta con la solución, la fecha límite en Guatemala y el enlace al detalle', async () => {
+    const { tickets, servicio, enviador } = armar();
+    tickets.email = 'ana@correo.gt';
+    tickets.agregar(5, 'en_proceso');
+    await servicio.transicionar(TECNICO, 5, { accion: 'resolver', descripcion: 'Se rellenó el bache' });
+    await correosPendientes();
+
+    expect(enviador.enviados).toHaveLength(1);
+    expect(enviador.enviados[0]).toMatchObject({ para: 'ana@correo.gt', asunto: 'Resuelta Q-2026-000005' });
+    // 05:59:59.999 UTC del 31 = 23:59 del viernes 30 de octubre en Guatemala.
+    expect(enviador.enviados[0].texto).toBe(
+      'Ana Bache Se rellenó el bache hasta viernes, 30 de octubre de 2026, 23:59 en https://vozmuni.test/tickets/5',
+    );
+  });
+
+  it('una solución con <script> va escapada en el html', async () => {
+    const { tickets, servicio, enviador } = armar();
+    tickets.email = 'ana@correo.gt';
+    tickets.agregar(5, 'en_proceso');
+    await servicio.transicionar(TECNICO, 5, { accion: 'resolver', descripcion: '<script>alert(1)</script>' });
+    await correosPendientes();
+    expect(enviador.enviados[0].html).toContain('&lt;script&gt;');
+    expect(enviador.enviados[0].html).not.toContain('<script>');
+  });
+
+  it('un solicitante sin correo no recibe nada', async () => {
+    const { tickets, servicio, enviador } = armar();
+    tickets.agregar(5, 'en_proceso');
+    await servicio.transicionar(TECNICO, 5, { accion: 'resolver', descripcion: 'Listo' });
+    await correosPendientes();
+    expect(enviador.enviados).toEqual([]);
+  });
+
+  it('un fallo del enviador queda en el log y no cambia la respuesta', async () => {
+    const { tickets, servicio, enviador, errores } = armar();
+    tickets.email = 'ana@correo.gt';
+    enviador.fallar = true;
+    tickets.agregar(5, 'en_proceso');
+    await expect(servicio.transicionar(TECNICO, 5, { accion: 'resolver', descripcion: 'Listo' })).resolves.toMatchObject({
+      estado: 'resuelta',
+    });
+    await correosPendientes();
+    expect(errores).toEqual([expect.stringContaining('queja_resuelta')]);
+  });
+
+  it('las demás acciones no envían correo', async () => {
+    const { tickets, servicio, enviador } = armar();
+    tickets.email = 'ana@correo.gt';
+    tickets.agregar(5, 'asignada');
+    await servicio.transicionar(TECNICO, 5, { accion: 'iniciar' });
+    await correosPendientes();
+    expect(enviador.enviados).toEqual([]);
   });
 });

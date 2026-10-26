@@ -4,14 +4,33 @@ import type { Knex } from 'knex';
 import request from 'supertest';
 import { createApp } from '../../src/app';
 import { buildContainer, type Container } from '../../src/container';
-import type { EnviadorCorreo } from '../../src/domain/notificaciones/enviador-correo';
+import type { EnviadorCorreo, MensajeCorreo } from '../../src/domain/notificaciones/enviador-correo';
 import type { EstadoTicket } from '../../src/domain/ticket/estado-ticket';
 import { ASUETOS_2026_2027 } from '../../src/infrastructure/database/seed-helpers/asuetos-guatemala';
 import { generarCalendario } from '../../src/infrastructure/database/seed-helpers/calendario';
 import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
 
 const PASSWORD = 'Clave-de-prueba-1';
-const sinCorreo: EnviadorCorreo = { enviar: async () => {} };
+// Guarda los correos para comprobar queja_resuelta (SPEC 33). `fallar` simula un SMTP caído.
+class EnviadorEnMemoria implements EnviadorCorreo {
+  readonly enviados: MensajeCorreo[] = [];
+  fallar = false;
+
+  async enviar(mensaje: MensajeCorreo): Promise<void> {
+    if (this.fallar) {
+      throw new Error('ECONNREFUSED smtp');
+    }
+    this.enviados.push(mensaje);
+  }
+}
+
+const correos = new EnviadorEnMemoria();
+// El correo sale sin esperar y lee su plantilla de la base: se espera un momento a que termine.
+const correosPendientes = async (cantidad = 1) => {
+  for (let intento = 0; intento < 40 && correos.enviados.length < cantidad; intento++) {
+    await new Promise((resolver) => setTimeout(resolver, 25));
+  }
+};
 
 describe('Atención de la queja (SPEC 22)', () => {
   let db: Knex;
@@ -23,7 +42,7 @@ describe('Atención de la queja (SPEC 22)', () => {
 
   beforeAll(async () => {
     db = createTestKnex();
-    container = buildContainer(envDePrueba(), { enviadorCorreo: sinCorreo });
+    container = buildContainer(envDePrueba(), { enviadorCorreo: correos });
     app = createApp(container);
     await reiniciarEsquema(db);
     await db.migrate.latest();
@@ -405,5 +424,67 @@ describe('Atención de la queja (SPEC 22)', () => {
 
     expect(respuestas.map((r) => r.status).sort()).toEqual([200, 409]);
     expect(await db('ticket_historial').where({ ticket_id: id, estado_nuevo: 'en_proceso' })).toHaveLength(1);
+  });
+
+  describe('correo queja_resuelta (SPEC 33)', () => {
+    beforeEach(() => {
+      correos.enviados.length = 0;
+      correos.fallar = false;
+    });
+
+    it('al resolver, el solicitante recibe la solución, la fecha límite en Guatemala y el enlace al detalle', async () => {
+      const id = await ticket({ estado: 'en_proceso' });
+      expect((await transicion(id, { accion: 'resolver', descripcion: 'Se rellenó el bache con asfalto' })).status).toBe(200);
+      await correosPendientes();
+
+      const { confirmacion_vence_en: vence } = await db('tickets').where({ id }).first('confirmacion_vence_en');
+      const fecha = new Intl.DateTimeFormat('es-GT', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+        timeZone: 'America/Guatemala',
+      }).format(vence);
+      expect(correos.enviados).toHaveLength(1);
+      const [correo] = correos.enviados;
+      expect(correo.para).toBe('vecino@atencion.test');
+      expect(correo.asunto).toMatch(/^VozMuni: resolvimos tu queja Q-2026-\d{6}$/);
+      expect(correo.texto).toContain('Se rellenó el bache con asfalto');
+      expect(correo.texto).toContain(`Tienes hasta el ${fecha} para confirmar`);
+      expect(fecha).toMatch(/23:59$/);
+      expect(correo.texto).toContain(`http://localhost:5173/tickets/${id}`);
+    });
+
+    it('una solución con <script> va escapada en el html', async () => {
+      const id = await ticket({ estado: 'en_proceso' });
+      await transicion(id, { accion: 'resolver', descripcion: '<script>alert(1)</script>' });
+      await correosPendientes();
+      expect(correos.enviados[0].html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+      expect(correos.enviados[0].html).not.toContain('<script>');
+    });
+
+    it('un solicitante sin correo no recibe nada', async () => {
+      const id = await ticket({ estado: 'en_proceso' });
+      await db('usuarios').where({ id: ids.vecino }).update({ email: null });
+      try {
+        expect((await transicion(id, { accion: 'resolver', descripcion: 'Listo' })).status).toBe(200);
+        await new Promise((resolver) => setTimeout(resolver, 300));
+        expect(correos.enviados).toEqual([]);
+      } finally {
+        await db('usuarios').where({ id: ids.vecino }).update({ email: 'vecino@atencion.test' });
+      }
+    });
+
+    it('un fallo del enviador no cambia el 200', async () => {
+      correos.fallar = true;
+      const id = await ticket({ estado: 'en_proceso' });
+      const res = await transicion(id, { accion: 'resolver', descripcion: 'Listo' });
+      await new Promise((resolver) => setTimeout(resolver, 300));
+      expect(res.status).toBe(200);
+      expect(await db('tickets').where({ id }).first('estado')).toEqual({ estado: 'resuelta' });
+    });
   });
 });

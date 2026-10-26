@@ -86,6 +86,7 @@ export interface TicketDetalle {
   resolucion: ResolucionDetalle | null
   confirmacion: ConfirmacionDetalle | null
   sla: SlaDto | null // null para el vecino (SPEC 30)
+  cierreAutomatico: boolean // cerrada por el job de SLA al vencer el plazo de confirmación (SPEC 33)
 }
 
 export const TAMANO_PAGINA = 20

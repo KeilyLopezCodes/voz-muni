@@ -18,7 +18,7 @@ import type {
 } from '../../../src/domain/repositories/ticket-escritura-repository';
 import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { Ticket } from '../../../src/domain/ticket/ticket';
-import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
 import { SLA_VACIO } from '../sla/dobles-sla';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');

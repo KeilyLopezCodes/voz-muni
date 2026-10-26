@@ -231,6 +231,7 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
       resueltoEn: null,
       cerradoEn: null,
       informacionSolicitada: 'Envíe el número de contador',
+      cierreAutomatico: false,
       esSolicitante: true,
       resolucion: null,
       confirmacion: null,
@@ -403,6 +404,38 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.total).toBe(2);
+  });
+
+  describe('cierreAutomatico (SPEC 33)', () => {
+    async function cierre(id: number, usuarioId: number | null) {
+      await db('ticket_historial').insert({
+        ticket_id: id,
+        estado_anterior: 'resuelta',
+        estado_nuevo: 'cerrada',
+        usuario_id: usuarioId,
+        motivo: null,
+        creado_en: '2026-10-25T18:30:00Z',
+      });
+    }
+
+    const resuelta = { resolucion: 'Se rellenó el bache', resueltoPor: null as number | null };
+
+    it('una queja cerrada por el job devuelve true', async () => {
+      const id = await ticket({ estado: 'cerrada', ...resuelta, resueltoPor: ids.tecnico });
+      await cierre(id, null);
+      expect((await detalle(id, 'vecino')).body.cierreAutomatico).toBe(true);
+    });
+
+    it('una queja confirmada por el vecino devuelve false', async () => {
+      const id = await ticket({ estado: 'cerrada', ...resuelta, resueltoPor: ids.tecnico });
+      await cierre(id, ids.vecino);
+      expect((await detalle(id, 'vecino')).body.cierreAutomatico).toBe(false);
+    });
+
+    it('una queja en otro estado devuelve false', async () => {
+      const id = await ticket({ estado: 'en_proceso' });
+      expect((await detalle(id, 'vecino')).body.cierreAutomatico).toBe(false);
+    });
   });
 
   it('sin token → 401', async () => {

@@ -130,6 +130,11 @@ function Contenido({ ticket }: { ticket: TicketDetalle }) {
           confirmacion={ticket.confirmacion ?? null}
           esSolicitante={ticket.esSolicitante}
           onHecho={setAviso}
+          cierre={
+            ticket.estado === 'cerrada' && ticket.cerradoEn
+              ? { automatico: ticket.cierreAutomatico, cerradoEn: ticket.cerradoEn }
+              : null
+          }
         />
       )}
 

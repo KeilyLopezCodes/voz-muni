@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import type { AlertasSlaService } from '../../application/services/alertas-sla.service';
+import type { CierreAutomaticoService } from '../../application/services/cierre-automatico.service';
 import type { EscalamientoService } from '../../application/services/escalamiento.service';
 import type { Clock } from '../../domain/health/clock';
 
@@ -14,13 +15,15 @@ export interface RegistroJob {
 export interface PasosSla {
   alertas: Pick<AlertasSlaService, 'procesar'>; // SPEC 31
   escalamiento: Pick<EscalamientoService, 'procesar'>; // SPEC 32
+  cierre: Pick<CierreAutomaticoService, 'procesar'>; // SPEC 33
 }
 
 const programarConNodeCron: Programador = (expresion, tarea) => cron.schedule(expresion, tarea);
 
-// El único job de SLA (SPEC 31 y 32), delgado: en cada corrida ejecuta las alertas y después el escalamiento, con el
-// mismo `ahora`. Las reglas viven en application/, como pide CLAUDE.md. Un error en un paso queda en el log y no
-// impide el otro; si una corrida sigue en curso, la siguiente se salta. Devuelve una función para detenerlo.
+// El único job de SLA (SPEC 31, 32 y 33), delgado: en cada corrida ejecuta las alertas, el escalamiento y el cierre
+// automático, en ese orden y con el mismo `ahora`. Las reglas viven en application/, como pide CLAUDE.md. Un error en
+// un paso queda en el log y no impide los siguientes; si una corrida sigue en curso, la siguiente se salta. Devuelve
+// una función para detenerlo.
 export function iniciarJobSla(
   pasos: PasosSla,
   config: { cron: string },
@@ -51,6 +54,7 @@ export function iniciarJobSla(
       const ahora = reloj.now();
       await ejecutar('alertas', () => pasos.alertas.procesar(ahora), (n) => `${n} alertas enviadas`);
       await ejecutar('escalamiento', () => pasos.escalamiento.procesar(ahora), (n) => `${n} quejas escaladas`);
+      await ejecutar('cierre', () => pasos.cierre.procesar(ahora), (n) => `${n} quejas cerradas automáticamente`);
     } finally {
       enCurso = false;
     }

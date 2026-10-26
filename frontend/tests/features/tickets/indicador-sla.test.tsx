@@ -129,6 +129,7 @@ describe('IndicadorSla en el detalle', () => {
     esSolicitante: false,
     resolucion: null,
     confirmacion: null,
+    cierreAutomatico: false,
     sla: null,
   }
 

@@ -42,9 +42,10 @@ interface Montaje {
   conf?: ConfirmacionDetalle | null
   esSolicitante?: boolean
   rutas?: Record<string, Manejador>
+  cierre?: { automatico: boolean; cerradoEn: string } | null
 }
 
-function montar({ res = resolucion(), conf: c = null, esSolicitante = true, rutas = {} }: Montaje = {}) {
+function montar({ res = resolucion(), conf: c = null, esSolicitante = true, rutas = {}, cierre = null }: Montaje = {}) {
   const fetchMock = simularApi(rutas)
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const invalidar = vi.spyOn(queryClient, 'invalidateQueries')
@@ -52,7 +53,14 @@ function montar({ res = resolucion(), conf: c = null, esSolicitante = true, ruta
   render(
     <MemoryRouter>
       <QueryClientProvider client={queryClient}>
-        <SolucionQueja ticketId={5} resolucion={res} confirmacion={c} esSolicitante={esSolicitante} onHecho={onHecho} />
+        <SolucionQueja
+          ticketId={5}
+          resolucion={res}
+          confirmacion={c}
+          esSolicitante={esSolicitante}
+          onHecho={onHecho}
+          cierre={cierre}
+        />
       </QueryClientProvider>
     </MemoryRouter>,
   )
@@ -217,5 +225,33 @@ describe('SolucionQueja', () => {
       expect(invalidar).toHaveBeenCalledWith({ queryKey: ['tickets', 'detalle', 5] })
       expect(onHecho).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('SolucionQueja: cómo terminó (SPEC 33)', () => {
+  const { cierre: textosCierre } = tickets.detalle
+  // 00:30 UTC del 26 es todavía el 25 a las 18:30 en Guatemala.
+  const CERRADO_EN = '2026-10-26T00:30:00.000Z'
+
+  it('con cierre automático muestra "Cerrada automáticamente…" con la fecha en Guatemala, sin botones', () => {
+    const { seccion } = montar({ cierre: { automatico: true, cerradoEn: CERRADO_EN } })
+    expect(within(seccion).getByText(textosCierre.automatica, { exact: false })).toBeInTheDocument()
+    const fecha = seccion.querySelector(`time[datetime="${CERRADO_EN}"]`)!
+    expect(fecha.textContent).toMatch(/^el 25 oct 2026.*(18:30|6:30)/)
+    expect(within(seccion).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(seccion).queryByText(textosCierre.confirmada, { exact: false })).not.toBeInTheDocument()
+  })
+
+  it('cerrada sin cierre automático muestra "Solución confirmada", sin botones', () => {
+    const { seccion } = montar({ cierre: { automatico: false, cerradoEn: CERRADO_EN } })
+    expect(within(seccion).getByText(textosCierre.confirmada, { exact: false })).toBeInTheDocument()
+    expect(within(seccion).queryByText(textosCierre.automatica, { exact: false })).not.toBeInTheDocument()
+    expect(within(seccion).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('sin cierre (resuelta) no muestra ninguno de los dos textos', () => {
+    const { seccion } = montar({ conf: confirmacion() })
+    expect(within(seccion).queryByText(textosCierre.automatica, { exact: false })).not.toBeInTheDocument()
+    expect(within(seccion).queryByText(textosCierre.confirmada, { exact: false })).not.toBeInTheDocument()
   })
 })

@@ -22,11 +22,11 @@ function registroFalso() {
   return { lineas, registro };
 }
 
-function iniciar(alertas: jest.Mock, escalamiento: jest.Mock) {
+function iniciar(alertas: jest.Mock, escalamiento: jest.Mock, cierre: jest.Mock = jest.fn().mockResolvedValue(0)) {
   const { estado, programar } = programadorFalso();
   const { lineas, registro } = registroFalso();
   const detener = iniciarJobSla(
-    { alertas: { procesar: alertas }, escalamiento: { procesar: escalamiento } },
+    { alertas: { procesar: alertas }, escalamiento: { procesar: escalamiento }, cierre: { procesar: cierre } },
     { cron: '*/5 * * * *' },
     { now: () => AHORA },
     programar,
@@ -36,17 +36,28 @@ function iniciar(alertas: jest.Mock, escalamiento: jest.Mock) {
 }
 
 describe('iniciarJobSla', () => {
-  it('programa con la expresión configurada y ejecuta las alertas y después el escalamiento con el mismo ahora', async () => {
+  it('programa con la expresión configurada y ejecuta los 3 pasos en orden con el mismo ahora', async () => {
     const orden: string[] = [];
     const alertas = jest.fn(async (ahora: Date) => (orden.push(`alertas ${ahora.toISOString()}`), 2));
     const escalamiento = jest.fn(async (ahora: Date) => (orden.push(`escalamiento ${ahora.toISOString()}`), 1));
-    const { estado, lineas } = iniciar(alertas, escalamiento);
+    const cierre = jest.fn(async (ahora: Date) => (orden.push(`cierre ${ahora.toISOString()}`), 4));
+    const { estado, lineas } = iniciar(alertas, escalamiento, cierre);
 
     expect(estado.expresion).toBe('*/5 * * * *');
     expect(lineas).toEqual(['info: Job de SLA programado con "*/5 * * * *"']);
     await estado.tarea!();
-    expect(orden).toEqual([`alertas ${AHORA.toISOString()}`, `escalamiento ${AHORA.toISOString()}`]);
-    expect(lineas).toEqual(expect.arrayContaining(['info: SLA: 2 alertas enviadas', 'info: SLA: 1 quejas escaladas']));
+    expect(orden).toEqual([
+      `alertas ${AHORA.toISOString()}`,
+      `escalamiento ${AHORA.toISOString()}`,
+      `cierre ${AHORA.toISOString()}`,
+    ]);
+    expect(lineas).toEqual(
+      expect.arrayContaining([
+        'info: SLA: 2 alertas enviadas',
+        'info: SLA: 1 quejas escaladas',
+        'info: SLA: 4 quejas cerradas automáticamente',
+      ]),
+    );
   });
 
   it('un error en las alertas no impide el escalamiento, y el job sigue', async () => {
@@ -62,10 +73,12 @@ describe('iniciarJobSla', () => {
     expect(estado.detenido).toBe(false);
   });
 
-  it('un error en el escalamiento queda en el log', async () => {
-    const { estado, lineas } = iniciar(jest.fn().mockResolvedValue(0), jest.fn().mockRejectedValue(new Error('x')));
+  it('un error en el escalamiento queda en el log y no impide el cierre', async () => {
+    const cierre = jest.fn().mockResolvedValue(0);
+    const { estado, lineas } = iniciar(jest.fn().mockResolvedValue(0), jest.fn().mockRejectedValue(new Error('x')), cierre);
     await estado.tarea!();
     expect(lineas).toContain('error: SLA: falló el paso de escalamiento');
+    expect(cierre).toHaveBeenCalledWith(AHORA);
   });
 
   it('salta la corrida si la anterior sigue en curso (la bandera cubre los dos pasos)', async () => {

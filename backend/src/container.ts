@@ -7,6 +7,7 @@ import { AuthService } from './application/services/auth.service';
 import { AutorizacionService } from './application/services/autorizacion.service';
 import { CamposExtraService } from './application/services/campos-extra.service';
 import { CatalogosService } from './application/services/catalogos.service';
+import { CierreAutomaticoService } from './application/services/cierre-automatico.service';
 import { ComentariosService } from './application/services/comentarios.service';
 import { ConfirmacionService } from './application/services/confirmacion.service';
 import { ParametrosService } from './application/services/parametros.service';
@@ -42,6 +43,7 @@ import { NodemailerEnviadorCorreo } from './infrastructure/mail/nodemailer-envia
 import { KnexAtencionLecturaRepository } from './infrastructure/repositories/knex-atencion-lectura-repository';
 import { KnexBitacoraLecturaRepository } from './infrastructure/repositories/knex-bitacora-lectura-repository';
 import { KnexCatalogoLecturaRepository } from './infrastructure/repositories/knex-catalogo-lectura-repository';
+import { KnexCierreAutomaticoRepository } from './infrastructure/repositories/knex-cierre-automatico-repository';
 import { KnexEscaladasLecturaRepository } from './infrastructure/repositories/knex-escaladas-lectura-repository';
 import { KnexLineaTiempoRepository } from './infrastructure/repositories/knex-linea-tiempo-repository';
 import { KnexNotificacionRepository } from './infrastructure/repositories/knex-notificacion-repository';
@@ -97,6 +99,8 @@ export interface Container {
   // Segundo paso del job de SLA (SPEC 32).
   escalamientoService: EscalamientoService;
   escaladasService: EscaladasService;
+  // Tercer paso del job de SLA (SPEC 33).
+  cierreAutomaticoService: CierreAutomaticoService;
   // SLA_JOB_ACTIVO. server.ts programa el job de SLA después de listen; devuelve la función que lo detiene.
   slaJobActivo: boolean;
   iniciarJobSla(): () => void;
@@ -149,6 +153,13 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
   const almacen = new DiscoAlmacenArchivos(env.ADJUNTOS_DIR);
   const consultaTickets = new ConsultaTicketsService(new KnexTicketLecturaRepository(db), plazosConfirmacion, clock);
   const correo = new EnvioCorreo(new KnexPlantillaRepository(db), enviadorCorreo, (mensaje) => console.error(mensaje));
+  const cierre = new CierreAutomaticoService(
+    transaccion,
+    new KnexCierreAutomaticoRepository(db),
+    correo,
+    env.APP_URL,
+    (mensaje) => console.error(mensaje),
+  );
   return {
     port: env.PORT,
     loginLimitePorVentana: env.LOGIN_LIMITE_POR_VENTANA,
@@ -193,6 +204,8 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
       clock,
       (ahora) => plazosConfirmacion.vencimientoConfirmacion(ahora),
       sla,
+      correo,
+      env.APP_URL,
     ),
     confirmacionService: new ConfirmacionService(transaccion, plazosConfirmacion, correo, clock, env.APP_URL, sla),
     comentariosService: new ComentariosService(transaccion, new KnexTicketLecturaRepository(db), clock, sla),
@@ -210,8 +223,10 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     notificacionesService: new NotificacionesService(new KnexNotificacionRepository(db)),
     escalamientoService: escalamiento,
     escaladasService: new EscaladasService(new KnexEscaladasLecturaRepository(db)),
+    cierreAutomaticoService: cierre,
     slaJobActivo: env.SLA_JOB_ACTIVO,
-    iniciarJobSla: () => iniciarJobSla({ alertas: alertasSla, escalamiento }, { cron: env.SLA_JOB_CRON }, clock),
+    iniciarJobSla: () =>
+      iniciarJobSla({ alertas: alertasSla, escalamiento, cierre }, { cron: env.SLA_JOB_CRON }, clock),
     prepararAlmacen: () => almacen.preparar(),
     dispose: () => db.destroy(),
   };
