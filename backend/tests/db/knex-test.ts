@@ -51,6 +51,7 @@ export async function reiniciarEsquema(db: Knex): Promise<void> {
     'encuestas',
     'notificaciones',
     'tickets',
+    'politicas_sla', // actualizado_por apunta a usuarios (SPEC 29)
     'sesiones',
     'restablecimientos',
     'usuarios',

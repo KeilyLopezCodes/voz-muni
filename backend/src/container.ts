@@ -10,6 +10,7 @@ import { ComentariosService } from './application/services/comentarios.service';
 import { ConfirmacionService } from './application/services/confirmacion.service';
 import { ParametrosService } from './application/services/parametros.service';
 import { PlazosConfirmacionService } from './application/services/plazos-confirmacion.service';
+import { PoliticasSlaService } from './application/services/politicas-sla.service';
 import { ConsultaTicketsService } from './application/services/consulta-tickets.service';
 import { EnvioCorreo } from './application/services/envio-correo';
 import { HealthService } from './application/services/health.service';
@@ -40,6 +41,7 @@ import { KnexParametroRepository } from './infrastructure/repositories/knex-para
 import { KnexCalendarioRepository } from './infrastructure/repositories/knex-calendario-repository';
 import { KnexPorAsignarLecturaRepository } from './infrastructure/repositories/knex-por-asignar-lectura-repository';
 import { KnexPlantillaRepository } from './infrastructure/repositories/knex-plantilla-repository';
+import { KnexPoliticaSlaRepository } from './infrastructure/repositories/knex-politica-sla-repository';
 import { KnexRegistroTicketRepository } from './infrastructure/repositories/knex-registro-ticket-repository';
 import { KnexReporteLecturaRepository } from './infrastructure/repositories/knex-reporte-lectura-repository';
 import { KnexRestablecimientoRepository } from './infrastructure/repositories/knex-restablecimiento-repository';
@@ -80,6 +82,7 @@ export interface Container {
   comentariosService: ComentariosService;
   adjuntosService: AdjuntosService;
   lineaTiempoService: LineaTiempoService;
+  politicasSlaService: PoliticasSlaService;
   // Crea ADJUNTOS_DIR si no existe; server.ts lo llama antes de escuchar.
   prepararAlmacen(): Promise<void>;
   dispose(): Promise<void>;
@@ -173,6 +176,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
       (mensaje) => console.error(mensaje),
     ),
     lineaTiempoService: new LineaTiempoService(consultaTickets, new KnexLineaTiempoRepository(db)),
+    politicasSlaService: new PoliticasSlaService(new KnexPoliticaSlaRepository(db), transaccion, clock),
     prepararAlmacen: () => almacen.preparar(),
     dispose: () => db.destroy(),
   };

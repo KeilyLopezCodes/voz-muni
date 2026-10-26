@@ -64,4 +64,11 @@ export const RUTAS_PROTEGIDAS: readonly RutaProtegida[] = [
     etiqueta: 'comun:menu.admin',
     enMenu: true,
   },
+  {
+    // Políticas de SLA (SPEC 29): se llega desde el índice de /admin.
+    path: '/admin/sla',
+    roles: ['administrador'],
+    etiqueta: 'comun:menu.adminSla',
+    enMenu: false,
+  },
 ]

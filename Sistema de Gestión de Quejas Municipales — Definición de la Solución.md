@@ -284,7 +284,7 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | roles | id, nombre, permisos (jsonb) |
 | dependencias | id, nombre, coordinador\_id, activa |
 | categorias | id, nombre, dependencia\_id, campos\_extra (jsonb), activa |
-| politicas\_sla | id, categoria\_id, prioridad, horas\_respuesta, horas\_resolucion |
+| politicas\_sla | id, categoria\_id, prioridad, horas\_respuesta, horas\_resolucion (horas hábiles, respuesta ≤ resolución), actualizado\_en, actualizado\_por (nulo en lo que no cargó el administrador). Una fila por categoría y prioridad; el administrador reemplaza las 4 de una categoría juntas |
 | zonas | id, nombre, tipo (zona, colonia, aldea) |
 | tickets | id, numero (único), titulo, descripcion, solicitante\_id, categoria\_id, dependencia\_id, asignado\_a, estado, prioridad, canal, zona\_id, direccion, lat, lng, datos\_extra (jsonb), vence\_respuesta, vence\_resolucion, escalado, creado\_en, resuelto\_en, cerrado\_en, registrado\_por (usuario que la registró: el propio vecino o el receptor de ventanilla), resolucion (descripción de la resolución vigente, RF-23) y resuelto\_por (usuario que la resolvió); las dos vuelven a nulo al reabrir, y el historial conserva cada resolución anterior; confirmacion\_vence\_en (fin del plazo para confirmar o reabrir, calculado al resolver: las 23:59:59.999 en America/Guatemala del N-ésimo día hábil de calendario\_laboral posterior al día de la resolución) y reaperturas (cuántas veces se reabrió, nunca disminuye) |
 | ticket\_historial | id, ticket\_id, estado\_anterior, estado\_nuevo, usuario\_id, motivo, creado\_en |
@@ -361,4 +361,6 @@ Campos adicionales por categoría (RF-09):
 | GET /api/v1/parametros/limites-municipio | Caja geográfica del municipio para el mapa del formulario | Vecino, Receptor, Supervisor |
 | PUT /api/v1/admin/parametros/limites-municipio | Configurar la caja geográfica del municipio | Admin |
 | PUT /api/v1/admin/categorias/:id/campos-extra | Reemplazar los campos adicionales de una categoría | Admin |
+| GET /api/v1/admin/politicas-sla | Todas las categorías con su matriz de SLA, si está completa y su última actualización | Admin |
+| PUT /api/v1/admin/categorias/:id/politicas-sla | Reemplazar la matriz de SLA de una categoría: las 4 prioridades, horas enteras ≥ 1, respuesta ≤ resolución y urgente ≤ alta ≤ media ≤ baja. No recalcula las quejas abiertas | Admin |
 | /api/v1/admin/\* | CRUD de catálogos | Admin |

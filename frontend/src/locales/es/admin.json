@@ -1,3 +1,56 @@
 {
-  "titulo": "Administración"
+  "titulo": "Administración",
+  "indice": {
+    "descripcion": "Configura los catálogos de la municipalidad.",
+    "sla": {
+      "titulo": "Políticas de SLA",
+      "descripcion": "Plazos de primera respuesta y de resolución de cada categoría y prioridad, en horas hábiles."
+    }
+  },
+  "sla": {
+    "titulo": "Políticas de SLA",
+    "volver": "Administración",
+    "descripcion": "Plazos en horas hábiles de cada categoría para las 4 prioridades: primera respuesta / resolución.",
+    "cargando": "Cargando las políticas…",
+    "errorCarga": "No pudimos cargar las políticas de SLA.",
+    "reintentar": "Reintentar",
+    "vacio": "Todavía no hay categorías.",
+    "avisoIncompletas_one": "{{count}} categoría activa no tiene SLA completo.",
+    "avisoIncompletas_other": "{{count}} categorías activas no tienen SLA completo.",
+    "columnas": {
+      "categoria": "Categoría",
+      "dependencia": "Dependencia",
+      "plazos": "Respuesta / resolución",
+      "actualizacion": "Última actualización",
+      "acciones": "Acciones"
+    },
+    "sinSla": "Sin SLA",
+    "inactiva": "Inactiva",
+    "plazo": "{{respuesta}} / {{resolucion}} h",
+    "sinPlazo": "Sin definir",
+    "actualizadoPor": "{{fecha}} por {{nombre}}",
+    "nuncaEditada": "Sin cambios desde la carga inicial",
+    "editar": "Editar",
+    "editarCategoria": "Editar el SLA de {{categoria}}",
+    "guardado": "Guardamos el SLA de {{categoria}}",
+    "dialogo": {
+      "titulo": "SLA de {{categoria}}",
+      "aviso": "Los cambios aplican a los plazos que se calculen a partir de ahora. Las quejas abiertas conservan sus plazos.",
+      "respuesta": "Primera respuesta (horas hábiles)",
+      "resolucion": "Resolución (horas hábiles)",
+      "guardar": "Guardar",
+      "guardando": "Guardando…",
+      "cancelar": "Cancelar",
+      "errorGuardar": "No pudimos guardar el SLA. Intenta de nuevo.",
+      "noEncontrada": "Esta categoría ya no existe.",
+      "errores": {
+        "REQUERIDO": "Escribe las horas.",
+        "HORAS_INVALIDAS": "Usa un número entero mayor que 0.",
+        "RESPUESTA_MAYOR_QUE_RESOLUCION": "La primera respuesta no puede tardar más que la resolución.",
+        "NO_MONOTONA": "No puede tener menos horas que una prioridad más alta.",
+        "PRIORIDAD_FALTANTE": "Falta esta prioridad.",
+        "PRIORIDAD_DUPLICADA": "Esta prioridad está repetida."
+      }
+    }
+  }
 }

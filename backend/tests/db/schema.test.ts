@@ -27,6 +27,8 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['prioridad', 'text'],
     ['horas_respuesta', 'integer'],
     ['horas_resolucion', 'integer'],
+    ['actualizado_en', 'timestamp with time zone'],
+    ['actualizado_por', 'bigint'],
   ],
   zonas: [
     ['id', 'bigint'],
@@ -920,6 +922,66 @@ describe('Esquema de base de datos', () => {
         expect(nombres).not.toContain('comentarios_ticket_creado_idx');
         expect(
           await db('information_schema.columns').where({ table_name: 'comentarios', column_name: 'editado_en' }).select('column_name'),
+        ).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
+  describe('políticas de SLA (0024)', () => {
+    async function insertCategoria(trx: Knex.Transaction): Promise<string> {
+      const [dependencia] = await trx('dependencias').insert({ nombre: 'Dependencia 0024' }).returning('id');
+      const [categoria] = await trx('categorias').insert({ nombre: 'Categoría 0024', dependencia_id: dependencia.id }).returning('id');
+      return categoria.id;
+    }
+
+    it('actualizado_en es NOT NULL con valor por defecto y actualizado_por es NULL y apunta a usuarios', async () => {
+      const columnas: { column_name: string; is_nullable: string; column_default: string | null }[] = await db(
+        'information_schema.columns',
+      )
+        .where({ table_name: 'politicas_sla' })
+        .whereIn('column_name', ['actualizado_en', 'actualizado_por'])
+        .select('column_name', 'is_nullable', 'column_default')
+        .orderBy('column_name');
+      expect(columnas).toEqual([
+        { column_name: 'actualizado_en', is_nullable: 'NO', column_default: 'now()' },
+        { column_name: 'actualizado_por', is_nullable: 'YES', column_default: null },
+      ]);
+      await withRollback(async (trx) => {
+        const categoriaId = await insertCategoria(trx);
+        await expect(
+          trx('politicas_sla').insert({
+            categoria_id: categoriaId,
+            prioridad: 'baja',
+            horas_respuesta: 1,
+            horas_resolucion: 2,
+            actualizado_por: 999999999,
+          }),
+        ).rejects.toMatchObject({ code: FOREIGN_KEY_VIOLATION });
+      });
+    });
+
+    it('rechaza horas_respuesta > horas_resolucion y acepta valores iguales', () =>
+      withRollback(async (trx) => {
+        const categoriaId = await insertCategoria(trx);
+        await trx('politicas_sla').insert({ categoria_id: categoriaId, prioridad: 'media', horas_respuesta: 24, horas_resolucion: 24 });
+        await expect(
+          trx('politicas_sla').insert({ categoria_id: categoriaId, prioridad: 'baja', horas_respuesta: 80, horas_resolucion: 72 }),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'politicas_sla_respuesta_no_mayor' });
+      }));
+
+    it('revertir 0024 quita las dos columnas y el CHECK', async () => {
+      await db.migrate.down({ name: '0024_politicas_sla.js' });
+      try {
+        expect(
+          await db('information_schema.columns')
+            .where({ table_name: 'politicas_sla' })
+            .whereIn('column_name', ['actualizado_en', 'actualizado_por'])
+            .select('column_name'),
+        ).toEqual([]);
+        expect(
+          await db('pg_constraint').where({ conname: 'politicas_sla_respuesta_no_mayor' }).select('conname'),
         ).toEqual([]);
       } finally {
         await db.migrate.latest();

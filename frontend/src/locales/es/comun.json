@@ -13,7 +13,8 @@
     "traslados": "Traslados",
     "reportes": "Reportes",
     "admin": "Administración",
-    "cerrarSesion": "Cerrar sesión"
+    "cerrarSesion": "Cerrar sesión",
+    "adminSla": "Políticas de SLA"
   },
   "errores": {
     "noAutorizado": {
@@ -57,5 +58,11 @@
     "coordinador": "Coordinador",
     "supervisor": "Supervisor",
     "administrador": "Administrador"
+  },
+  "prioridades": {
+    "baja": "Baja",
+    "media": "Media",
+    "alta": "Alta",
+    "urgente": "Urgente"
   }
 }

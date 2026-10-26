@@ -2,6 +2,7 @@ import type { AdjuntoRepository } from './adjunto-repository';
 import type { AsignacionRepository } from './asignacion-repository';
 import type { CategoriaAdminRepository } from './categoria-admin-repository';
 import type { ComentarioRepository } from './comentario-repository';
+import type { PoliticaSlaRepository } from './politica-sla-repository';
 import type { RegistroVecinoRepository } from './registro-vecino-repository';
 import type { RestablecimientoRepository } from './restablecimiento-repository';
 import type { SesionRepository } from './sesion-repository';
@@ -25,6 +26,7 @@ export interface ReposTransaccionales {
   traslados: TrasladoRepository;
   comentarios: ComentarioRepository;
   adjuntos: AdjuntoRepository;
+  politicasSla: PoliticaSlaRepository;
 }
 
 // Puerto: ejecuta `trabajo` en una transacción; si lanza, no queda nada escrito.
