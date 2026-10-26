@@ -28,6 +28,7 @@ describe('Usuarios de desarrollo (seeds-desarrollo/06_usuarios)', () => {
   afterAll(async () => {
     try {
       await db('sesiones').delete();
+      await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
       await db('usuarios').delete();
     } finally {
       await container.dispose();

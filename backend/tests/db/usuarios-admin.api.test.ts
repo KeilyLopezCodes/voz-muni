@@ -81,6 +81,7 @@ describe('API de administración de usuarios /api/v1/admin/usuarios', () => {
     enviador.fallar = false;
     await db('sesiones').delete();
     await db('restablecimientos').delete();
+    await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
     await db('usuarios').delete();
     adminId = await crearUsuario('admin@vozmuni.test', 'administrador', { nombre: 'Admin Uno' });
     adminToken = await tokenDeAcceso('admin@vozmuni.test');

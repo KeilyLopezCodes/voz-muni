@@ -1,5 +1,4 @@
 import { CierreAutomaticoService, TAMANO_LOTE_CIERRE } from '../../../src/application/services/cierre-automatico.service';
-import { EnvioCorreo } from '../../../src/application/services/envio-correo';
 import type { CierreAutomaticoRepository } from '../../../src/domain/repositories/cierre-automatico-repository';
 import type { TicketEscrituraRepository, TicketParaTransicion } from '../../../src/domain/repositories/ticket-escritura-repository';
 import type { ReposTransaccionales, Transaccion } from '../../../src/domain/repositories/transaccion';
@@ -7,6 +6,7 @@ import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { type ResultadoTransicion, Ticket } from '../../../src/domain/ticket/ticket';
 import { correosPendientes, EnviadorEnMemoria, PlantillasEnMemoria } from '../auth/dobles';
 import { SLA_VACIO } from './dobles-sla';
+import { notificadorDePrueba } from '../notificaciones/dobles-correo';
 
 const AHORA = new Date('2026-11-10T15:00:00.000Z');
 const VENCIO = new Date('2026-11-10T05:59:59.999Z');
@@ -88,7 +88,7 @@ function montar(ids: number[], sinPlazo = 0) {
   const servicio = new CierreAutomaticoService(
     transaccion,
     cierre,
-    new EnvioCorreo(plantillas, enviador, (m) => logs.push(m)),
+    notificadorDePrueba(plantillas, enviador, (m) => logs.push(m)),
     'https://vozmuni.test',
     (m) => logs.push(m),
   );

@@ -7,6 +7,7 @@ import { buildContainer } from './container';
 const container = buildContainer();
 let server: Server | undefined;
 let detenerJobSla: (() => void) | undefined;
+let detenerJobCorreos: (() => void) | undefined;
 
 // La carpeta de adjuntos debe existir antes de recibir subidas (SPEC 24).
 async function iniciar(): Promise<void> {
@@ -20,13 +21,20 @@ async function iniciar(): Promise<void> {
     } else {
       console.log('Job de SLA desactivado (SLA_JOB_ACTIVO=false)');
     }
+    // Reintentos de la bandeja de salida (SPEC 34).
+    if (container.correosJobActivo) {
+      detenerJobCorreos = container.iniciarJobCorreos();
+    } else {
+      console.log('Job de correos desactivado (CORREOS_JOB_ACTIVO=false)');
+    }
   });
 }
 
-// Detiene el job, cierra HTTP y luego Knex.
+// Detiene los jobs, cierra HTTP y luego Knex.
 function shutdown(signal: NodeJS.Signals): void {
   console.log(`${signal} recibido, cerrando VozMuni backend`);
   detenerJobSla?.();
+  detenerJobCorreos?.();
 
   const cerrarBase = async () => {
     await container.dispose();

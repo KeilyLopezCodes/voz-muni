@@ -87,6 +87,7 @@ describe('Triage del supervisor (SPEC 19)', () => {
   beforeEach(async () => {
     await db('solicitudes_traslado').delete();
     await db('ticket_historial').delete();
+    await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
     await db('tickets').delete();
     enviador.enviados.length = 0;
   });
@@ -193,6 +194,11 @@ describe('Triage del supervisor (SPEC 19)', () => {
     });
     const correo = await correoCon(`VozMuni: tu queja ${res.body.numero} no fue aceptada`);
     expect(correo!.texto).toContain('\nLa dirección está fuera del municipio\n');
+    // SPEC 34: la fila de la bandeja lleva el ticket.
+    const correos = db('correos_salientes').where({ ticket_id: id }).whereNot({ plantilla_clave: 'queja_registrada' });
+    expect(await correos.select('plantilla_clave', 'estado')).toEqual([
+      { plantilla_clave: 'queja_rechazada', estado: 'enviado' },
+    ]);
   });
 
   it('aceptar con otra categoría la cambia, deja la nota en el historial y conserva datos_extra', async () => {
@@ -222,6 +228,9 @@ describe('Triage del supervisor (SPEC 19)', () => {
     expect(res.status).toBe(400);
     expect(res.body.codigo).toBe('CATEGORIA_INVALIDA');
     expect(await db('tickets').where({ id }).first('estado')).toEqual({ estado: 'en_revision' });
+    // La transacción se revirtió: no queda correo (SPEC 34).
+    const correos = db('correos_salientes').where({ ticket_id: id }).whereNot({ plantilla_clave: 'queja_registrada' });
+    expect(await correos).toEqual([]);
   });
 
   it('tomar dos veces → 409 TRANSICION_INVALIDA, y aceptar una nueva también', async () => {

@@ -69,6 +69,7 @@ describe('API de registro /api/v1/auth/registro y /verificar', () => {
     enviador.enviados.length = 0;
     await db('sesiones').delete();
     await db('restablecimientos').delete();
+    await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
     await db('usuarios').delete();
   });
 

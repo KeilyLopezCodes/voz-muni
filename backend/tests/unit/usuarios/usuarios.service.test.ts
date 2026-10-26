@@ -1,4 +1,3 @@
-import { EnvioCorreo } from '../../../src/application/services/envio-correo';
 import { UsuariosService } from '../../../src/application/services/usuarios.service';
 import {
   correosPendientes,
@@ -15,6 +14,7 @@ import {
   usuario,
   VecinosEnMemoria,
 } from '../auth/dobles';
+import { notificadorDePrueba } from '../notificaciones/dobles-correo';
 
 const ADMIN_ID = 1;
 const DOBLE_DPI = '2547 12345 0101';
@@ -41,7 +41,7 @@ function crearEscenario(filas: UsuarioFalso[] = [admin()]) {
   const servicio = new UsuariosService(
     usuariosAdmin,
     new TransaccionEnMemoria({ usuarios, usuariosAdmin, sesiones, restablecimientos, vecinos: new VecinosEnMemoria(usuarios) }),
-    new EnvioCorreo(new PlantillasEnMemoria(), enviador, (mensaje) => errores.push(mensaje)),
+    notificadorDePrueba(new PlantillasEnMemoria(), enviador, (mensaje) => errores.push(mensaje)),
     new TokensFalsos(),
     reloj,
     'http://localhost:5173',

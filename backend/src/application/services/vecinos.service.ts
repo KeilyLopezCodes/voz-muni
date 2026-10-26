@@ -1,25 +1,17 @@
-import type { TokenService } from '../../domain/auth/token-service';
+import { type TokenService, VIGENCIA_RESTABLECIMIENTO_MS } from '../../domain/auth/token-service';
 import type { Clock } from '../../domain/health/clock';
 import type { Transaccion } from '../../domain/repositories/transaccion';
 import type { CriterioVecino, Vecino, VecinoRepository } from '../../domain/repositories/vecino-repository';
+import { enmascararEmail, enmascararTelefono } from '../../domain/usuarios/enmascarar-contacto';
 import { normalizarDpi } from '../../domain/usuarios/usuario-interno';
 import { type DatosVecinoNuevo, normalizarTelefono, validarVecinoNuevo } from '../../domain/usuarios/vecino';
 import type { VecinoEncontrado } from '../dto/registro-ticket.dto';
 import { conReglasDeNegocio } from '../errors/error-de-aplicacion';
-import type { EnvioCorreo } from './envio-correo';
+import type { NotificadorCorreo } from './notificador-correo.service';
 
 export const MAX_VECINOS_ENCONTRADOS = 10;
 
-// a***@dominio.gt: primer carácter + *** + @dominio.
-export function enmascararEmail(email: string): string {
-  const arroba = email.lastIndexOf('@');
-  return `${email.charAt(0)}***${email.slice(arroba)}`;
-}
-
-// ****0000: solo los 4 últimos dígitos.
-export function enmascararTelefono(telefono: string): string {
-  return `****${telefono.replace(/\D/g, '').slice(-4)}`;
-}
+export { enmascararEmail, enmascararTelefono };
 
 function aEncontrado(vecino: Vecino): VecinoEncontrado {
   return {
@@ -40,7 +32,7 @@ export class VecinosService {
   constructor(
     private readonly vecinos: VecinoRepository,
     private readonly transaccion: Transaccion,
-    private readonly correo: EnvioCorreo,
+    private readonly correo: NotificadorCorreo,
     private readonly tokens: TokenService,
     private readonly clock: Clock,
     private readonly appUrl: string, // APP_URL, sin barra final
@@ -67,23 +59,29 @@ export class VecinosService {
       const ahora = this.clock.now();
       const token = this.tokens.generarRenovacion();
 
-      const { id } = await this.transaccion.ejecutar(async (repos) => {
+      const { id, correoId } = await this.transaccion.ejecutar(async (repos) => {
         const creado = await repos.vecinos.crear(vecino);
-        if (vecino.email !== null) {
-          await repos.restablecimientos.crear(creado.id, this.tokens.hashRenovacion(token), 'invitacion', ahora);
+        if (vecino.email === null) {
+          return { id: creado.id, correoId: null };
         }
-        return creado;
+        await repos.restablecimientos.crear(creado.id, this.tokens.hashRenovacion(token), 'invitacion', ahora);
+        // La invitación se encola en la misma transacción (SPEC 34), con el vencimiento del enlace.
+        const correo = await this.correo.encolar(
+          'invitacion_vecino',
+          { nombre: vecino.nombre, enlace: `${this.appUrl}/restablecer?token=${token}` },
+          {
+            para: vecino.email,
+            usuarioId: creado.id,
+            expiraEn: new Date(ahora.getTime() + VIGENCIA_RESTABLECIMIENTO_MS.invitacion),
+          },
+          repos.correosSalientes,
+        );
+        return { id: creado.id, correoId: correo };
       });
 
-      // Se espera el envío para avisar al receptor si falló; el vecino ya quedó creado.
-      const invitacionEnviada =
-        vecino.email !== null &&
-        (await this.correo.intentar(
-          'invitacion_vecino',
-          vecino.email,
-          { nombre: vecino.nombre, enlace: `${this.appUrl}/restablecer?token=${token}` },
-          id,
-        ));
+      // Se espera el primer intento para avisar al receptor si falló; el vecino ya quedó creado y el job de correos
+      // lo reintenta.
+      const invitacionEnviada = vecino.email !== null && (await this.correo.despacharYEsperar([correoId]));
       return {
         vecino: aEncontrado({ id, nombre: vecino.nombre, email: vecino.email, telefono: vecino.telefono }),
         invitacionEnviada,

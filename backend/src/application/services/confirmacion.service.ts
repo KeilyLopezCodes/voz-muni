@@ -3,6 +3,7 @@ import type { Alcance } from '../../domain/auth/permisos';
 import { filtroTicketsParaAccion } from '../../domain/autorizacion/alcance-tickets';
 import { InvalidTransitionError } from '../../domain/errors/invalid-transition-error';
 import type { Clock } from '../../domain/health/clock';
+import type { CorreoSalienteRepository } from '../../domain/repositories/correo-saliente-repository';
 import type { TicketParaTransicion } from '../../domain/repositories/ticket-escritura-repository';
 import type { Transaccion } from '../../domain/repositories/transaccion';
 import type { ResultadoTransicion } from '../../domain/ticket/ticket';
@@ -10,7 +11,7 @@ import { puedeTransicionar } from '../../domain/ticket/transiciones';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { ComandoConfirmacion, ConfirmacionHechaDto } from '../dto/confirmacion.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
-import type { EnvioCorreo } from './envio-correo';
+import type { NotificadorCorreo } from './notificador-correo.service';
 import type { PlazosConfirmacionService } from './plazos-confirmacion.service';
 import type { SlaService } from './sla.service';
 
@@ -27,7 +28,7 @@ export class ConfirmacionService {
   constructor(
     private readonly transaccion: Transaccion,
     private readonly plazos: Pick<PlazosConfirmacionService, 'maxReaperturas'>,
-    private readonly correo: EnvioCorreo,
+    private readonly correo: NotificadorCorreo,
     private readonly clock: Clock,
     private readonly appUrl: string, // APP_URL, sin barra final
     private readonly sla: Pick<SlaService, 'alReabrir'>,
@@ -45,7 +46,7 @@ export class ConfirmacionService {
     }
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.cambiar_estado');
     const hecha = await conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura }): Promise<ConfirmacionHecha> => {
+      this.transaccion.ejecutar(async ({ ticketsEscritura, correosSalientes }) => {
         // FOR UPDATE, como en SPEC 19 y 22: una segunda acción simultánea ve el estado nuevo y recibe 409.
         const actual = await ticketsEscritura.obtenerParaActualizar(id, filtro);
         if (!actual) {
@@ -75,11 +76,13 @@ export class ConfirmacionService {
               )
             : {};
         await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
-        return { actual, resultado };
+        // El aviso se encola en la misma transacción (SPEC 34): si se revierte, no queda correo.
+        const hecha: ConfirmacionHecha = { actual, resultado };
+        return { ...hecha, correoId: await this.encolarAviso(comando, hecha, correosSalientes) };
       }),
     );
 
-    this.avisarSolicitante(comando, hecha);
+    await this.correo.despachar([hecha.correoId]);
     const { ticket } = hecha.resultado;
     return {
       id: ticket.id,
@@ -92,11 +95,15 @@ export class ConfirmacionService {
     };
   }
 
-  // Después del commit y sin esperar: la transición no depende del correo.
-  private avisarSolicitante(comando: ComandoConfirmacion, { actual, resultado }: ConfirmacionHecha): void {
+  // Se despacha después del commit y sin esperar: la transición no depende del correo.
+  private async encolarAviso(
+    comando: ComandoConfirmacion,
+    { actual, resultado }: ConfirmacionHecha,
+    correos: CorreoSalienteRepository,
+  ): Promise<number | null> {
     const { solicitante } = actual;
     if (!solicitante.email) {
-      return;
+      return null;
     }
     const comunes = {
       nombre: solicitante.nombre,
@@ -109,6 +116,11 @@ export class ConfirmacionService {
       comando.accion === 'confirmar'
         ? ['queja_cerrada', comunes]
         : ['queja_reabierta', { ...comunes, motivo: resultado.historial.motivo ?? '' }];
-    this.correo.sinEsperar(clave, solicitante.email, variables, solicitante.id);
+    return this.correo.encolar(
+      clave,
+      variables,
+      { para: solicitante.email, usuarioId: solicitante.id, ticketId: resultado.ticket.id },
+      correos,
+    );
   }
 }

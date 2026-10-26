@@ -15,7 +15,8 @@ import { PlazosConfirmacionService } from './application/services/plazos-confirm
 import { PoliticasSlaService } from './application/services/politicas-sla.service';
 import { SlaService } from './application/services/sla.service';
 import { ConsultaTicketsService } from './application/services/consulta-tickets.service';
-import { EnvioCorreo } from './application/services/envio-correo';
+import { DespachoCorreosService } from './application/services/despacho-correos.service';
+import { NotificadorCorreo } from './application/services/notificador-correo.service';
 import { EscaladasService } from './application/services/escaladas.service';
 import { EscalamientoService } from './application/services/escalamiento.service';
 import { HealthService } from './application/services/health.service';
@@ -38,11 +39,13 @@ import { SystemClock } from './infrastructure/clock/system-clock';
 import { type Env, loadEnv } from './infrastructure/config/env';
 import { buildKnexConfig } from './infrastructure/database/knex-config';
 import { KnexDatabaseHealthCheck } from './infrastructure/database/knex-database-health-check';
+import { iniciarJobCorreos } from './infrastructure/jobs/correos.job';
 import { iniciarJobSla } from './infrastructure/jobs/sla.job';
 import { NodemailerEnviadorCorreo } from './infrastructure/mail/nodemailer-enviador-correo';
 import { KnexAtencionLecturaRepository } from './infrastructure/repositories/knex-atencion-lectura-repository';
 import { KnexBitacoraLecturaRepository } from './infrastructure/repositories/knex-bitacora-lectura-repository';
 import { KnexCatalogoLecturaRepository } from './infrastructure/repositories/knex-catalogo-lectura-repository';
+import { KnexCorreoSalienteRepository } from './infrastructure/repositories/knex-correo-saliente-repository';
 import { KnexCierreAutomaticoRepository } from './infrastructure/repositories/knex-cierre-automatico-repository';
 import { KnexEscaladasLecturaRepository } from './infrastructure/repositories/knex-escaladas-lectura-repository';
 import { KnexLineaTiempoRepository } from './infrastructure/repositories/knex-linea-tiempo-repository';
@@ -101,9 +104,15 @@ export interface Container {
   escaladasService: EscaladasService;
   // Tercer paso del job de SLA (SPEC 33).
   cierreAutomaticoService: CierreAutomaticoService;
+  // Bandeja de salida (SPEC 34): el job de correos llama al despacho; las pruebas usan los dos.
+  notificadorCorreo: NotificadorCorreo;
+  despachoCorreosService: DespachoCorreosService;
   // SLA_JOB_ACTIVO. server.ts programa el job de SLA después de listen; devuelve la función que lo detiene.
   slaJobActivo: boolean;
   iniciarJobSla(): () => void;
+  // Job de correos (SPEC 34): reintentos de la bandeja de salida.
+  correosJobActivo: boolean;
+  iniciarJobCorreos(): () => void;
   // Crea ADJUNTOS_DIR si no existe; server.ts lo llama antes de escuchar.
   prepararAlmacen(): Promise<void>;
   dispose(): Promise<void>;
@@ -114,6 +123,8 @@ export interface OpcionesContainer {
   enviadorCorreo?: EnviadorCorreo;
   // Y un reloj para fijar la hora en los plazos (SPEC 27).
   reloj?: Clock;
+  // Esperar el primer envío de cada correo (SPEC 34). Por defecto, solo en NODE_ENV=test.
+  despachoSincronico?: boolean;
 }
 
 // Único punto fuera de infrastructure/ que instancia sus adaptadores.
@@ -152,7 +163,17 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
   const escalamiento = new EscalamientoService(transaccion, (mensaje) => console.error(mensaje));
   const almacen = new DiscoAlmacenArchivos(env.ADJUNTOS_DIR);
   const consultaTickets = new ConsultaTicketsService(new KnexTicketLecturaRepository(db), plazosConfirmacion, clock);
-  const correo = new EnvioCorreo(new KnexPlantillaRepository(db), enviadorCorreo, (mensaje) => console.error(mensaje));
+  // Bandeja de salida (SPEC 34): todo correo se encola en la transacción del caso de uso y se despacha después.
+  const despachoCorreos = new DespachoCorreosService(transaccion, enviadorCorreo, (mensaje) => console.error(mensaje));
+  const correo = new NotificadorCorreo(
+    new KnexPlantillaRepository(db),
+    new KnexCorreoSalienteRepository(db),
+    despachoCorreos,
+    clock,
+    (mensaje) => console.error(mensaje),
+    // En las pruebas el primer intento se espera, para comprobar el enviador falso sin depender de tiempos.
+    { despachoSincronico: opciones.despachoSincronico ?? env.NODE_ENV === 'test' },
+  );
   const cierre = new CierreAutomaticoService(
     transaccion,
     new KnexCierreAutomaticoRepository(db),
@@ -224,9 +245,13 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     escalamientoService: escalamiento,
     escaladasService: new EscaladasService(new KnexEscaladasLecturaRepository(db)),
     cierreAutomaticoService: cierre,
+    notificadorCorreo: correo,
+    despachoCorreosService: despachoCorreos,
     slaJobActivo: env.SLA_JOB_ACTIVO,
     iniciarJobSla: () =>
       iniciarJobSla({ alertas: alertasSla, escalamiento, cierre }, { cron: env.SLA_JOB_CRON }, clock),
+    correosJobActivo: env.CORREOS_JOB_ACTIVO,
+    iniciarJobCorreos: () => iniciarJobCorreos(despachoCorreos, { cron: env.CORREOS_JOB_CRON }, clock),
     prepararAlmacen: () => almacen.preparar(),
     dispose: () => db.destroy(),
   };

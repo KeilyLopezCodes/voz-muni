@@ -68,6 +68,7 @@ describe('Registro de tickets con correlativo (SPEC 12)', () => {
 
   beforeEach(async () => {
     await db('ticket_historial').delete();
+    await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
     await db('tickets').delete();
     await db('correlativos').delete();
   });

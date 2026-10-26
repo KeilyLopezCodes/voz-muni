@@ -1,4 +1,3 @@
-import { EnvioCorreo } from '../../../src/application/services/envio-correo';
 import {
   enmascararEmail,
   enmascararTelefono,
@@ -18,6 +17,7 @@ import {
   UsuariosEnMemoria,
   VecinosEnMemoria,
 } from '../auth/dobles';
+import { notificadorDePrueba } from '../notificaciones/dobles-correo';
 
 // Registra el criterio y el límite que recibe; devuelve los vecinos que se le dan.
 class VecinosFalsos implements VecinoRepository {
@@ -56,7 +56,7 @@ function crearEscenario(vecinosBusqueda?: VecinoRepository) {
       restablecimientos,
       vecinos,
     }),
-    new EnvioCorreo(new PlantillasEnMemoria(), enviador, (mensaje) => errores.push(mensaje)),
+    notificadorDePrueba(new PlantillasEnMemoria(), enviador, (mensaje) => errores.push(mensaje)),
     new TokensFalsos(),
     reloj,
     'http://localhost:5173',

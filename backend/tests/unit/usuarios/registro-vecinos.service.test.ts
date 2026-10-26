@@ -1,5 +1,4 @@
 import { ErrorDeAplicacion } from '../../../src/application/errors/error-de-aplicacion';
-import { EnvioCorreo } from '../../../src/application/services/envio-correo';
 import { RegistroVecinosService } from '../../../src/application/services/registro-vecinos.service';
 import type { EnviadorCorreo, MensajeCorreo } from '../../../src/domain/notificaciones/enviador-correo';
 import type { DatosRegistro } from '../../../src/domain/usuarios/registro-vecino';
@@ -18,6 +17,7 @@ import {
   correosPendientes,
   usuario,
 } from '../auth/dobles';
+import { notificadorDePrueba } from '../notificaciones/dobles-correo';
 
 const APP_URL = 'http://app.test';
 
@@ -29,7 +29,7 @@ const datos: DatosRegistro = {
   password: 'Abc12345',
 };
 
-function preparar(filas: UsuarioFalso[] = [], enviador: EnviadorCorreo = new EnviadorEnMemoria()) {
+function preparar(filas: UsuarioFalso[] = [], enviador: EnviadorCorreo = new EnviadorEnMemoria(), despachoSincronico = true) {
   const reloj = new RelojFalso(new Date('2026-10-23T15:00:00Z'));
   const usuarios = new UsuariosEnMemoria(filas);
   const registroVecinos = new RegistroVecinosEnMemoria(usuarios);
@@ -39,7 +39,7 @@ function preparar(filas: UsuarioFalso[] = [], enviador: EnviadorCorreo = new Env
   const errores: string[] = [];
   const servicio = new RegistroVecinosService(
     new TransaccionEnMemoria({ usuarios, registroVecinos, restablecimientos }),
-    new EnvioCorreo(new PlantillasEnMemoria(), enviador, (mensaje) => errores.push(mensaje)),
+    notificadorDePrueba(new PlantillasEnMemoria(), enviador, (mensaje) => errores.push(mensaje), { despachoSincronico }),
     hasher,
     new TokensFalsos(),
     reloj,
@@ -181,7 +181,8 @@ describe('RegistroVecinosService.registrar', () => {
           }, 50),
         ),
     };
-    const { servicio } = preparar([], enviadorLento);
+    // Sin despacho sincrónico, como en producción.
+    const { servicio } = preparar([], enviadorLento, false);
 
     await servicio.registrar(datos);
 

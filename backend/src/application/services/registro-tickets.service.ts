@@ -10,7 +10,7 @@ import { validarUbicacion } from '../../domain/ubicacion/limites-municipio';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { DatosRegistroTicket, TicketCreadoDto } from '../dto/registro-ticket.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
-import type { EnvioCorreo } from './envio-correo';
+import type { NotificadorCorreo } from './notificador-correo.service';
 import type { ParametrosService } from './parametros.service';
 
 // Registro de quejas (RF-06, RF-08). El alcance de tickets.crear decide quién es el solicitante y el canal.
@@ -19,7 +19,7 @@ export class RegistroTicketsService {
     private readonly registros: RegistroTicketRepository,
     private readonly catalogo: CatalogoLecturaRepository,
     private readonly vecinos: VecinoRepository,
-    private readonly correo: EnvioCorreo,
+    private readonly correo: NotificadorCorreo,
     private readonly parametros: ParametrosService,
     private readonly clock: Clock,
     private readonly appUrl: string, // APP_URL, sin barra final
@@ -62,24 +62,30 @@ export class RegistroTicketsService {
       );
       // Los campos se leen en la misma transacción del registro; sin datosExtra cuenta como {}.
       const hoy = hoyGuatemala(ahora);
-      const creado = await this.registros.registrar(registro, (campos) =>
-        validarDatosExtra(campos, datos.datosExtra, hoy),
+      // El aviso se encola en la misma transacción del registro (SPEC 34): si se revierte, no queda correo.
+      let correoId: number | null = null;
+      const creado = await this.registros.registrar(
+        registro,
+        (campos) => validarDatosExtra(campos, datos.datosExtra, hoy),
+        async (nuevo, correos) => {
+          if (solicitante.email) {
+            correoId = await this.correo.encolar(
+              'queja_registrada',
+              {
+                nombre: solicitante.nombre,
+                numero: nuevo.numero,
+                titulo: registro.datos.titulo,
+                enlace: `${this.appUrl}/consulta?numero=${nuevo.numero}`,
+              },
+              { para: solicitante.email, usuarioId: solicitante.id, ticketId: nuevo.id },
+              correos,
+            );
+          }
+        },
       );
 
       // Después del commit y sin esperar: la queja no depende del correo.
-      if (solicitante.email) {
-        this.correo.sinEsperar(
-          'queja_registrada',
-          solicitante.email,
-          {
-            nombre: solicitante.nombre,
-            numero: creado.numero,
-            titulo: registro.datos.titulo,
-            enlace: `${this.appUrl}/consulta?numero=${creado.numero}`,
-          },
-          solicitante.id,
-        );
-      }
+      await this.correo.despachar([correoId]);
       return { id: creado.id, numero: creado.numero, estado: 'nueva', creadoEn: creado.creadoEn.toISOString() };
     });
   }

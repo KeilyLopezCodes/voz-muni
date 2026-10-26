@@ -1,6 +1,7 @@
 import { filtroTicketsParaAccion } from '../../domain/autorizacion/alcance-tickets';
 import type { Clock } from '../../domain/health/clock';
 import type { AtencionLecturaRepository, EstadoAtencion } from '../../domain/repositories/atencion-lectura-repository';
+import type { CorreoSalienteRepository } from '../../domain/repositories/correo-saliente-repository';
 import type { TicketParaTransicion } from '../../domain/repositories/ticket-escritura-repository';
 import type { Pagina } from '../../domain/repositories/ticket-lectura-repository';
 import type { Transaccion } from '../../domain/repositories/transaccion';
@@ -11,7 +12,7 @@ import type { AtencionHechaDto, ComandoAtencion, TicketAtencionDto } from '../dt
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import { aSlaDto } from '../dto/sla.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
-import type { EnvioCorreo } from './envio-correo';
+import type { NotificadorCorreo } from './notificador-correo.service';
 import { fechaHoraParaCorreo } from './formato-fecha';
 import type { SlaService, TicketConPolitica } from './sla.service';
 
@@ -50,13 +51,13 @@ export class AtencionService {
     private readonly clock: Clock,
     private readonly vencimientoConfirmacion: CalcularVencimientoConfirmacion,
     private readonly sla: Pick<SlaService, 'alIniciar' | 'alPonerEnEspera' | 'alReanudar'>,
-    private readonly correo: EnvioCorreo,
+    private readonly correo: NotificadorCorreo,
     private readonly appUrl: string, // APP_URL, sin barra final
   ) {}
 
   async transicionar(usuario: UsuarioAutenticado, id: number, comando: ComandoAtencion): Promise<AtencionHechaDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.cambiar_estado');
-    const { actual, ticket } = await this.transaccion.ejecutar(async ({ ticketsEscritura }) => {
+    const { ticket, correoId } = await this.transaccion.ejecutar(async ({ ticketsEscritura, correosSalientes }) => {
       // FOR UPDATE, como en SPEC 19: una segunda transición simultánea ve el estado nuevo y recibe 409.
       const actual = await ticketsEscritura.obtenerParaActualizar(id, filtro);
       if (!actual) {
@@ -73,12 +74,13 @@ export class AtencionService {
         ahora,
       );
       await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
-      return { actual, ticket: resultado.ticket };
+      // El aviso se encola en la misma transacción (SPEC 34): si se revierte, no queda correo.
+      const correoId =
+        comando.accion === 'resolver' ? await this.encolarResuelta(actual, resultado.ticket, correosSalientes) : null;
+      return { ticket: resultado.ticket, correoId };
     });
 
-    if (comando.accion === 'resolver') {
-      this.avisarResuelta(actual, ticket);
-    }
+    await this.correo.despachar([correoId]);
     return {
       id: ticket.id,
       numero: ticket.numero,
@@ -88,15 +90,18 @@ export class AtencionService {
     };
   }
 
-  // Después del commit y sin esperar: la respuesta no depende del correo. El enlace lleva al detalle, porque
-  // confirmar y reabrir requieren sesión (SPEC 33).
-  private avisarResuelta({ solicitante, titulo }: TicketParaTransicion, ticket: Ticket): void {
+  // Se despacha después del commit y sin esperar: la respuesta no depende del correo. El enlace lleva al detalle,
+  // porque confirmar y reabrir requieren sesión (SPEC 33).
+  private async encolarResuelta(
+    { solicitante, titulo }: TicketParaTransicion,
+    ticket: Ticket,
+    correos: CorreoSalienteRepository,
+  ): Promise<number | null> {
     if (!solicitante.email || !ticket.confirmacionVenceEn) {
-      return;
+      return null;
     }
-    this.correo.sinEsperar(
+    return this.correo.encolar(
       'queja_resuelta',
-      solicitante.email,
       {
         nombre: solicitante.nombre,
         numero: ticket.numero,
@@ -105,7 +110,8 @@ export class AtencionService {
         fecha_limite: fechaHoraParaCorreo(ticket.confirmacionVenceEn),
         enlace: `${this.appUrl}/tickets/${ticket.id}`,
       },
-      solicitante.id,
+      { para: solicitante.email, usuarioId: solicitante.id, ticketId: ticket.id },
+      correos,
     );
   }
 

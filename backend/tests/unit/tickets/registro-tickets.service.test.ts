@@ -1,5 +1,4 @@
 import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
-import { EnvioCorreo } from '../../../src/application/services/envio-correo';
 import { ParametrosService } from '../../../src/application/services/parametros.service';
 import { RegistroTicketsService } from '../../../src/application/services/registro-tickets.service';
 import type { ParametroRepository } from '../../../src/domain/repositories/parametro-repository';
@@ -7,6 +6,7 @@ import type { CatalogoLecturaRepository } from '../../../src/domain/repositories
 import type { CampoExtra } from '../../../src/domain/categorias/campo-extra';
 import type { DatosExtra } from '../../../src/domain/categorias/datos-extra';
 import type {
+  AlRegistrar,
   PrepararDatosExtra,
   RegistroTicketRepository,
   TicketCreado,
@@ -15,6 +15,7 @@ import type { CriterioVecino, Vecino, VecinoRepository } from '../../../src/doma
 import { formatearNumero } from '../../../src/domain/ticket/numero-ticket';
 import type { TicketRegistrado } from '../../../src/domain/ticket/ticket';
 import { correosPendientes, EnviadorEnMemoria, PlantillasEnMemoria, RelojFalso } from '../auth/dobles';
+import { CorreosEnMemoria, notificadorDePrueba } from '../notificaciones/dobles-correo';
 
 // Como el repositorio real: valida datosExtra con los campos de la categoría antes de tomar el número.
 class RegistrosEnMemoria implements RegistroTicketRepository {
@@ -22,12 +23,17 @@ class RegistrosEnMemoria implements RegistroTicketRepository {
   readonly datosExtra: DatosExtra[] = [];
   readonly camposPorCategoria = new Map<number, CampoExtra[]>();
 
-  async registrar(registro: TicketRegistrado, preparar: PrepararDatosExtra): Promise<TicketCreado> {
+  // La bandeja de salida de la "transacción" del registro (SPEC 34).
+  readonly correos = new CorreosEnMemoria();
+
+  async registrar(registro: TicketRegistrado, preparar: PrepararDatosExtra, alRegistrar?: AlRegistrar): Promise<TicketCreado> {
     const datosExtra = preparar(this.camposPorCategoria.get(registro.datos.categoriaId) ?? []);
     this.registrados.push(registro);
     this.datosExtra.push(datosExtra);
     const id = this.registrados.length;
-    return { id, numero: formatearNumero(2026, id), creadoEn: registro.historial.creadoEn };
+    const creado = { id, numero: formatearNumero(2026, id), creadoEn: registro.historial.creadoEn };
+    await alRegistrar?.(creado, this.correos);
+    return creado;
   }
 }
 
@@ -124,7 +130,9 @@ function crear() {
     registros,
     catalogo,
     new VecinosEnMemoria([VECINO, SIN_CORREO]),
-    new EnvioCorreo(new PlantillasEnMemoriaConQueja(), enviador, (mensaje) => errores.push(mensaje)),
+    notificadorDePrueba(new PlantillasEnMemoriaConQueja(), enviador, (mensaje) => errores.push(mensaje), {
+      correos: registros.correos,
+    }),
     new ParametrosService(parametros),
     reloj,
     'http://localhost:5173',

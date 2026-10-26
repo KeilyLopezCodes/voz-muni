@@ -22,6 +22,8 @@ describe('loadEnv', () => {
     RECUPERACION_LIMITE_POR_VENTANA: 5,
     SLA_JOB_ACTIVO: true,
     SLA_JOB_CRON: '*/5 * * * *',
+    CORREOS_JOB_ACTIVO: true,
+    CORREOS_JOB_CRON: '* * * * *',
   };
 
   it('devuelve la configuración con una entrada válida', () => {
@@ -36,6 +38,8 @@ describe('loadEnv', () => {
         RECUPERACION_LIMITE_POR_VENTANA: '3',
         SLA_JOB_ACTIVO: 'false',
         SLA_JOB_CRON: '* * * * *',
+        CORREOS_JOB_ACTIVO: 'false',
+        CORREOS_JOB_CRON: '*/2 * * * *',
       }),
     ).toEqual({
       ...minimo,
@@ -47,6 +51,8 @@ describe('loadEnv', () => {
       RECUPERACION_LIMITE_POR_VENTANA: 3,
       SLA_JOB_ACTIVO: false,
       SLA_JOB_CRON: '* * * * *',
+      CORREOS_JOB_ACTIVO: false,
+      CORREOS_JOB_CRON: '*/2 * * * *',
     });
   });
 
@@ -62,6 +68,14 @@ describe('loadEnv', () => {
     expect(loadEnv({ ...minimo, NODE_ENV: 'test' }).SLA_JOB_ACTIVO).toBe(false);
     expect(loadEnv({ ...minimo, NODE_ENV: 'test', SLA_JOB_ACTIVO: 'true' }).SLA_JOB_ACTIVO).toBe(true);
     expect(loadEnv({ ...minimo, NODE_ENV: 'production' }).SLA_JOB_ACTIVO).toBe(true);
+  });
+
+  it('el job de correos corre cada minuto, salvo en NODE_ENV=test, y valida su expresión (SPEC 34)', () => {
+    expect(loadEnv(minimo)).toMatchObject({ CORREOS_JOB_ACTIVO: true, CORREOS_JOB_CRON: '* * * * *' });
+    expect(loadEnv({ ...minimo, NODE_ENV: 'test' }).CORREOS_JOB_ACTIVO).toBe(false);
+    expect(loadEnv({ ...minimo, NODE_ENV: 'test', CORREOS_JOB_ACTIVO: 'true' }).CORREOS_JOB_ACTIVO).toBe(true);
+    expect(() => loadEnv({ ...minimo, CORREOS_JOB_CRON: 'cada minuto' })).toThrow(/CORREOS_JOB_CRON/);
+    expect(() => loadEnv({ ...minimo, CORREOS_JOB_ACTIVO: 'si' })).toThrow(/CORREOS_JOB_ACTIVO/);
   });
 
   describe('nombres de SPEC 31 (obsoletos)', () => {

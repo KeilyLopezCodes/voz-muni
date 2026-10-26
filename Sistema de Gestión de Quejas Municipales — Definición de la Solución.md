@@ -265,9 +265,9 @@ backend/src/
   infrastructure/
     database/          # knexfile, migrations/, seeds/
     repositories/      # implementaciones PostgreSQL de las interfaces
-    mail/              # adaptador Nodemailer
+    mail/              # adaptador Nodemailer (solo lo usa el despacho de la bandeja de salida)
     storage/           # adaptador de archivos
-    jobs/              # tareas node-cron de SLA y cierre automático (sla.job.ts, cada 5 minutos: alertas al umbral, escalamiento al vencer y cierre automático de las resueltas con el plazo de confirmación vencido)
+    jobs/              # tareas node-cron de SLA y cierre automático (sla.job.ts, cada 5 minutos: alertas al umbral, escalamiento al vencer y cierre automático de las resueltas con el plazo de confirmación vencido; correos.job.ts, cada minuto: reintentos de la bandeja de salida correos\_salientes)
   container.ts         # composición: instancia repositorios y servicios
   app.ts
   server.ts
@@ -297,6 +297,7 @@ El frontend se organiza por funcionalidad: `features/auth`, `features/tickets`, 
 | calendario\_laboral | fecha, es\_habil, descripcion |
 | bitacora | id, usuario\_id, accion, entidad, entidad\_id, detalle (jsonb), ip, creado\_en, dependencia\_id (para la bitácora por dependencia; nulo en acciones sin dependencia) |
 | plantillas\_notificacion | id, clave (única), asunto, cuerpo\_texto, cuerpo\_html, actualizado\_en. Entre otras: `queja_resuelta` (al resolver: la solución, la fecha límite para confirmar y el enlace al detalle) y `queja_cerrada_automaticamente` (al cerrar por vencimiento del plazo de confirmación) |
+| correos\_salientes | id, plantilla\_clave, para, asunto, texto, html (el mensaje ya renderizado; texto y html solo mientras está pendiente y se borran al terminar), ticket\_id, usuario\_id, estado (pendiente, enviado, fallido, descartado), intentos (0 a 3), proximo\_intento\_en, expira\_en (vencimiento del enlace que lleva, si lleva uno), ultimo\_error, creado\_en, terminado\_en. Bandeja de salida: todo correo se escribe aquí en la transacción del caso de uso, se intenta enviar al confirmarla y se reintenta a los 5 y a los 30 minutos; tras el tercer fallo queda fallido, y un correo cuyo enlace venció se descarta sin enviarse |
 | parametros | clave (PK), valor (jsonb), actualizado\_en: parámetros municipales que configura el administrador, como `limites_municipio`, `plazo_confirmacion_dias_habiles` (5, de 1 a 30) `max_reaperturas` (2, de 0 a 10) `jornada_laboral` (`{ inicio: '08:00', fin: '16:00' }`, la misma para todos los días hábiles de calendario\_laboral, en America/Guatemala) y `sla_umbral_alerta` (80, el porcentaje del plazo en que se avisa, de 1 a 99) |
 | correlativos | anio (PK), ultimo: último correlativo del año (en America/Guatemala) para el número Q-AAAA-NNNNNN |
 | restablecimientos | id, usuario\_id, token\_hash (SHA-256 del token, único), tipo (recuperacion, invitacion, verificacion), expira\_en, usado\_en, invalidado\_en, creado\_en |

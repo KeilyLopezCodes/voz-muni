@@ -2,19 +2,25 @@ import type { Knex } from 'knex';
 import { ReglaDeNegocioError } from '../../domain/errors/regla-de-negocio-error';
 import type { CampoExtra } from '../../domain/categorias/campo-extra';
 import type {
+  AlRegistrar,
   PrepararDatosExtra,
   RegistroTicketRepository,
   TicketCreado,
 } from '../../domain/repositories/registro-ticket-repository';
 import { anioGuatemala, formatearNumero, MAX_CORRELATIVO } from '../../domain/ticket/numero-ticket';
 import type { TicketRegistrado } from '../../domain/ticket/ticket';
+import { KnexCorreoSalienteRepository } from './knex-correo-saliente-repository';
 
 const CHECK_VIOLATION = '23514';
 
 export class KnexRegistroTicketRepository implements RegistroTicketRepository {
   constructor(private readonly db: Knex) {}
 
-  registrar({ datos, estado, historial }: TicketRegistrado, prepararDatosExtra: PrepararDatosExtra): Promise<TicketCreado> {
+  registrar(
+    { datos, estado, historial }: TicketRegistrado,
+    prepararDatosExtra: PrepararDatosExtra,
+    alRegistrar?: AlRegistrar,
+  ): Promise<TicketCreado> {
     const creadoEn = historial.creadoEn;
     const anio = anioGuatemala(creadoEn);
 
@@ -60,7 +66,9 @@ export class KnexRegistroTicketRepository implements RegistroTicketRepository {
         creado_en: historial.creadoEn,
       });
 
-      return { id, numero, creadoEn };
+      const creado = { id, numero, creadoEn };
+      await alRegistrar?.(creado, new KnexCorreoSalienteRepository(trx));
+      return creado;
     });
   }
 

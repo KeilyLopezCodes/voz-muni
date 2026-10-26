@@ -1,18 +1,21 @@
 import type { PasswordHasher } from '../../domain/auth/password-hasher';
-import type { TokenService } from '../../domain/auth/token-service';
+import { type TokenService, VIGENCIA_RESTABLECIMIENTO_MS } from '../../domain/auth/token-service';
 import { ReglaDeNegocioError } from '../../domain/errors/regla-de-negocio-error';
 import type { Clock } from '../../domain/health/clock';
+import type { CorreoSalienteRepository } from '../../domain/repositories/correo-saliente-repository';
 import type { NuevoRegistro } from '../../domain/repositories/registro-vecino-repository';
+import type { ReposTransaccionales } from '../../domain/repositories/transaccion';
 import type { Transaccion } from '../../domain/repositories/transaccion';
 import { type DatosRegistro, decidirCasoRegistro, validarRegistro } from '../../domain/usuarios/registro-vecino';
 import { ErrorDeAplicacion, conReglasDeNegocio } from '../errors/error-de-aplicacion';
-import type { EnvioCorreo } from './envio-correo';
+import type { NotificadorCorreo } from './notificador-correo.service';
 
 const TOKEN_INVALIDO = 'El enlace de verificación no existe, venció o ya se usó';
 // Sin usuario conocido (el correo ingresado no tiene cuenta): el log del envío lo indica con 0.
 const SIN_USUARIO = 0;
 
-// Lo que queda por enviar cuando la transacción terminó. La respuesta HTTP no espera al correo.
+// Qué correo corresponde al caso. Se encola en la transacción del registro (SPEC 34); la respuesta HTTP no espera
+// al envío.
 type Aviso =
   | { clave: 'verificacion_correo'; usuarioId: number; nombre: string; token: string }
   | { clave: 'cuenta_existente' | 'registro_no_completado'; usuarioId: number }
@@ -22,7 +25,7 @@ type Aviso =
 export class RegistroVecinosService {
   constructor(
     private readonly transaccion: Transaccion,
-    private readonly correo: EnvioCorreo,
+    private readonly correo: NotificadorCorreo,
     private readonly hasher: PasswordHasher,
     private readonly tokens: TokenService,
     private readonly clock: Clock,
@@ -43,61 +46,73 @@ export class RegistroVecinosService {
     };
     const ahora = this.clock.now();
 
-    const aviso = await this.decidirYAplicar(nuevo, ahora);
-    this.enviar(aviso, valido.email);
+    const correoId = await this.decidirYAplicar(nuevo, ahora);
+    await this.correo.despachar([correoId]);
   }
 
-  private async decidirYAplicar(nuevo: NuevoRegistro, ahora: Date): Promise<Aviso> {
+  // Devuelve el id del correo encolado, o null si no corresponde ninguno.
+  private async decidirYAplicar(nuevo: NuevoRegistro, ahora: Date): Promise<number | null> {
     try {
-      return await this.transaccion.ejecutar(async (repos) => {
-        const { porCorreo, porDpi } = await repos.registroVecinos.buscarParaRegistro(nuevo.email, nuevo.dpi);
-        const decision = decidirCasoRegistro(porCorreo, porDpi);
-
-        switch (decision.caso) {
-          case 'nuevo': {
-            const { id } = await repos.registroVecinos.crearPendiente(nuevo);
-            const token = this.tokens.generarRenovacion();
-            await repos.restablecimientos.crear(id, this.tokens.hashRenovacion(token), 'verificacion', ahora);
-            return { clave: 'verificacion_correo', usuarioId: id, nombre: nuevo.nombre, token };
-          }
-          case 'reemplazar_pendiente': {
-            await repos.registroVecinos.reemplazarPendiente(decision.usuarioId, nuevo);
-            // Solo sirve el enlace nuevo.
-            await repos.restablecimientos.invalidarPendientes(decision.usuarioId, ahora);
-            const token = this.tokens.generarRenovacion();
-            await repos.restablecimientos.crear(decision.usuarioId, this.tokens.hashRenovacion(token), 'verificacion', ahora);
-            return { clave: 'verificacion_correo', usuarioId: decision.usuarioId, nombre: nuevo.nombre, token };
-          }
-          case 'cuenta_existente':
-            return { clave: 'cuenta_existente', usuarioId: porCorreo!.id };
-          case 'dpi_ajeno':
-            return { clave: 'registro_no_completado', usuarioId: porCorreo?.id ?? SIN_USUARIO };
-          case 'inactivo':
-            return null;
-        }
-      });
+      return await this.transaccion.ejecutar(async (repos) =>
+        this.encolar(await this.decidir(repos, nuevo, ahora), nuevo.email, ahora, repos.correosSalientes),
+      );
     } catch (error) {
       // Otro registro con el mismo correo o DPI ganó la carrera entre la búsqueda y el INSERT (23505).
+      // La transacción se revirtió: el aviso se encola fuera de ella.
       if (error instanceof ReglaDeNegocioError && error.codigo === 'EMAIL_DUPLICADO') {
-        return { clave: 'cuenta_existente', usuarioId: SIN_USUARIO };
+        return this.encolar({ clave: 'cuenta_existente', usuarioId: SIN_USUARIO }, nuevo.email, ahora);
       }
       if (error instanceof ReglaDeNegocioError && error.codigo === 'DPI_DUPLICADO') {
-        return { clave: 'registro_no_completado', usuarioId: SIN_USUARIO };
+        return this.encolar({ clave: 'registro_no_completado', usuarioId: SIN_USUARIO }, nuevo.email, ahora);
       }
       throw error;
     }
   }
 
-  private enviar(aviso: Aviso, email: string): void {
-    if (aviso === null) {
-      return;
+  private async decidir(repos: ReposTransaccionales, nuevo: NuevoRegistro, ahora: Date): Promise<Aviso> {
+    const { porCorreo, porDpi } = await repos.registroVecinos.buscarParaRegistro(nuevo.email, nuevo.dpi);
+    const decision = decidirCasoRegistro(porCorreo, porDpi);
+
+    switch (decision.caso) {
+      case 'nuevo': {
+        const { id } = await repos.registroVecinos.crearPendiente(nuevo);
+        const token = this.tokens.generarRenovacion();
+        await repos.restablecimientos.crear(id, this.tokens.hashRenovacion(token), 'verificacion', ahora);
+        return { clave: 'verificacion_correo', usuarioId: id, nombre: nuevo.nombre, token };
+      }
+      case 'reemplazar_pendiente': {
+        await repos.registroVecinos.reemplazarPendiente(decision.usuarioId, nuevo);
+        // Solo sirve el enlace nuevo.
+        await repos.restablecimientos.invalidarPendientes(decision.usuarioId, ahora);
+        const token = this.tokens.generarRenovacion();
+        await repos.restablecimientos.crear(decision.usuarioId, this.tokens.hashRenovacion(token), 'verificacion', ahora);
+        return { clave: 'verificacion_correo', usuarioId: decision.usuarioId, nombre: nuevo.nombre, token };
+      }
+      case 'cuenta_existente':
+        return { clave: 'cuenta_existente', usuarioId: porCorreo!.id };
+      case 'dpi_ajeno':
+        return { clave: 'registro_no_completado', usuarioId: porCorreo?.id ?? SIN_USUARIO };
+      case 'inactivo':
+        return null;
     }
+  }
+
+  private encolar(aviso: Aviso, email: string, ahora: Date, correos?: CorreoSalienteRepository): Promise<number | null> {
+    if (aviso === null) {
+      return Promise.resolve(null);
+    }
+    // SIN_USUARIO no es un usuario: el correo no lo referencia.
+    const usuarioId = aviso.usuarioId === SIN_USUARIO ? undefined : aviso.usuarioId;
     if (aviso.clave === 'verificacion_correo') {
       const enlace = `${this.appUrl}/verificar?token=${aviso.token}`;
-      this.correo.sinEsperar(aviso.clave, email, { nombre: aviso.nombre, enlace }, aviso.usuarioId);
-      return;
+      return this.correo.encolar(
+        aviso.clave,
+        { nombre: aviso.nombre, enlace },
+        { para: email, usuarioId, expiraEn: new Date(ahora.getTime() + VIGENCIA_RESTABLECIMIENTO_MS.verificacion) },
+        correos,
+      );
     }
-    this.correo.sinEsperar(aviso.clave, email, {}, aviso.usuarioId);
+    return this.correo.encolar(aviso.clave, {}, { para: email, usuarioId }, correos);
   }
 
   async verificar(token: string): Promise<void> {

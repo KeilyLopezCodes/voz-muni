@@ -21,9 +21,11 @@ import type { ComentariosService } from '../../../src/application/services/comen
 import type { AdjuntosService } from '../../../src/application/services/adjuntos.service';
 import type { AlertasSlaService } from '../../../src/application/services/alertas-sla.service';
 import type { CierreAutomaticoService } from '../../../src/application/services/cierre-automatico.service';
+import type { DespachoCorreosService } from '../../../src/application/services/despacho-correos.service';
 import type { EscaladasService } from '../../../src/application/services/escaladas.service';
 import type { EscalamientoService } from '../../../src/application/services/escalamiento.service';
 import type { LineaTiempoService } from '../../../src/application/services/linea-tiempo.service';
+import type { NotificadorCorreo } from '../../../src/application/services/notificador-correo.service';
 import type { NotificacionesService } from '../../../src/application/services/notificaciones.service';
 import type { PoliticasSlaService } from '../../../src/application/services/politicas-sla.service';
 import type { ConsultaTicketsService } from '../../../src/application/services/consulta-tickets.service';
@@ -70,8 +72,12 @@ function buildTestContainer(): Container {
     escalamientoService: {} as EscalamientoService,
     escaladasService: {} as EscaladasService,
     cierreAutomaticoService: {} as CierreAutomaticoService,
+    notificadorCorreo: {} as NotificadorCorreo,
+    despachoCorreosService: {} as DespachoCorreosService,
     slaJobActivo: false,
     iniciarJobSla: () => () => {},
+    correosJobActivo: false,
+    iniciarJobCorreos: () => () => {},
     prepararAlmacen: async () => {},
     dispose: async () => {},
   };
