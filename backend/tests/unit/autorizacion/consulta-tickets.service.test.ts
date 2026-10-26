@@ -2,6 +2,7 @@ import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { ConsultaTicketsService } from '../../../src/application/services/consulta-tickets.service';
 import { cumpleFiltro, type FiltroTickets } from '../../../src/domain/autorizacion/alcance-tickets';
 import type {
+  CriteriosListado,
   Pagina,
   ResolucionLectura,
   TicketDetalleLectura,
@@ -9,7 +10,8 @@ import type {
   TicketListado,
   TicketResumen,
 } from '../../../src/domain/repositories/ticket-lectura-repository';
-import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
+import type { Busqueda } from '../../../src/domain/ticket/busqueda';
+import { ESTADOS_TICKET, type EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { RelojFalso } from '../auth/dobles';
 
 const AHORA = new Date('2026-11-05T15:00:00.000Z');
@@ -32,6 +34,8 @@ function servicioCon(repo: TicketLecturaRepository, maxReaperturas = 2): Consult
 // Aplica el filtro en memoria con la misma regla del dominio y registra lo que recibe.
 class TicketsEnMemoria implements TicketLecturaRepository {
   readonly filtrosRecibidos: FiltroTickets[] = [];
+  readonly criteriosRecibidos: { criterios: CriteriosListado; ahora: Date }[] = [];
+  readonly busquedasContadas: (Busqueda | null)[] = [];
 
   constructor(
     private readonly tickets: TicketResumen[],
@@ -51,10 +55,18 @@ class TicketsEnMemoria implements TicketLecturaRepository {
     return this.tickets.find((t) => t.id === id && cumpleFiltro(t, filtro)) ?? null;
   }
 
-  async listarConTitulo(filtro: FiltroTickets, pagina: number, tamano: number): Promise<Pagina<TicketListado>> {
+  async listarConTitulo(
+    filtro: FiltroTickets,
+    criterios: CriteriosListado,
+    pagina: number,
+    tamano: number,
+    ahora: Date,
+  ): Promise<Pagina<TicketListado>> {
     this.filtrosRecibidos.push(filtro);
+    this.criteriosRecibidos.push({ criterios, ahora });
     const datos = this.tickets
       .filter((t) => cumpleFiltro(t, filtro))
+      .filter((t) => criterios.estados.length === 0 || criterios.estados.includes(t.estado))
       .map((t) => ({
         id: t.id,
         numero: t.numero,
@@ -62,8 +74,19 @@ class TicketsEnMemoria implements TicketLecturaRepository {
         estado: t.estado,
         creadoEn: t.creadoEn,
         esperaRespuesta: t.estado === 'en_espera',
+        confirmacionVenceEn: t.estado === 'resuelta' ? (this.plazos[t.id]?.venceEn ?? null) : null,
       }));
     return { datos, pagina, tamano, total: datos.length };
+  }
+
+  async contarPorEstado(filtro: FiltroTickets, busqueda: Busqueda | null): Promise<Record<EstadoTicket, number>> {
+    this.filtrosRecibidos.push(filtro);
+    this.busquedasContadas.push(busqueda);
+    const conteo = Object.fromEntries(ESTADOS_TICKET.map((e) => [e, 0])) as Record<EstadoTicket, number>;
+    for (const t of this.tickets.filter((x) => cumpleFiltro(x, filtro))) {
+      conteo[t.estado] += 1;
+    }
+    return conteo;
   }
 
   // Misma regla que la consulta SQL: el motivo del último paso a en_espera, solo si sigue en espera.
@@ -258,11 +281,34 @@ describe('ConsultaTicketsService', () => {
     it('listarParaUsuario usa el filtro de tickets.ver y devuelve fechas ISO', async () => {
       const { repo, servicio } = crearDetalle();
 
-      const pagina = await servicio.listarParaUsuario(vecino, 1, 20);
+      const pagina = await servicio.listarParaUsuario(vecino, { estados: [] }, 1, 20);
 
       expect(repo.filtrosRecibidos).toEqual([[{ campo: 'solicitanteId', valor: VECINO }]]);
       expect(pagina.datos.map((t) => t.id)).toEqual([1, 2]);
-      expect(pagina.datos[0]).toMatchObject({ esperaRespuesta: true, creadoEn: '2026-10-22T00:00:00.000Z' });
+      expect(pagina.datos[0]).toMatchObject({ esperaRespuesta: true, creadoEn: '2026-10-22T00:00:00.000Z', confirmacionVenceEn: null });
+    });
+
+    it('listarParaUsuario pasa los estados, la búsqueda interpretada y la hora actual (SPEC 38)', async () => {
+      const { repo, servicio } = crearDetalle();
+
+      await servicio.listarParaUsuario(vecino, { estados: ['en_espera'], q: 'q-2026-000001' }, 1, 20);
+      await servicio.listarParaUsuario(vecino, { estados: [], q: '50%_bache' }, 1, 20);
+
+      expect(repo.criteriosRecibidos).toEqual([
+        { criterios: { estados: ['en_espera'], busqueda: { tipo: 'numero', numero: 'Q-2026-000001' } }, ahora: AHORA },
+        { criterios: { estados: [], busqueda: { tipo: 'texto', patron: '%50\\%\\_bache%' } }, ahora: AHORA },
+      ]);
+    });
+
+    it('resumen cuenta los 8 estados con el filtro de tickets.ver y suma el total (SPEC 38)', async () => {
+      const { repo, servicio } = crearDetalle();
+
+      const resumen = await servicio.resumen(vecino, 'bache');
+
+      expect(repo.filtrosRecibidos).toEqual([[{ campo: 'solicitanteId', valor: VECINO }]]);
+      expect(repo.busquedasContadas).toEqual([{ tipo: 'texto', patron: '%bache%' }]);
+      expect(Object.keys(resumen.porEstado)).toHaveLength(8);
+      expect(resumen).toMatchObject({ porEstado: { en_espera: 1, en_proceso: 1, nueva: 0 }, total: 2 });
     });
 
     describe('resolución (SPEC 26)', () => {
@@ -388,7 +434,7 @@ describe('ConsultaTicketsService', () => {
     it('listarParaUsuario rechaza un tamano mayor que 50', async () => {
       const { servicio } = crearDetalle();
 
-      await expect(servicio.listarParaUsuario(vecino, 1, 51)).rejects.toMatchObject({ codigo: 'VALIDACION' });
+      await expect(servicio.listarParaUsuario(vecino, { estados: [] }, 1, 51)).rejects.toMatchObject({ codigo: 'VALIDACION' });
     });
   });
 });

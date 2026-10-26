@@ -2,6 +2,7 @@ import { exigeMotivoAlConfirmar, puedeConfirmar } from '../../domain/atencion/ac
 import type { Accion } from '../../domain/auth/permisos';
 import { filtroTicketsParaAccion } from '../../domain/autorizacion/alcance-tickets';
 import type { Clock } from '../../domain/health/clock';
+import { interpretarBusqueda } from '../../domain/ticket/busqueda';
 import type {
   Pagina,
   TicketDetalleLectura,
@@ -9,7 +10,13 @@ import type {
   TicketResumen,
 } from '../../domain/repositories/ticket-lectura-repository';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
-import type { ConfirmacionDetalleDto, TicketDetalleDto, TicketListadoDto } from '../dto/consulta-tickets.dto';
+import type {
+  ConfirmacionDetalleDto,
+  FiltrosListadoDto,
+  ResumenTicketsDto,
+  TicketDetalleDto,
+  TicketListadoDto,
+} from '../dto/consulta-tickets.dto';
 import { aSlaDto } from '../dto/sla.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 import type { PlazosConfirmacionService } from './plazos-confirmacion.service';
@@ -48,15 +55,40 @@ export class ConsultaTicketsService {
     return ticket;
   }
 
-  // GET /api/v1/tickets (SPEC 25): dentro del alcance de tickets.ver, las que están en espera primero.
+  // GET /api/v1/tickets (SPEC 25 y 38): dentro del alcance de tickets.ver, filtrado por estados y por `q`, con lo que
+  // pide acción primero (en espera, después resueltas con el plazo de confirmación vigente).
   async listarParaUsuario(
     usuario: UsuarioAutenticado,
+    filtros: FiltrosListadoDto,
     pagina: number,
     tamano: number,
   ): Promise<Pagina<TicketListadoDto>> {
     validarPaginacion(pagina, tamano, TAMANO_MAXIMO_LISTADO);
-    const resultado = await this.tickets.listarConTitulo(filtroTicketsParaAccion(usuario, 'tickets.ver'), pagina, tamano);
-    return { ...resultado, datos: resultado.datos.map((t) => ({ ...t, creadoEn: t.creadoEn.toISOString() })) };
+    const resultado = await this.tickets.listarConTitulo(
+      filtroTicketsParaAccion(usuario, 'tickets.ver'),
+      { estados: filtros.estados, busqueda: filtros.q === undefined ? null : interpretarBusqueda(filtros.q) },
+      pagina,
+      tamano,
+      this.clock.now(),
+    );
+    return {
+      ...resultado,
+      datos: resultado.datos.map((t) => ({
+        ...t,
+        creadoEn: t.creadoEn.toISOString(),
+        confirmacionVenceEn: isoONull(t.confirmacionVenceEn),
+      })),
+    };
+  }
+
+  // GET /api/v1/tickets/resumen (SPEC 38): cuántas hay en cada estado con el mismo alcance y la misma búsqueda que el
+  // listado. Un rol nunca cuenta quejas que no puede ver.
+  async resumen(usuario: UsuarioAutenticado, q?: string): Promise<ResumenTicketsDto> {
+    const porEstado = await this.tickets.contarPorEstado(
+      filtroTicketsParaAccion(usuario, 'tickets.ver'),
+      q === undefined ? null : interpretarBusqueda(q),
+    );
+    return { porEstado, total: Object.values(porEstado).reduce((suma, n) => suma + n, 0) };
   }
 
   // GET /api/v1/tickets/:id (SPEC 25). Con el filtro de tickets.ver en el mismo WHERE, igual que obtenerParaAccion:

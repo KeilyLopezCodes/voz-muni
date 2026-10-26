@@ -1,6 +1,7 @@
 import type { Knex } from 'knex';
 import type { FiltroTickets } from '../../domain/autorizacion/alcance-tickets';
 import type {
+  CriteriosListado,
   Pagina,
   ResolucionLectura,
   TicketDetalleLectura,
@@ -8,7 +9,8 @@ import type {
   TicketListado,
   TicketResumen,
 } from '../../domain/repositories/ticket-lectura-repository';
-import type { EstadoTicket } from '../../domain/ticket/estado-ticket';
+import type { Busqueda } from '../../domain/ticket/busqueda';
+import { ESTADOS_TICKET, type EstadoTicket } from '../../domain/ticket/estado-ticket';
 import { COLUMNAS_SLA_LECTURA, type FilaSlaLectura, slaDeFila } from './knex-sla';
 import { aplicarFiltro, COLUMNAS_TICKET } from './knex-filtro';
 
@@ -41,6 +43,7 @@ interface FilaListado {
   titulo: string;
   estado: EstadoTicket;
   creado_en: Date;
+  confirmacion_vence_en: Date | null;
 }
 
 interface FilaDetalle {
@@ -117,6 +120,16 @@ const CIERRE_AUTOMATICO = `COALESCE(t.estado = 'cerrada' AND (
  ), false) as cierre_automatico`;
 
 const numeroONull = (valor: string | null) => (valor === null ? null : Number(valor));
+
+// Número exacto, o subcadena del título o del número con los comodines ya escapados en el dominio (SPEC 38).
+function aplicarBusqueda(consulta: Knex.QueryBuilder, busqueda: Busqueda | null): Knex.QueryBuilder {
+  if (busqueda?.tipo === 'numero') {
+    consulta.where('t.numero', busqueda.numero);
+  } else if (busqueda?.tipo === 'texto') {
+    consulta.where((o) => o.whereILike('t.titulo', busqueda.patron).orWhereILike('t.numero', busqueda.patron));
+  }
+  return consulta;
+}
 
 function aResumen(fila: FilaTicket): TicketResumen {
   return {
@@ -201,15 +214,30 @@ export class KnexTicketLecturaRepository implements TicketLecturaRepository {
     return fila ? aResumen(fila) : null;
   }
 
-  async listarConTitulo(filtro: FiltroTickets, pagina: number, tamano: number): Promise<Pagina<TicketListado>> {
+  async listarConTitulo(
+    filtro: FiltroTickets,
+    criterios: CriteriosListado,
+    pagina: number,
+    tamano: number,
+    ahora: Date,
+  ): Promise<Pagina<TicketListado>> {
     if (filtro === null) {
       return { datos: [], pagina, tamano, total: 0 };
     }
-    const consulta = aplicarFiltro(this.db('tickets as t'), filtro, COLUMNAS_TICKET, 't');
+    const consulta = aplicarBusqueda(aplicarFiltro(this.db('tickets as t'), filtro, COLUMNAS_TICKET, 't'), criterios.busqueda);
+    if (criterios.estados.length > 0) {
+      consulta.whereIn('t.estado', [...criterios.estados]);
+    }
     const [{ total }] = await consulta.clone().count({ total: '*' });
     const filas: FilaListado[] = await consulta
-      .select(['t.id', 't.numero', 't.titulo', 't.estado', 't.creado_en'])
-      .orderByRaw(`(CASE WHEN t.estado = 'en_espera' THEN 0 ELSE 1 END), t.creado_en DESC, t.id DESC`)
+      .select(['t.id', 't.numero', 't.titulo', 't.estado', 't.creado_en', 't.confirmacion_vence_en'])
+      // Lo que pide acción primero (SPEC 38): la respuesta del vecino y la confirmación con plazo vigente.
+      .orderByRaw(
+        `(CASE WHEN t.estado = 'en_espera' THEN 0
+               WHEN t.estado = 'resuelta' AND t.confirmacion_vence_en >= ? THEN 1
+               ELSE 2 END), t.creado_en DESC, t.id DESC`,
+        [ahora],
+      )
       .limit(tamano)
       .offset((pagina - 1) * tamano);
     const datos = filas.map((fila) => ({
@@ -219,8 +247,26 @@ export class KnexTicketLecturaRepository implements TicketLecturaRepository {
       estado: fila.estado,
       creadoEn: fila.creado_en,
       esperaRespuesta: fila.estado === 'en_espera',
+      confirmacionVenceEn: fila.estado === 'resuelta' ? fila.confirmacion_vence_en : null,
     }));
     return { datos, pagina, tamano, total: Number(total) };
+  }
+
+  async contarPorEstado(filtro: FiltroTickets, busqueda: Busqueda | null): Promise<Record<EstadoTicket, number>> {
+    const conteo = Object.fromEntries(ESTADOS_TICKET.map((estado) => [estado, 0])) as Record<EstadoTicket, number>;
+    if (filtro === null) {
+      return conteo;
+    }
+    const filas: { estado: EstadoTicket; total: string }[] = await aplicarBusqueda(
+      aplicarFiltro(this.db('tickets as t'), filtro, COLUMNAS_TICKET, 't'),
+      busqueda,
+    )
+      .groupBy('t.estado')
+      .select('t.estado', this.db.raw('count(*) as total'));
+    for (const fila of filas) {
+      conteo[fila.estado] = Number(fila.total);
+    }
+    return conteo;
   }
 
   async obtenerDetalle(id: number, filtro: FiltroTickets): Promise<TicketDetalleLectura | null> {

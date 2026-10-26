@@ -89,6 +89,7 @@ function Contenido({ ticket }: { ticket: TicketDetalle }) {
     }
     if (respuesta.ticket.estado !== ticket.estado) {
       void queryClient.invalidateQueries({ queryKey: CLAVES_TICKETS.listado })
+      void queryClient.invalidateQueries({ queryKey: CLAVES_TICKETS.resumen }) // SPEC 38
     }
   }
 

@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import type { ConsultaTicketsService } from '../../application/services/consulta-tickets.service';
 import type { RegistroTicketsService } from '../../application/services/registro-tickets.service';
-import { idTicketSchema, listadoTicketsSchema, registroTicketSchema } from '../validators/tickets.validators';
+import { idTicketSchema, listadoTicketsSchema, registroTicketSchema, resumenTicketsSchema } from '../validators/tickets.validators';
 
 // Solo traduce HTTP ↔ DTO. Va después de autenticar y requierePermiso, que dejan usuario y alcance.
 export class TicketsController {
@@ -17,8 +17,15 @@ export class TicketsController {
   };
 
   listar = async (req: Request, res: Response): Promise<void> => {
-    const { pagina, tamano } = listadoTicketsSchema.parse(req.query);
-    res.status(200).json(await this.consultaTickets.listarParaUsuario(req.usuario!, pagina, tamano));
+    const { pagina, tamano, estado, q } = listadoTicketsSchema.parse(req.query);
+    res
+      .status(200)
+      .json(await this.consultaTickets.listarParaUsuario(req.usuario!, { estados: estado ?? [], q }, pagina, tamano));
+  };
+
+  resumen = async (req: Request, res: Response): Promise<void> => {
+    const { q } = resumenTicketsSchema.parse(req.query);
+    res.status(200).json(await this.consultaTickets.resumen(req.usuario!, q));
   };
 
   detalle = async (req: Request, res: Response): Promise<void> => {

@@ -52,6 +52,7 @@ export function SolucionQueja({
   const recargar = () => {
     void queryClient.invalidateQueries({ queryKey: CLAVES_TICKETS.detalle(ticketId) })
     void queryClient.invalidateQueries({ queryKey: CLAVES_TICKETS.listado })
+    void queryClient.invalidateQueries({ queryKey: CLAVES_TICKETS.resumen }) // SPEC 38
     void queryClient.invalidateQueries({ queryKey: CLAVES_LINEA_TIEMPO.lista(ticketId) })
   }
 

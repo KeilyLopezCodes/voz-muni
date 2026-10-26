@@ -1,5 +1,6 @@
 import type { SlaLectura } from '../sla/vencimientos';
 import type { FiltroTickets, TicketAlcance } from '../autorizacion/alcance-tickets';
+import type { Busqueda } from '../ticket/busqueda';
 import type { EstadoTicket } from '../ticket/estado-ticket';
 
 export interface TicketResumen extends TicketAlcance {
@@ -17,6 +18,13 @@ export interface TicketListado {
   estado: EstadoTicket;
   creadoEn: Date;
   esperaRespuesta: boolean; // estado === 'en_espera'
+  confirmacionVenceEn: Date | null; // solo en resuelta (SPEC 38)
+}
+
+// Filtros del listado (RF-36, SPEC 38): estados genéricos y una búsqueda. Los grupos del vecino viven en el frontend.
+export interface CriteriosListado {
+  estados: readonly EstadoTicket[]; // vacío: sin filtro
+  busqueda: Busqueda | null;
 }
 
 // Resolución vigente (SPEC 26). Solo existe en resuelta o cerrada.
@@ -63,8 +71,17 @@ export interface TicketLecturaRepository {
   listar(filtro: FiltroTickets, pagina: number, tamano: number): Promise<Pagina<TicketResumen>>;
   // El filtro va en el mismo WHERE que el id: un ticket fuera de alcance devuelve null, igual que uno inexistente.
   obtener(id: number, filtro: FiltroTickets): Promise<TicketResumen | null>;
-  // Mismo filtro que listar; primero las que están en en_espera, luego creado_en DESC e id DESC (SPEC 25).
-  listarConTitulo(filtro: FiltroTickets, pagina: number, tamano: number): Promise<Pagina<TicketListado>>;
+  // Mismo filtro que listar, más los criterios. Primero lo que pide acción: en_espera, después resuelta con el plazo de
+  // confirmación vigente en `ahora`, después el resto; dentro de cada grupo, creado_en DESC e id DESC (SPEC 38).
+  listarConTitulo(
+    filtro: FiltroTickets,
+    criterios: CriteriosListado,
+    pagina: number,
+    tamano: number,
+    ahora: Date,
+  ): Promise<Pagina<TicketListado>>;
+  // Cuántas quejas hay en cada estado dentro del mismo alcance y con la misma búsqueda (SPEC 38). Los 8 estados.
+  contarPorEstado(filtro: FiltroTickets, busqueda: Busqueda | null): Promise<Record<EstadoTicket, number>>;
   // Filtro en el mismo WHERE que el id, como obtener.
   obtenerDetalle(id: number, filtro: FiltroTickets): Promise<TicketDetalleLectura | null>;
 }

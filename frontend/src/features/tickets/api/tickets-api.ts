@@ -25,6 +25,20 @@ export interface TicketListado {
   estado: EstadoTicket
   creadoEn: string // ISO 8601 en UTC
   esperaRespuesta: boolean // estado === 'en_espera'
+  confirmacionVenceEn: string | null // ISO 8601 en UTC; solo en resuelta (SPEC 38)
+}
+
+// GET /tickets/resumen (SPEC 38): cuántas hay en cada estado, con la misma búsqueda que el listado.
+export interface ResumenTickets {
+  porEstado: Record<EstadoTicket, number>
+  total: number
+}
+
+// Filtros de GET /tickets (SPEC 38): estados genéricos y una búsqueda de 2 a 100 caracteres.
+export interface FiltrosListado {
+  estados: readonly EstadoTicket[]
+  q: string | null
+  pagina: number
 }
 
 export interface PaginaTickets {
@@ -91,14 +105,29 @@ export interface TicketDetalle {
 
 export const TAMANO_PAGINA = 20
 
+export const BUSQUEDA_MIN = 2
+export const BUSQUEDA_MAX = 100
+
+// Invalidar `listado` o `resumen` alcanza todas sus variantes de filtros.
 export const CLAVES_TICKETS = {
   listado: ['tickets', 'listado'] as const,
+  listadoCon: (filtros: FiltrosListado) => ['tickets', 'listado', filtros] as const,
+  resumen: ['tickets', 'resumen'] as const,
+  resumenCon: (q: string | null) => ['tickets', 'resumen', { q }] as const,
   detalle: (id: number) => ['tickets', 'detalle', id] as const,
 }
 
-export function listarTickets(pagina: number): Promise<PaginaTickets> {
+export function listarTickets({ estados, q, pagina }: FiltrosListado): Promise<PaginaTickets> {
   const query = new URLSearchParams({ pagina: String(pagina), tamano: String(TAMANO_PAGINA) })
+  estados.forEach((estado) => query.append('estado', estado))
+  if (q !== null) {
+    query.set('q', q)
+  }
   return apiClient.get<PaginaTickets>(`/tickets?${query}`)
+}
+
+export function resumenTickets(q: string | null): Promise<ResumenTickets> {
+  return apiClient.get<ResumenTickets>(q === null ? '/tickets/resumen' : `/tickets/resumen?${new URLSearchParams({ q })}`)
 }
 
 export function obtenerTicket(id: number): Promise<TicketDetalle> {
