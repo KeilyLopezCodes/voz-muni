@@ -20,6 +20,7 @@ import type { ConfirmacionService } from '../../../src/application/services/conf
 import type { ComentariosService } from '../../../src/application/services/comentarios.service';
 import type { AdjuntosService } from '../../../src/application/services/adjuntos.service';
 import type { AlertasSlaService } from '../../../src/application/services/alertas-sla.service';
+import type { AvisosComentariosService } from '../../../src/application/services/avisos-comentarios.service';
 import type { CierreAutomaticoService } from '../../../src/application/services/cierre-automatico.service';
 import type { DespachoCorreosService } from '../../../src/application/services/despacho-correos.service';
 import type { EscaladasService } from '../../../src/application/services/escaladas.service';
@@ -74,6 +75,7 @@ function buildTestContainer(): Container {
     cierreAutomaticoService: {} as CierreAutomaticoService,
     notificadorCorreo: {} as NotificadorCorreo,
     despachoCorreosService: {} as DespachoCorreosService,
+    avisosComentariosService: {} as AvisosComentariosService,
     slaJobActivo: false,
     iniciarJobSla: () => () => {},
     correosJobActivo: false,

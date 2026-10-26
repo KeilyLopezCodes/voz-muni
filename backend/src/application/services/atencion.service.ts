@@ -42,8 +42,8 @@ function aplicar(
 // Atención interna de la queja (RF-18, RF-21, RF-23, SPEC 22). El permiso (alcance de tickets.cambiar_estado)
 // lo valida la presentación antes de llegar aquí; el filtro de alcance limita qué tickets se pueden tocar.
 // Los errores del dominio (TECNICO_REQUERIDO, MOTIVO_REQUERIDO, DESCRIPCION_REQUERIDA, InvalidTransitionError)
-// los traduce el manejador de errores. Solo resolver envía un correo: queja_resuelta, con el plazo para confirmar
-// (SPEC 33).
+// los traduce el manejador de errores. Resolver envía queja_resuelta, con el plazo para confirmar (SPEC 33), y poner
+// en espera envía informacion_solicitada, con lo que se le pide al vecino (SPEC 35).
 export class AtencionService {
   constructor(
     private readonly transaccion: Transaccion,
@@ -75,8 +75,7 @@ export class AtencionService {
       );
       await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
       // El aviso se encola en la misma transacción (SPEC 34): si se revierte, no queda correo.
-      const correoId =
-        comando.accion === 'resolver' ? await this.encolarResuelta(actual, resultado.ticket, correosSalientes) : null;
+      const correoId = await this.encolarAviso(comando, actual, resultado.ticket, correosSalientes);
       return { ticket: resultado.ticket, correoId };
     });
 
@@ -90,8 +89,35 @@ export class AtencionService {
     };
   }
 
-  // Se despacha después del commit y sin esperar: la respuesta no depende del correo. El enlace lleva al detalle,
-  // porque confirmar y reabrir requieren sesión (SPEC 33).
+  // Se despacha después del commit y sin esperar: la respuesta no depende del correo.
+  private async encolarAviso(
+    comando: ComandoAtencion,
+    actual: TicketParaTransicion,
+    ticket: Ticket,
+    correos: CorreoSalienteRepository,
+  ): Promise<number | null> {
+    if (comando.accion === 'resolver') {
+      return this.encolarResuelta(actual, ticket, correos);
+    }
+    if (comando.accion !== 'poner_en_espera' || !actual.solicitante.email) {
+      return null;
+    }
+    // La información pedida es pública para el vecino (SPEC 28); renderizar la escapa en el html.
+    return this.correo.encolar(
+      'informacion_solicitada',
+      {
+        nombre: actual.solicitante.nombre,
+        numero: ticket.numero,
+        titulo: actual.titulo,
+        informacion: comando.motivo.trim(),
+        enlace: `${this.appUrl}/consulta?numero=${ticket.numero}`,
+      },
+      { para: actual.solicitante.email, usuarioId: actual.solicitante.id, ticketId: ticket.id },
+      correos,
+    );
+  }
+
+  // El enlace lleva al detalle, porque confirmar y reabrir requieren sesión (SPEC 33).
   private async encolarResuelta(
     { solicitante, titulo }: TicketParaTransicion,
     ticket: Ticket,

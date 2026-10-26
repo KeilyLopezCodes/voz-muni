@@ -148,6 +148,8 @@ describe('Comentarios públicos y notas internas (SPEC 23)', () => {
 
   it('el vecino comenta su queja en espera → 201 con ticket en_proceso y una fila de historial a su nombre', async () => {
     const id = await ticket('en_espera');
+    // Los comentarios públicos de las pruebas anteriores avisan al vecino (SPEC 35).
+    enviador.enviados.length = 0;
 
     const res = await comentar(id, { cuerpo: 'Es la casa 12, portón verde' }, 'vecino');
 

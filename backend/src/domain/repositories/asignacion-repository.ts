@@ -18,4 +18,6 @@ export interface AsignacionRepository {
   registrar(registro: RegistroAsignacion): Promise<void>;
   // Técnicos activos de la dependencia, ordenados por carga y luego por nombre.
   tecnicosConCarga(dependenciaId: number): Promise<TecnicoConCarga[]>;
+  // Nombre de la dependencia, para el correo tecnico_asignado (SPEC 35). null si no existe.
+  nombreDependencia(dependenciaId: number): Promise<string | null>;
 }

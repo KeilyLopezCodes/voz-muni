@@ -4,7 +4,7 @@ import type { Programador, RegistroJob } from '../../../src/infrastructure/jobs/
 const AHORA = new Date('2026-11-02T20:00:00.000Z');
 
 // node-cron simulado: guarda la expresión y la tarea para dispararla a mano.
-function iniciar(procesar: jest.Mock) {
+function iniciar(despacho: jest.Mock, avisos: jest.Mock = jest.fn().mockResolvedValue(0)) {
   const estado = { expresion: '', detenido: false, tarea: null as null | (() => Promise<void>) };
   const programar: Programador = (expresion, tarea) => {
     estado.expresion = expresion;
@@ -16,23 +16,35 @@ function iniciar(procesar: jest.Mock) {
     info: (m) => lineas.push(`info: ${m}`),
     error: (m) => lineas.push(`error: ${m}`),
   };
-  const detener = iniciarJobCorreos({ procesar }, { cron: '* * * * *' }, { now: () => AHORA }, programar, registro);
+  const detener = iniciarJobCorreos(
+    { avisos: { procesar: avisos }, despacho: { procesar: despacho } },
+    { cron: '* * * * *' },
+    { now: () => AHORA },
+    programar,
+    registro,
+  );
   return { estado, lineas, detener };
 }
 
 describe('iniciarJobCorreos', () => {
-  it('programa con la expresión configurada y procesa con el ahora del reloj', async () => {
-    const procesar = jest.fn().mockResolvedValue(3);
-    const { estado, lineas } = iniciar(procesar);
+  it('programa con la expresión configurada y ejecuta los avisos y luego el despacho con el mismo ahora', async () => {
+    const orden: string[] = [];
+    const avisos = jest.fn(async (ahora: Date) => (orden.push(`avisos ${ahora.toISOString()}`), 2));
+    const despacho = jest.fn(async (ahora: Date) => (orden.push(`despacho ${ahora.toISOString()}`), 3));
+    const { estado, lineas } = iniciar(despacho, avisos);
 
     expect(estado.expresion).toBe('* * * * *');
     await estado.tarea!();
 
-    expect(procesar).toHaveBeenCalledWith(AHORA);
-    expect(lineas).toEqual(['info: Job de correos programado con "* * * * *"', 'info: Correos: 3 correos procesados']);
+    expect(orden).toEqual([`avisos ${AHORA.toISOString()}`, `despacho ${AHORA.toISOString()}`]);
+    expect(lineas).toEqual([
+      'info: Job de correos programado con "* * * * *"',
+      'info: Correos: 2 avisos de comentarios encolados',
+      'info: Correos: 3 correos procesados',
+    ]);
   });
 
-  it('sin correos pendientes no escribe en el log', async () => {
+  it('sin trabajo no escribe en el log', async () => {
     const { estado, lineas } = iniciar(jest.fn().mockResolvedValue(0));
     await estado.tarea!();
     expect(lineas).toHaveLength(1);
@@ -40,33 +52,38 @@ describe('iniciarJobCorreos', () => {
 
   it('salta una corrida si la anterior sigue en curso', async () => {
     let soltar: (n: number) => void = () => {};
-    const procesar = jest
+    const avisos = jest
       .fn()
       .mockImplementationOnce(() => new Promise<number>((resolver) => (soltar = resolver)))
       .mockResolvedValue(0);
-    const { estado, lineas } = iniciar(procesar);
+    const despacho = jest.fn().mockResolvedValue(0);
+    const { estado, lineas } = iniciar(despacho, avisos);
 
     const primera = estado.tarea!();
     await estado.tarea!();
-    expect(procesar).toHaveBeenCalledTimes(1);
+    expect(avisos).toHaveBeenCalledTimes(1);
     expect(lineas).toContain('info: Correos: la corrida anterior sigue en curso, se salta esta');
 
     soltar(0);
     await primera;
     await estado.tarea!();
-    expect(procesar).toHaveBeenCalledTimes(2);
+    expect(avisos).toHaveBeenCalledTimes(2);
+    expect(despacho).toHaveBeenCalledTimes(2);
   });
 
-  it('un error queda en el log y no detiene el job', async () => {
-    const procesar = jest.fn().mockRejectedValueOnce(new Error('sin base')).mockResolvedValueOnce(1);
-    const { estado, lineas } = iniciar(procesar);
+  it('un error en los avisos no impide el despacho, y un error no detiene el job', async () => {
+    const avisos = jest.fn().mockRejectedValueOnce(new Error('sin base')).mockResolvedValue(0);
+    const despacho = jest.fn().mockRejectedValueOnce(new Error('sin base')).mockResolvedValue(1);
+    const { estado, lineas } = iniciar(despacho, avisos);
 
     await estado.tarea!();
     await estado.tarea!();
 
+    expect(despacho).toHaveBeenCalledTimes(2);
     expect(lineas).toEqual([
       'info: Job de correos programado con "* * * * *"',
-      'error: Correos: falló la corrida',
+      'error: Correos: falló el paso de avisos de comentarios',
+      'error: Correos: falló el paso de despacho',
       'info: Correos: 1 correos procesados',
     ]);
   });

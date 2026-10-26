@@ -18,7 +18,8 @@ import type {
 } from '../../../src/domain/repositories/ticket-escritura-repository';
 import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { Ticket } from '../../../src/domain/ticket/ticket';
-import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { EnviadorEnMemoria, PlantillasEnMemoria, RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { notificadorDePrueba } from '../notificaciones/dobles-correo';
 import { SLA_VACIO } from '../sla/dobles-sla';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
@@ -118,6 +119,10 @@ class AsignacionesEnMemoria implements AsignacionRepository {
       }))
       .sort((a, b) => a.carga - b.carga);
   }
+
+  async nombreDependencia(dependenciaId: number): Promise<string | null> {
+    return dependenciaId === OBRAS ? 'Obras' : null;
+  }
 }
 
 class BandejaFalsa implements PorAsignarLecturaRepository {
@@ -150,6 +155,9 @@ function armar() {
     new TransaccionEnMemoria({ ticketsEscritura: tickets as unknown as TicketEscrituraRepository, asignaciones }),
     bandeja,
     new RelojFalso(AHORA),
+    // El solicitante de estas pruebas no tiene correo: el aviso se prueba en tests/db/correos-vecino (SPEC 35).
+    notificadorDePrueba(new PlantillasEnMemoria(), new EnviadorEnMemoria(), () => {}),
+    'https://vozmuni.test',
   );
   return { tickets, asignaciones, bandeja, servicio };
 }

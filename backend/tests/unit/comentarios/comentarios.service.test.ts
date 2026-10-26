@@ -137,13 +137,18 @@ function armar() {
   const comentarios = new ComentariosEnMemoria();
   const reloj = new RelojFalso(AHORA);
   const lectura = { obtener: async (id: number) => (tickets.tickets.has(id) ? ({ id } as never) : null) };
+  const avisos: number[] = [];
+  const despachados: (number | null)[] = [];
   const servicio = new ComentariosService(
     new TransaccionEnMemoria({ ticketsEscritura: tickets as unknown as TicketEscrituraRepository, comentarios }),
     lectura as unknown as TicketLecturaRepository,
     reloj,
     new SlaNulo(),
+    // La regla de la ventana se prueba en tests/unit/notificaciones y en tests/db/correos-vecino (SPEC 35).
+    { alComentar: async (_repos, queja) => (avisos.push(queja.id), 99) },
+    { despachar: async (ids) => void despachados.push(...ids) },
   );
-  return { tickets, comentarios, reloj, servicio };
+  return { tickets, comentarios, reloj, servicio, avisos, despachados };
 }
 
 function capturar(promesa: Promise<unknown>): Promise<unknown> {
@@ -179,6 +184,28 @@ describe('ComentariosService', () => {
     expect(nota.comentario.interno).toBe(true);
     expect(comentarios.filas.map((f) => f.creadoEn)).toEqual([AHORA, AHORA]);
     expect(tickets.guardadas).toEqual([]);
+  });
+
+  it('solo un comentario público de otra persona pasa por los avisos al vecino, y se despacha después (SPEC 35)', async () => {
+    const { tickets, servicio, avisos, despachados } = armar();
+    tickets.agregar(1, 'en_proceso');
+
+    await servicio.comentar(TECNICO, 1, { cuerpo: 'Vamos mañana', interno: false });
+    await servicio.comentar(TECNICO, 1, { cuerpo: 'Llevar pala', interno: true });
+    await servicio.comentar(VECINO, 1, { cuerpo: 'Gracias', interno: false });
+
+    expect(avisos).toEqual([1]);
+    expect(despachados).toEqual([99, null, null]);
+  });
+
+  it('editar un comentario público no avisa', async () => {
+    const { tickets, servicio, avisos } = armar();
+    tickets.agregar(1, 'en_proceso');
+    const { comentario } = await servicio.comentar(TECNICO, 1, { cuerpo: 'Primero', interno: false });
+
+    await servicio.editar(TECNICO, 1, comentario.id, 'Corregido');
+
+    expect(avisos).toEqual([1]);
   });
 
   it('el vecino comenta su queja en en_espera: pasa a en_proceso con historial a su nombre y sin motivo', async () => {

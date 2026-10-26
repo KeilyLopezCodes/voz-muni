@@ -53,4 +53,9 @@ export class KnexAsignacionRepository implements AsignacionRepository {
       .orderBy([{ column: 'carga' }, { column: 'u.nombre' }, { column: 'u.id' }]);
     return filas.map((fila) => ({ id: Number(fila.id), nombre: fila.nombre, carga: Number(fila.carga) }));
   }
+
+  async nombreDependencia(dependenciaId: number): Promise<string | null> {
+    const fila: { nombre: string } | undefined = await this.db('dependencias').where({ id: dependenciaId }).first('nombre');
+    return fila?.nombre ?? null;
+  }
 }

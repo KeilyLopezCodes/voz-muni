@@ -13,22 +13,27 @@ import type { Transaccion } from '../../domain/repositories/transaccion';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { ComentarioCreadoDto, ComentarioDto, DatosComentario } from '../dto/comentarios.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import type { AvisosComentariosService } from './avisos-comentarios.service';
+import type { NotificadorCorreo } from './notificador-correo.service';
 import type { SlaService } from './sla.service';
 
 // Comentarios públicos y notas internas (RF-19, RF-22, SPEC 23). El permiso para escribir (comentarios.publico o
 // comentarios.interno, según `interno`) lo valida la presentación; aquí el acceso al ticket sale de tickets.ver.
+// Un comentario público de otra persona avisa al vecino según la ventana de SPEC 35.
 export class ComentariosService {
   constructor(
     private readonly transaccion: Transaccion,
     private readonly tickets: TicketLecturaRepository,
     private readonly clock: Clock,
     private readonly sla: Pick<SlaService, 'alReanudar'>,
+    private readonly avisos: Pick<AvisosComentariosService, 'alComentar'>,
+    private readonly correo: Pick<NotificadorCorreo, 'despachar'>,
   ) {}
 
-  comentar(usuario: UsuarioAutenticado, ticketId: number, datos: DatosComentario): Promise<ComentarioCreadoDto> {
+  async comentar(usuario: UsuarioAutenticado, ticketId: number, datos: DatosComentario): Promise<ComentarioCreadoDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.ver');
-    return conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura, comentarios }) => {
+    const { creado, correoId } = await conReglasDeNegocio(() =>
+      this.transaccion.ejecutar(async ({ ticketsEscritura, comentarios, avisosComentarios, correosSalientes }) => {
         // FOR UPDATE: si el comentario reanuda la queja, no compite con otra transición.
         const actual = await ticketsEscritura.obtenerParaActualizar(ticketId, filtro);
         if (!actual) {
@@ -63,12 +68,25 @@ export class ComentariosService {
           await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
           estado = resultado.ticket.estado;
         }
+
+        // Con el ticket ya bloqueado: dos comentarios simultáneos no envían dos avisos. Las notas internas y los
+        // comentarios del propio vecino nunca avisan.
+        const correoId =
+          !datos.interno && usuario.id !== actual.solicitante.id
+            ? await this.avisos.alComentar(
+                { avisosComentarios, correosSalientes },
+                { id: ticketId, numero: actual.ticket.numero, titulo: actual.titulo, solicitante: actual.solicitante },
+                ahora,
+              )
+            : null;
         return {
-          comentario: this.aDto((await comentarios.obtener(id))!, usuario, ahora),
-          ticket: { id: ticketId, estado },
+          creado: { comentario: this.aDto((await comentarios.obtener(id))!, usuario, ahora), ticket: { id: ticketId, estado } },
+          correoId,
         };
       }),
     );
+    await this.correo.despachar([correoId]);
+    return creado;
   }
 
   async listar(usuario: UsuarioAutenticado, ticketId: number): Promise<{ datos: ComentarioDto[] }> {
