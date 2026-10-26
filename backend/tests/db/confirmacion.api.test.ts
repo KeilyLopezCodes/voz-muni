@@ -8,6 +8,7 @@ import type { Clock } from '../../src/domain/health/clock';
 import type { EnviadorCorreo, MensajeCorreo } from '../../src/domain/notificaciones/enviador-correo';
 import type { EstadoTicket } from '../../src/domain/ticket/estado-ticket';
 import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
+import { prepararSla } from './sla-fixtures';
 
 const PASSWORD = 'Clave-de-prueba-1';
 
@@ -60,6 +61,8 @@ describe('Confirmar o reabrir la solución (SPEC 27)', () => {
     }
     const [baches] = await db('categorias').insert({ nombre: 'Baches', dependencia_id: ids.obras }).returning('id');
     ids.baches = Number(baches.id);
+    // Reabrir reinicia el plazo de resolución con la política de la categoría (SPEC 30).
+    await prepararSla(db, [ids.baches]);
     const [zona] = await db('zonas').insert({ nombre: 'Zona 1', tipo: 'zona' }).returning('id');
     ids.zona = Number(zona.id);
 

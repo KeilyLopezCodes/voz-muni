@@ -168,6 +168,8 @@ describe('Asignación de técnico (SPEC 20)', () => {
         zona: { id: ids.zona, nombre: 'Zona 1', tipo: 'zona' },
         tecnico: null,
         creadoEn: expect.stringMatching(/Z$/),
+        // Insertada sin aceptar por el triage: sin vencimientos (SPEC 30).
+        sla: { venceRespuesta: null, primeraRespuestaEn: null, venceResolucion: null, pausado: false, restanteMinutosEnPausa: null },
       });
       const texto = JSON.stringify(res.body);
       expect(texto).not.toContain('vecino@asignacion.test');

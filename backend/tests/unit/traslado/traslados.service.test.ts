@@ -18,7 +18,8 @@ import { ReglaDeNegocioError } from '../../../src/domain/errors/regla-de-negocio
 import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { type ResultadoTransicion, Ticket } from '../../../src/domain/ticket/ticket';
 import type { EstadoSolicitud } from '../../../src/domain/traslado/solicitud-traslado';
-import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { SLA_VACIO } from '../sla/dobles-sla';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
 const OBRAS = 4;
@@ -71,7 +72,7 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
     if (!ticket || filtro === null || filtro.some((c) => c.campo === 'asignadoA' && c.valor !== ticket.asignadoA)) {
       return null;
     }
-    return { ticket, titulo: 'Bache', categoria: { id: 1, nombre: 'Baches' }, solicitante: { id: 7, nombre: 'Ana', email: null } };
+    return { ticket, titulo: 'Bache', categoria: { id: 1, nombre: 'Baches' }, solicitante: { id: 7, nombre: 'Ana', email: null }, sla: SLA_VACIO };
   }
 
   async guardarTransicion(resultado: ResultadoTransicion): Promise<void> {

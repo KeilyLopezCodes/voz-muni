@@ -1,5 +1,6 @@
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
+import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import CardActionArea from '@mui/material/CardActionArea'
 import CardContent from '@mui/material/CardContent'
@@ -25,6 +26,7 @@ import {
 } from '../api/asignacion-api'
 import type { Prioridad } from '../api/triage-api'
 import { antiguedad, fechaGuatemala } from '../antiguedad'
+import { IndicadorSla } from '../sla/IndicadorSla'
 import { PanelAsignacion } from './PanelAsignacion'
 
 // Color de cada prioridad; la etiqueta sale de las traducciones de SPEC 19.
@@ -137,6 +139,9 @@ export function AsignacionPage() {
                     ? t('asignacion.tecnico', { nombre: ticket.tecnico.nombre })
                     : t('asignacion.sinTecnico')}
                 </Typography>
+                <Box sx={{ mt: 1 }}>
+                  <IndicadorSla sla={ticket.sla} estado={ticket.estado} ahora={ahora} />
+                </Box>
               </CardContent>
             </CardActionArea>
           </Card>

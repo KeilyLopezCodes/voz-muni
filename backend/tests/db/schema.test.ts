@@ -91,6 +91,11 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['resuelto_por', 'bigint'],
     ['confirmacion_vence_en', 'timestamp with time zone'],
     ['reaperturas', 'integer'],
+    ['primera_respuesta_en', 'timestamp with time zone'],
+    ['sla_inicio_resolucion', 'timestamp with time zone'],
+    ['sla_pausa_minutos', 'integer'],
+    ['sla_pausado_desde', 'timestamp with time zone'],
+    ['sla_restante_minutos', 'integer'],
   ],
   ticket_historial: [
     ['id', 'bigint'],
@@ -923,6 +928,64 @@ describe('Esquema de base de datos', () => {
         expect(
           await db('information_schema.columns').where({ table_name: 'comentarios', column_name: 'editado_en' }).select('column_name'),
         ).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
+  describe('seguimiento del SLA (0025)', () => {
+    it('sla_pausa_minutos es 0 por defecto y los dos contadores rechazan negativos', () =>
+      withRollback(async (trx) => {
+        const ticketId = await insertTicket(trx);
+        expect(await trx('tickets').where({ id: ticketId }).first('sla_pausa_minutos', 'sla_restante_minutos')).toEqual({
+          sla_pausa_minutos: 0,
+          sla_restante_minutos: null,
+        });
+        await expect(trx('tickets').where({ id: ticketId }).update({ sla_pausa_minutos: -1 })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }));
+
+    it('sla_pausado_desde sin sla_restante_minutos viola tickets_sla_pausa_completa, y al revés también', () =>
+      withRollback(async (trx) => {
+        const ticketId = await insertTicket(trx);
+        await trx.raw('SAVEPOINT pausa');
+        await expect(
+          trx('tickets').where({ id: ticketId }).update({ sla_pausado_desde: new Date() }),
+        ).rejects.toMatchObject({ code: CHECK_VIOLATION, constraint: 'tickets_sla_pausa_completa' });
+        await trx.raw('ROLLBACK TO SAVEPOINT pausa');
+        await expect(trx('tickets').where({ id: ticketId }).update({ sla_restante_minutos: 10 })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+          constraint: 'tickets_sla_pausa_completa',
+        });
+        await trx.raw('ROLLBACK TO SAVEPOINT pausa');
+        await trx('tickets').where({ id: ticketId }).update({ sla_pausado_desde: new Date(), sla_restante_minutos: 10 });
+      }));
+
+    it('carga jornada_laboral = 08:00–16:00', async () => {
+      expect(await db('parametros').where({ clave: 'jornada_laboral' }).first('valor')).toEqual({
+        valor: { inicio: '08:00', fin: '16:00' },
+      });
+    });
+
+    it('revertir 0025 quita las 5 columnas, el CHECK y el parámetro', async () => {
+      await db.migrate.down({ name: '0025_sla.js' });
+      try {
+        expect(
+          await db('information_schema.columns')
+            .where({ table_name: 'tickets' })
+            .whereIn('column_name', [
+              'primera_respuesta_en',
+              'sla_inicio_resolucion',
+              'sla_pausa_minutos',
+              'sla_pausado_desde',
+              'sla_restante_minutos',
+            ])
+            .select('column_name'),
+        ).toEqual([]);
+        expect(await db('pg_constraint').where({ conname: 'tickets_sla_pausa_completa' }).select('conname')).toEqual([]);
+        expect(await db('parametros').where({ clave: 'jornada_laboral' }).select('clave')).toEqual([]);
       } finally {
         await db.migrate.latest();
       }

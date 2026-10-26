@@ -1,4 +1,5 @@
 import type { FiltroTickets } from '../autorizacion/alcance-tickets';
+import type { CambiosSla, EstadoSla } from '../sla/vencimientos';
 import type { ResultadoTransicion, Ticket } from '../ticket/ticket';
 
 // Ticket bloqueado para transicionar, con lo que necesitan la nota del historial y el correo al solicitante.
@@ -7,6 +8,7 @@ export interface TicketParaTransicion {
   titulo: string;
   categoria: { id: number; nombre: string };
   solicitante: { id: number; nombre: string; email: string | null };
+  sla: EstadoSla; // seguimiento de los vencimientos (SPEC 30)
 }
 
 // Categoría final de un ticket aceptado y la dependencia que le corresponde (RF-13).
@@ -27,5 +29,6 @@ export interface TicketEscrituraRepository {
   // Solo cambia asignado_a: asignar un técnico no cambia el estado ni escribe historial (SPEC 20).
   guardarTecnico(ticket: Ticket): Promise<void>;
   // Actualiza el ticket (estado, prioridad, dependencia, técnico, marcas y categoría) e inserta su historial.
-  guardarTransicion(resultado: ResultadoTransicion, categoriaId: number): Promise<void>;
+  // `sla` son los cambios que calculó SlaService para esta transición (SPEC 30); lo que no trae no se toca.
+  guardarTransicion(resultado: ResultadoTransicion, categoriaId: number, sla?: CambiosSla): Promise<void>;
 }

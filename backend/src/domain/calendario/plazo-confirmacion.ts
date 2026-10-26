@@ -41,11 +41,17 @@ export function calcularVencimientoConfirmacion(
   return finDelDiaLocal(diasHabiles[cantidad - 1]);
 }
 
-// 23:59:59.999 de una fecha local de la zona municipal, como instante UTC. El desfase sale de Intl en la fecha
-// concreta, no de una constante; se repite el ajuste por si el desfase cambia entre la estimación y el resultado.
+// 23:59:59.999 de una fecha local de la zona municipal, como instante UTC.
 function finDelDiaLocal(fecha: string): Date {
+  return instanteLocal(fecha, 23 * 60 + 59, 59_999);
+}
+
+// El instante UTC de una hora local (minutos desde la medianoche, más milisegundos) de una fecha de la zona
+// municipal (SPEC 27 y 30). El desfase sale de Intl en la fecha concreta, no de una constante; se repite el
+// ajuste por si el desfase cambia entre la estimación y el resultado.
+export function instanteLocal(fecha: string, minutoDelDia: number, milisegundos = 0): Date {
   const [anio, mes, dia] = fecha.split('-').map(Number);
-  const deseado = Date.UTC(anio, mes - 1, dia, 23, 59, 59, 999);
+  const deseado = Date.UTC(anio, mes - 1, dia, 0, minutoDelDia, 0, milisegundos);
   let instante = deseado;
   for (let intento = 0; intento < 2; intento++) {
     instante = deseado - desfaseMs(instante);

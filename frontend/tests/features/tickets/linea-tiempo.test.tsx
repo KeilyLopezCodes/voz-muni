@@ -118,6 +118,7 @@ describe('Historial en el detalle', () => {
     esSolicitante: true,
     resolucion: null,
     confirmacion: null,
+    sla: null,
   }
 
   it('aparece en /tickets/:id, y comentar desde el detalle lo actualiza', async () => {

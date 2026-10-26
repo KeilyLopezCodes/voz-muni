@@ -254,7 +254,9 @@
     "errores": {
       "CATEGORIA_INVALIDA": "Esa categoría ya no está disponible. Elige otra.",
       "red": "No pudimos conectar con el servidor. Intenta de nuevo.",
-      "generico": "No pudimos completar la acción. Intenta de nuevo."
+      "generico": "No pudimos completar la acción. Intenta de nuevo.",
+      "SLA_NO_CONFIGURADO": "Esta categoría no tiene SLA configurado. El administrador debe definirlo en Políticas de SLA antes de aceptar la queja.",
+      "SLA_SIN_CALCULO": "No pudimos calcular los plazos: el calendario laboral o la jornada no están configurados."
     }
   },
   "asignacion": {
@@ -616,5 +618,16 @@
       "adjunto_tu": "Tú adjuntaste {{nombre}}"
     },
     "detalleCompleto": "Ver detalle completo"
+  },
+  "sla": {
+    "titulo": "Plazos",
+    "responderAntes": "Responder antes de {{fecha}}",
+    "respuestaVencida": "Respuesta vencida",
+    "respondida": "Respondida",
+    "respondidaFueraDePlazo": "Respondida, fuera de plazo",
+    "resolverAntes": "Resolver antes de {{fecha}}",
+    "resolucionVencida": "Resolución vencida",
+    "enPausa": "En pausa: quedan {{horas}} h {{minutos}} min hábiles",
+    "venceEl": "Vencía el {{fecha}}"
   }
 }

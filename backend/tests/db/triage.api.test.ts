@@ -6,6 +6,7 @@ import { createApp } from '../../src/app';
 import { buildContainer, type Container } from '../../src/container';
 import type { EnviadorCorreo, MensajeCorreo } from '../../src/domain/notificaciones/enviador-correo';
 import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
+import { prepararSla } from './sla-fixtures';
 
 const PASSWORD = 'Clave-de-prueba-1';
 
@@ -48,6 +49,8 @@ describe('Triage del supervisor (SPEC 19)', () => {
       const [fila] = await db('categorias').insert({ nombre, dependencia_id: dependenciaId, activa }).returning('id');
       ids[clave] = Number(fila.id);
     }
+    // Aceptar calcula los vencimientos (SPEC 30).
+    await prepararSla(db, [ids.baches, ids.alumbrado]);
     const [zona] = await db('zonas').insert({ nombre: 'Zona 1', tipo: 'zona' }).returning('id');
     ids.zona = Number(zona.id);
 
@@ -140,13 +143,16 @@ describe('Triage del supervisor (SPEC 19)', () => {
       prioridad: 'alta',
       categoriaId: ids.baches,
       dependenciaId: ids.obras,
+      // Los calcula SlaService (SPEC 30); el detalle del cálculo se prueba en sla.api.test.ts.
+      venceRespuesta: expect.any(String),
+      venceResolucion: expect.any(String),
     });
 
     expect(await db('tickets').where({ id }).first('estado', 'prioridad', 'dependencia_id', 'vence_resolucion')).toEqual({
       estado: 'asignada',
       prioridad: 'alta',
       dependencia_id: String(ids.obras),
-      vence_resolucion: null,
+      vence_resolucion: new Date(aceptada.body.venceResolucion),
     });
     expect(await historial(id)).toEqual([
       { estado_anterior: null, estado_nuevo: 'nueva', usuario_id: String(ids.vecino), motivo: null },

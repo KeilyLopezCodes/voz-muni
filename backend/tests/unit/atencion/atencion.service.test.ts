@@ -13,7 +13,8 @@ import type {
 } from '../../../src/domain/repositories/ticket-escritura-repository';
 import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { type ResultadoTransicion, Ticket } from '../../../src/domain/ticket/ticket';
-import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { SLA_VACIO, SlaNulo } from '../sla/dobles-sla';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
 const VENCE_CONFIRMACION = new Date('2026-10-31T05:59:59.999Z');
@@ -58,7 +59,7 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
     if (!ticket || filtro === null || filtro.some((c) => c.campo === 'asignadoA' && c.valor !== ticket.asignadoA)) {
       return null;
     }
-    return { ticket, titulo: 'Bache', categoria: { id: 1, nombre: 'Baches' }, solicitante: { id: 7, nombre: 'Ana', email: null } };
+    return { ticket, titulo: 'Bache', categoria: { id: 1, nombre: 'Baches' }, solicitante: { id: 7, nombre: 'Ana', email: null }, sla: SLA_VACIO };
   }
 
   async guardarTransicion(resultado: ResultadoTransicion): Promise<void> {
@@ -89,6 +90,7 @@ function armar(vencimiento: (ahora: Date) => Promise<Date> = async () => VENCE_C
       pedidos.push(ahora);
       return vencimiento(ahora);
     },
+    new SlaNulo(),
   );
   return { tickets, bandeja, servicio, pedidos };
 }

@@ -21,6 +21,7 @@ import { CLAVES_LINEA_TIEMPO } from '../api/linea-tiempo-api'
 import { CLAVES_TICKETS, obtenerTicket, type TicketDetalle } from '../api/tickets-api'
 import { HiloComentarios } from '../comentarios/HiloComentarios'
 import { LineaTiempo } from '../linea-tiempo/LineaTiempo'
+import { IndicadorSla } from '../sla/IndicadorSla'
 import { COLOR_ESTADO } from './estado-chip'
 import { SolucionQueja } from './SolucionQueja'
 
@@ -110,6 +111,10 @@ function Contenido({ ticket }: { ticket: TicketDetalle }) {
         <Typography variant="h4" component="h1" sx={{ overflowWrap: 'anywhere' }}>
           {ticket.titulo}
         </Typography>
+        {/* Solo para los internos: el vecino recibe sla: null (SPEC 30). */}
+        <Box sx={{ mt: 1 }}>
+          <IndicadorSla sla={ticket.sla ?? null} estado={ticket.estado} />
+        </Box>
       </Box>
 
       {aviso && (

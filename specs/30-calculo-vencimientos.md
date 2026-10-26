@@ -1,6 +1,6 @@
 # SPEC 30 — Cálculo de vencimientos con calendario laboral
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 03, SPEC 04, SPEC 15, SPEC 19, SPEC 20, SPEC 21, SPEC 22, SPEC 23, SPEC 25, SPEC 27, SPEC 29
 > **Fecha:** 2026-10-23
 > **Objetivo:** Calcular en horas hábiles (jornada del parámetro `jornada_laboral` sobre `calendario_laboral`) los vencimientos `vence_respuesta` y `vence_resolucion` de cada queja al aceptarla, congelarlos durante `en_espera`, recalcularlos al reanudar, al reabrir y al volver a aceptar tras un traslado, y mostrarlos a los internos en `/asignacion`, `/atencion` y `/tickets/:id`.

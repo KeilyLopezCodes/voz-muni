@@ -1,4 +1,5 @@
 import type { TicketDetalleLectura, TicketListado } from '../../domain/repositories/ticket-lectura-repository';
+import type { SlaDto } from './sla.dto';
 
 // Resolución vigente en el detalle (SPEC 26). resueltaPor es null para el alcance propia de tickets.ver (el vecino).
 export interface ResolucionDetalleDto {
@@ -27,7 +28,14 @@ export interface ConfirmacionDetalleDto {
 export interface TicketDetalleDto
   extends Omit<
     TicketDetalleLectura,
-    'creadoEn' | 'resueltoEn' | 'cerradoEn' | 'resolucion' | 'confirmacionVenceEn' | 'reaperturas' | 'solicitanteId'
+    | 'creadoEn'
+    | 'resueltoEn'
+    | 'cerradoEn'
+    | 'resolucion'
+    | 'confirmacionVenceEn'
+    | 'reaperturas'
+    | 'solicitanteId'
+    | 'sla'
   > {
   creadoEn: string; // ISO 8601 en UTC
   resueltoEn: string | null;
@@ -35,4 +43,5 @@ export interface TicketDetalleDto
   esSolicitante: boolean; // el usuario autenticado es el solicitante
   resolucion: ResolucionDetalleDto | null;
   confirmacion: ConfirmacionDetalleDto | null; // solo si estado === 'resuelta' y hay vencimiento (SPEC 27)
+  sla: SlaDto | null; // null con el alcance propia de tickets.ver: el vecino no ve los vencimientos (SPEC 30)
 }

@@ -6,6 +6,7 @@ import type {
   TicketParaTransicion,
 } from '../../domain/repositories/ticket-escritura-repository';
 import type { EstadoTicket } from '../../domain/ticket/estado-ticket';
+import type { CambiosSla } from '../../domain/sla/vencimientos';
 import type { Prioridad } from '../../domain/ticket/prioridad';
 import { Ticket, type ResultadoTransicion } from '../../domain/ticket/ticket';
 import { aplicarFiltro, COLUMNAS_TICKET } from './knex-filtro';
@@ -31,7 +32,26 @@ interface FilaTicket {
   solicitante_id: string;
   solicitante_nombre: string;
   solicitante_email: string | null;
+  creado_en: Date;
+  vence_respuesta: Date | null;
+  vence_resolucion: Date | null;
+  primera_respuesta_en: Date | null;
+  sla_inicio_resolucion: Date | null;
+  sla_pausa_minutos: number;
+  sla_pausado_desde: Date | null;
+  sla_restante_minutos: number | null;
 }
+
+// Campo de CambiosSla → columna de tickets (SPEC 30).
+const COLUMNAS_SLA: Readonly<Record<keyof CambiosSla, string>> = {
+  venceRespuesta: 'vence_respuesta',
+  venceResolucion: 'vence_resolucion',
+  primeraRespuestaEn: 'primera_respuesta_en',
+  inicioResolucion: 'sla_inicio_resolucion',
+  pausaMinutos: 'sla_pausa_minutos',
+  pausadoDesde: 'sla_pausado_desde',
+  restanteMinutos: 'sla_restante_minutos',
+};
 
 interface FilaCategoria {
   id: string;
@@ -81,6 +101,14 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
         't.solicitante_id',
         'u.nombre as solicitante_nombre',
         'u.email as solicitante_email',
+        't.creado_en',
+        't.vence_respuesta',
+        't.vence_resolucion',
+        't.primera_respuesta_en',
+        't.sla_inicio_resolucion',
+        't.sla_pausa_minutos',
+        't.sla_pausado_desde',
+        't.sla_restante_minutos',
       );
     if (!fila) {
       return null;
@@ -104,6 +132,16 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
       titulo: fila.titulo,
       categoria: { id: Number(fila.categoria_id), nombre: fila.categoria_nombre },
       solicitante: { id: Number(fila.solicitante_id), nombre: fila.solicitante_nombre, email: fila.solicitante_email },
+      sla: {
+        creadoEn: fila.creado_en,
+        venceRespuesta: fila.vence_respuesta,
+        venceResolucion: fila.vence_resolucion,
+        primeraRespuestaEn: fila.primera_respuesta_en,
+        inicioResolucion: fila.sla_inicio_resolucion,
+        pausaMinutos: fila.sla_pausa_minutos,
+        pausadoDesde: fila.sla_pausado_desde,
+        restanteMinutos: fila.sla_restante_minutos,
+      },
     };
   }
 
@@ -134,7 +172,10 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
     await this.db('tickets').where({ id: ticket.id }).update({ asignado_a: ticket.asignadoA });
   }
 
-  async guardarTransicion({ ticket, historial }: ResultadoTransicion, categoriaId: number): Promise<void> {
+  async guardarTransicion({ ticket, historial }: ResultadoTransicion, categoriaId: number, sla: CambiosSla = {}): Promise<void> {
+    const columnasSla = Object.fromEntries(
+      Object.entries(sla).map(([campo, valor]) => [COLUMNAS_SLA[campo as keyof CambiosSla], valor]),
+    );
     await this.db('tickets').where({ id: ticket.id }).update({
       estado: ticket.estado,
       prioridad: ticket.prioridad,
@@ -150,6 +191,8 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
       confirmacion_vence_en: ticket.confirmacionVenceEn,
       reaperturas: ticket.reaperturas,
       categoria_id: categoriaId,
+      // Vencimientos del SLA (SPEC 30), en la misma actualización que la transición.
+      ...columnasSla,
     });
     await this.db('ticket_historial').insert({
       ticket_id: historial.ticketId,

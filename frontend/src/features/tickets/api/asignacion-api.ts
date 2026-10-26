@@ -1,4 +1,5 @@
 import { apiClient } from '../../../shared/api/http-client'
+import type { SlaDto } from './tickets-api'
 import type { Prioridad } from './triage-api'
 
 // Contratos de SPEC 20: bandeja de asignación, técnicos con carga y asignación.
@@ -20,6 +21,7 @@ export interface TicketPorAsignar {
   zona: { id: number; nombre: string; tipo: string }
   tecnico: { id: number; nombre: string } | null
   creadoEn: string // ISO 8601 en UTC
+  sla: SlaDto // vencimientos (SPEC 30)
 }
 
 export interface PaginaPorAsignar {

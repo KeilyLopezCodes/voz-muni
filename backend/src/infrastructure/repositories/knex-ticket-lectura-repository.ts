@@ -9,6 +9,7 @@ import type {
   TicketResumen,
 } from '../../domain/repositories/ticket-lectura-repository';
 import type { EstadoTicket } from '../../domain/ticket/estado-ticket';
+import { COLUMNAS_SLA_LECTURA, type FilaSlaLectura, slaDeFila } from './knex-sla';
 import { aplicarFiltro, COLUMNAS_TICKET } from './knex-filtro';
 
 // pg devuelve los bigint como string.
@@ -92,6 +93,7 @@ const COLUMNAS_DETALLE = [
   'rp.nombre as resuelto_por_nombre',
   't.confirmacion_vence_en',
   't.reaperturas',
+  ...COLUMNAS_SLA_LECTURA,
   't.solicitante_id',
 ];
 
@@ -120,7 +122,7 @@ function aResumen(fila: FilaTicket): TicketResumen {
   };
 }
 
-function aDetalle(fila: FilaDetalle): TicketDetalleLectura {
+function aDetalle(fila: FilaDetalle & FilaSlaLectura): TicketDetalleLectura {
   return {
     id: Number(fila.id),
     numero: fila.numero,
@@ -139,6 +141,7 @@ function aDetalle(fila: FilaDetalle): TicketDetalleLectura {
     resolucion: aResolucion(fila),
     confirmacionVenceEn: fila.confirmacion_vence_en,
     reaperturas: fila.reaperturas,
+    sla: slaDeFila(fila),
     solicitanteId: Number(fila.solicitante_id),
   };
 }
@@ -214,7 +217,7 @@ export class KnexTicketLecturaRepository implements TicketLecturaRepository {
     if (filtro === null) {
       return null;
     }
-    const fila: FilaDetalle | undefined = await aplicarFiltro(
+    const fila: (FilaDetalle & FilaSlaLectura) | undefined = await aplicarFiltro(
       this.db('tickets as t').where('t.id', id),
       filtro,
       COLUMNAS_TICKET,

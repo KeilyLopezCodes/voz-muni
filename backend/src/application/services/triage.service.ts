@@ -5,18 +5,23 @@ import type { TicketParaTransicion } from '../../domain/repositories/ticket-escr
 import type { Pagina } from '../../domain/repositories/ticket-lectura-repository';
 import type { Transaccion } from '../../domain/repositories/transaccion';
 import type { EstadoTriage, TriageLecturaRepository } from '../../domain/repositories/triage-lectura-repository';
+import type { EstadoSla } from '../../domain/sla/vencimientos';
 import type { ResultadoTransicion } from '../../domain/ticket/ticket';
 import { puedeTransicionar } from '../../domain/ticket/transiciones';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { ComandoTriage, TicketTriageDto, TransicionDto } from '../dto/triage.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 import type { EnvioCorreo } from './envio-correo';
+import type { SlaService } from './sla.service';
+
+const isoONull = (fecha: Date | null) => (fecha === null ? null : fecha.toISOString());
 
 interface TransicionHecha {
   actual: TicketParaTransicion;
   resultado: ResultadoTransicion;
   categoriaId: number;
   dependenciaNombre: string | null; // solo al aceptar
+  sla: Pick<EstadoSla, 'venceRespuesta' | 'venceResolucion'>;
 }
 
 // Triage del supervisor (RF-12, RF-13, SPEC 19): tomar, aceptar o rechazar las quejas nuevas.
@@ -28,6 +33,7 @@ export class TriageService {
     private readonly correo: EnvioCorreo,
     private readonly clock: Clock,
     private readonly appUrl: string, // APP_URL, sin barra final
+    private readonly sla: Pick<SlaService, 'alAceptar'>,
   ) {}
 
   async transicionar(usuario: UsuarioAutenticado, id: number, comando: ComandoTriage): Promise<TransicionDto> {
@@ -43,12 +49,12 @@ export class TriageService {
       if (comando.accion === 'tomar') {
         const resultado = actual.ticket.enviarARevision(ctx);
         await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id);
-        return { actual, resultado, categoriaId: actual.categoria.id, dependenciaNombre: null };
+        return { actual, resultado, categoriaId: actual.categoria.id, dependenciaNombre: null, sla: actual.sla };
       }
       if (comando.accion === 'rechazar') {
         const resultado = actual.ticket.rechazar(ctx, comando.motivo);
         await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id);
-        return { actual, resultado, categoriaId: actual.categoria.id, dependenciaNombre: null };
+        return { actual, resultado, categoriaId: actual.categoria.id, dependenciaNombre: null, sla: actual.sla };
       }
 
       // Primero el estado de origen, como en el dominio: aceptar una `nueva` es 409 aunque la categoría falle.
@@ -63,8 +69,17 @@ export class TriageService {
       const nota =
         destino.id === actual.categoria.id ? undefined : `Categoría: ${actual.categoria.nombre} → ${destino.nombre}`;
       const resultado = actual.ticket.asignar(ctx, destino.dependenciaId, comando.prioridad, nota);
-      await ticketsEscritura.guardarTransicion(resultado, destino.id);
-      return { actual, resultado, categoriaId: destino.id, dependenciaNombre: destino.dependenciaNombre };
+      // Los vencimientos corren desde el registro, con la categoría y la prioridad finales; también al volver a
+      // aceptar después de un traslado (SPEC 30). Sin política, 409 SLA_NO_CONFIGURADO y la queja no cambia.
+      const cambiosSla = await this.sla.alAceptar({ ...actual.sla, categoriaId: destino.id, prioridad: comando.prioridad });
+      await ticketsEscritura.guardarTransicion(resultado, destino.id, cambiosSla);
+      return {
+        actual,
+        resultado,
+        categoriaId: destino.id,
+        dependenciaNombre: destino.dependenciaNombre,
+        sla: { ...actual.sla, ...cambiosSla },
+      };
     });
 
     this.avisarSolicitante(comando, hecha);
@@ -76,6 +91,8 @@ export class TriageService {
       prioridad: ticket.prioridad,
       categoriaId: hecha.categoriaId,
       dependenciaId: ticket.dependenciaId,
+      venceRespuesta: isoONull(hecha.sla.venceRespuesta ?? null),
+      venceResolucion: isoONull(hecha.sla.venceResolucion ?? null),
     };
   }
 

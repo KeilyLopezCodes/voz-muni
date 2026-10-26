@@ -1,5 +1,6 @@
 import { apiClient } from '../../../shared/api/http-client'
 import type { ValorExtra } from './registro-api'
+import type { SlaDto } from './tickets-api'
 import type { Prioridad } from './triage-api'
 
 // Contratos de SPEC 22: bandeja de atención y acciones de cambio de estado.
@@ -27,6 +28,7 @@ export interface TicketAtencion {
   motivoEspera: string | null // lo que se pidió al vecino, si está en espera
   trasladoPendiente: boolean
   creadoEn: string // ISO 8601 en UTC
+  sla: SlaDto // vencimientos (SPEC 30)
 }
 
 export interface PaginaAtencion {

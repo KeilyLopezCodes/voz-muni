@@ -16,7 +16,8 @@ import {
   PlantillasEnMemoria,
   RelojFalso,
   TransaccionEnMemoria,
-} from '../auth/dobles';
+} from '../auth/dobles';
+import { SLA_VACIO, SlaNulo } from '../sla/dobles-sla';
 
 const AHORA = new Date('2026-11-05T15:00:00.000Z');
 const VENCE = new Date('2026-11-10T05:59:59.999Z');
@@ -76,6 +77,7 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
       titulo: 'Bache frente a la escuela',
       categoria: { id: 1, nombre: 'Baches' },
       solicitante: { id: 7, nombre: 'Ana Vecina', email: this.email },
+      sla: SLA_VACIO,
     };
   }
 
@@ -106,6 +108,7 @@ function armar({ maxReaperturas = 2, ahora = AHORA }: { maxReaperturas?: number;
     new EnvioCorreo(plantillas(), enviador, (mensaje) => errores.push(mensaje)),
     new RelojFalso(ahora),
     'https://vozmuni.test',
+    new SlaNulo(),
   );
   return { tickets, enviador, errores, servicio };
 }
