@@ -16,7 +16,7 @@ import {
   PlantillasEnMemoria,
   RelojFalso,
   TransaccionEnMemoria,
-} from '../auth/dobles';
+} from '../auth/dobles';
 import { SLA_VACIO, SlaNulo } from '../sla/dobles-sla';
 
 const AHORA = new Date('2026-11-05T15:00:00.000Z');

@@ -1,6 +1,6 @@
 # SPEC 33 — Cierre automático de quejas resueltas
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 04, SPEC 09, SPEC 17, SPEC 22, SPEC 25, SPEC 26, SPEC 27, SPEC 32
 > **Fecha:** 2026-10-23
 > **Objetivo:** Cerrar automáticamente, como tercer paso del job de SLA, las quejas en `resuelta` cuyo plazo de confirmación (`confirmacion_vence_en`) venció, avisando al vecino con `queja_resuelta` al resolver y con `queja_cerrada_automaticamente` al cerrar, y mostrar en el detalle que el cierre fue automático.

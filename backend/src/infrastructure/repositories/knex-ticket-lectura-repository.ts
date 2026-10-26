@@ -61,6 +61,7 @@ interface FilaDetalle {
   resuelto_en: Date | null;
   cerrado_en: Date | null;
   informacion_solicitada: string | null;
+  cierre_automatico: boolean;
   resolucion: string | null;
   resuelto_por: string | null;
   resuelto_por_nombre: string | null;
@@ -107,6 +108,14 @@ const INFORMACION_SOLICITADA = `(CASE WHEN t.estado = 'en_espera' THEN (
    ORDER BY h.creado_en DESC, h.id DESC LIMIT 1
  ) END) as informacion_solicitada`;
 
+// Cerrada por el job de SLA (SPEC 33): la última transición a cerrada no tiene usuario, igual que la consulta de
+// arriba con en_espera. Sin columna nueva: sale del historial.
+const CIERRE_AUTOMATICO = `COALESCE(t.estado = 'cerrada' AND (
+   SELECT h.usuario_id IS NULL FROM ticket_historial h
+   WHERE h.ticket_id = t.id AND h.estado_nuevo = 'cerrada'
+   ORDER BY h.creado_en DESC, h.id DESC LIMIT 1
+ ), false) as cierre_automatico`;
+
 const numeroONull = (valor: string | null) => (valor === null ? null : Number(valor));
 
 function aResumen(fila: FilaTicket): TicketResumen {
@@ -138,6 +147,7 @@ function aDetalle(fila: FilaDetalle & FilaSlaLectura): TicketDetalleLectura {
     resueltoEn: fila.resuelto_en,
     cerradoEn: fila.cerrado_en,
     informacionSolicitada: fila.informacion_solicitada,
+    cierreAutomatico: fila.cierre_automatico,
     resolucion: aResolucion(fila),
     confirmacionVenceEn: fila.confirmacion_vence_en,
     reaperturas: fila.reaperturas,
@@ -227,7 +237,7 @@ export class KnexTicketLecturaRepository implements TicketLecturaRepository {
       .join('zonas as z', 'z.id', 't.zona_id')
       .leftJoin('dependencias as d', 'd.id', 't.dependencia_id')
       .leftJoin('usuarios as rp', 'rp.id', 't.resuelto_por')
-      .first([...COLUMNAS_DETALLE, this.db.raw(INFORMACION_SOLICITADA)]);
+      .first([...COLUMNAS_DETALLE, this.db.raw(INFORMACION_SOLICITADA), this.db.raw(CIERRE_AUTOMATICO)]);
     return fila ? aDetalle(fila) : null;
   }
 }

@@ -18,7 +18,7 @@ import { ReglaDeNegocioError } from '../../../src/domain/errors/regla-de-negocio
 import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { type ResultadoTransicion, Ticket } from '../../../src/domain/ticket/ticket';
 import type { EstadoSolicitud } from '../../../src/domain/traslado/solicitud-traslado';
-import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
 import { SLA_VACIO } from '../sla/dobles-sla';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');

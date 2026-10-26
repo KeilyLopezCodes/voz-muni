@@ -1,6 +1,7 @@
 import { filtroTicketsParaAccion } from '../../domain/autorizacion/alcance-tickets';
 import type { Clock } from '../../domain/health/clock';
 import type { AtencionLecturaRepository, EstadoAtencion } from '../../domain/repositories/atencion-lectura-repository';
+import type { TicketParaTransicion } from '../../domain/repositories/ticket-escritura-repository';
 import type { Pagina } from '../../domain/repositories/ticket-lectura-repository';
 import type { Transaccion } from '../../domain/repositories/transaccion';
 import type { CambiosSla } from '../../domain/sla/vencimientos';
@@ -10,6 +11,8 @@ import type { AtencionHechaDto, ComandoAtencion, TicketAtencionDto } from '../dt
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import { aSlaDto } from '../dto/sla.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import type { EnvioCorreo } from './envio-correo';
+import { fechaHoraParaCorreo } from './formato-fecha';
 import type { SlaService, TicketConPolitica } from './sla.service';
 
 // Fin del plazo para confirmar o reabrir una queja resuelta en `ahora` (SPEC 27). Lanza CALENDARIO_INCOMPLETO o
@@ -38,7 +41,8 @@ function aplicar(
 // Atención interna de la queja (RF-18, RF-21, RF-23, SPEC 22). El permiso (alcance de tickets.cambiar_estado)
 // lo valida la presentación antes de llegar aquí; el filtro de alcance limita qué tickets se pueden tocar.
 // Los errores del dominio (TECNICO_REQUERIDO, MOTIVO_REQUERIDO, DESCRIPCION_REQUERIDA, InvalidTransitionError)
-// los traduce el manejador de errores. Estas acciones no envían correos.
+// los traduce el manejador de errores. Solo resolver envía un correo: queja_resuelta, con el plazo para confirmar
+// (SPEC 33).
 export class AtencionService {
   constructor(
     private readonly transaccion: Transaccion,
@@ -46,11 +50,13 @@ export class AtencionService {
     private readonly clock: Clock,
     private readonly vencimientoConfirmacion: CalcularVencimientoConfirmacion,
     private readonly sla: Pick<SlaService, 'alIniciar' | 'alPonerEnEspera' | 'alReanudar'>,
+    private readonly correo: EnvioCorreo,
+    private readonly appUrl: string, // APP_URL, sin barra final
   ) {}
 
-  transicionar(usuario: UsuarioAutenticado, id: number, comando: ComandoAtencion): Promise<AtencionHechaDto> {
+  async transicionar(usuario: UsuarioAutenticado, id: number, comando: ComandoAtencion): Promise<AtencionHechaDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.cambiar_estado');
-    return this.transaccion.ejecutar(async ({ ticketsEscritura }) => {
+    const { actual, ticket } = await this.transaccion.ejecutar(async ({ ticketsEscritura }) => {
       // FOR UPDATE, como en SPEC 19: una segunda transición simultánea ve el estado nuevo y recibe 409.
       const actual = await ticketsEscritura.obtenerParaActualizar(id, filtro);
       if (!actual) {
@@ -67,15 +73,40 @@ export class AtencionService {
         ahora,
       );
       await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
-      const { ticket } = resultado;
-      return {
-        id: ticket.id,
-        numero: ticket.numero,
-        estado: ticket.estado,
-        asignadoA: ticket.asignadoA,
-        resueltoEn: ticket.resueltoEn ? ticket.resueltoEn.toISOString() : null,
-      };
+      return { actual, ticket: resultado.ticket };
     });
+
+    if (comando.accion === 'resolver') {
+      this.avisarResuelta(actual, ticket);
+    }
+    return {
+      id: ticket.id,
+      numero: ticket.numero,
+      estado: ticket.estado,
+      asignadoA: ticket.asignadoA,
+      resueltoEn: ticket.resueltoEn ? ticket.resueltoEn.toISOString() : null,
+    };
+  }
+
+  // Después del commit y sin esperar: la respuesta no depende del correo. El enlace lleva al detalle, porque
+  // confirmar y reabrir requieren sesión (SPEC 33).
+  private avisarResuelta({ solicitante, titulo }: TicketParaTransicion, ticket: Ticket): void {
+    if (!solicitante.email || !ticket.confirmacionVenceEn) {
+      return;
+    }
+    this.correo.sinEsperar(
+      'queja_resuelta',
+      solicitante.email,
+      {
+        nombre: solicitante.nombre,
+        numero: ticket.numero,
+        titulo,
+        solucion: ticket.resolucion ?? '',
+        fecha_limite: fechaHoraParaCorreo(ticket.confirmacionVenceEn),
+        enlace: `${this.appUrl}/tickets/${ticket.id}`,
+      },
+      solicitante.id,
+    );
   }
 
   // Resolver no mueve los vencimientos.

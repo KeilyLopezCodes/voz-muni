@@ -442,7 +442,7 @@ describe('Esquema de base de datos', () => {
       } finally {
         await db.migrate.latest();
       }
-      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '13' }]);
+      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '15' }]);
     });
   });
 
@@ -748,6 +748,8 @@ describe('Esquema de base de datos', () => {
     });
 
     it('rellena el vencimiento y las reaperturas de las quejas resueltas antes de la migración', async () => {
+      // 0028 tiene un índice parcial sobre confirmacion_vence_en: Postgres lo borraría con la columna.
+      await db.migrate.down({ name: '0028_cierre_automatico.js' });
       await db.migrate.down({ name: '0022_confirmacion.js' });
       const ids: Record<string, string> = {};
       // Noviembre de 2026 con fines de semana no hábiles y el 4 de asueto.
@@ -818,6 +820,8 @@ describe('Esquema de base de datos', () => {
     });
 
     it('revertir 0022 quita las columnas, los parámetros y las plantillas', async () => {
+      // 0028 tiene un índice parcial sobre confirmacion_vence_en: Postgres lo borraría con la columna.
+      await db.migrate.down({ name: '0028_cierre_automatico.js' });
       await db.migrate.down({ name: '0022_confirmacion.js' });
       try {
         const columnas = await db('information_schema.columns')
@@ -934,6 +938,33 @@ describe('Esquema de base de datos', () => {
         expect(nombres).not.toContain('comentarios_ticket_creado_idx');
         expect(
           await db('information_schema.columns').where({ table_name: 'comentarios', column_name: 'editado_en' }).select('column_name'),
+        ).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
+  describe('cierre automático (0028)', () => {
+    const CLAVES_0028 = ['queja_resuelta', 'queja_cerrada_automaticamente'];
+
+    it('carga las dos plantillas con sus asuntos y el índice parcial', async () => {
+      expect(await db('plantillas_notificacion').whereIn('clave', CLAVES_0028).orderBy('clave').select('clave', 'asunto')).toEqual([
+        { clave: 'queja_cerrada_automaticamente', asunto: 'VozMuni: cerramos tu queja {{numero}}' },
+        { clave: 'queja_resuelta', asunto: 'VozMuni: resolvimos tu queja {{numero}}' },
+      ]);
+      const indice = await db('pg_indexes')
+        .where({ schemaname: 'public', tablename: 'tickets', indexname: 'tickets_confirmacion_pendiente_idx' })
+        .first('indexdef');
+      expect(indice.indexdef).toContain("(confirmacion_vence_en) WHERE (estado = 'resuelta'::estado_ticket)");
+    });
+
+    it('revertir 0028 quita las plantillas y el índice', async () => {
+      await db.migrate.down({ name: '0028_cierre_automatico.js' });
+      try {
+        expect(await db('plantillas_notificacion').whereIn('clave', CLAVES_0028).select('clave')).toEqual([]);
+        expect(
+          await db('pg_indexes').where({ tablename: 'tickets', indexname: 'tickets_confirmacion_pendiente_idx' }).select('indexname'),
         ).toEqual([]);
       } finally {
         await db.migrate.latest();

@@ -2,6 +2,7 @@ import type { AdjuntoRepository } from './adjunto-repository';
 import type { AlertasSlaRepository } from './alertas-sla-repository';
 import type { AsignacionRepository } from './asignacion-repository';
 import type { CategoriaAdminRepository } from './categoria-admin-repository';
+import type { CierreAutomaticoRepository } from './cierre-automatico-repository';
 import type { ComentarioRepository } from './comentario-repository';
 import type { EscalamientoRepository } from './escalamiento-repository';
 import type { NotificacionRepository } from './notificacion-repository';
@@ -33,6 +34,7 @@ export interface ReposTransaccionales {
   alertasSla: AlertasSlaRepository;
   notificaciones: NotificacionRepository;
   escalamiento: EscalamientoRepository;
+  cierreAutomatico: CierreAutomaticoRepository;
 }
 
 // Puerto: ejecuta `trabajo` en una transacción; si lanza, no queda nada escrito.

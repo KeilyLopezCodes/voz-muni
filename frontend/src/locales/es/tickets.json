@@ -581,6 +581,11 @@
       "reabierta": "Reabrimos tu queja.",
       "cambio": "La queja cambió. Actualizamos la información.",
       "error": "No pudimos completar la acción. Intenta de nuevo."
+    },
+    "cierre": {
+      "automatica": "Cerrada automáticamente porque venció el plazo de confirmación",
+      "confirmada": "Solución confirmada",
+      "el": "el {{fecha}}"
     }
   },
   "lineaTiempo": {

@@ -118,6 +118,7 @@ describe('Historial en el detalle', () => {
     esSolicitante: true,
     resolucion: null,
     confirmacion: null,
+    cierreAutomatico: false,
     sla: null,
   }
 

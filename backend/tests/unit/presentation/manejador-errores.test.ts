@@ -20,6 +20,7 @@ import type { ConfirmacionService } from '../../../src/application/services/conf
 import type { ComentariosService } from '../../../src/application/services/comentarios.service';
 import type { AdjuntosService } from '../../../src/application/services/adjuntos.service';
 import type { AlertasSlaService } from '../../../src/application/services/alertas-sla.service';
+import type { CierreAutomaticoService } from '../../../src/application/services/cierre-automatico.service';
 import type { EscaladasService } from '../../../src/application/services/escaladas.service';
 import type { EscalamientoService } from '../../../src/application/services/escalamiento.service';
 import type { LineaTiempoService } from '../../../src/application/services/linea-tiempo.service';
@@ -68,6 +69,7 @@ function buildTestContainer(): Container {
     notificacionesService: {} as NotificacionesService,
     escalamientoService: {} as EscalamientoService,
     escaladasService: {} as EscaladasService,
+    cierreAutomaticoService: {} as CierreAutomaticoService,
     slaJobActivo: false,
     iniciarJobSla: () => () => {},
     prepararAlmacen: async () => {},

@@ -88,6 +88,7 @@ class TicketsEnMemoria implements TicketLecturaRepository {
       resueltoEn: null,
       cerradoEn: null,
       informacionSolicitada: t.estado === 'en_espera' ? (esperas.at(-1)?.motivo ?? null) : null,
+      cierreAutomatico: false,
       resolucion: t.estado === 'resuelta' || t.estado === 'cerrada' ? (this.resoluciones[id] ?? null) : null,
       confirmacionVenceEn: this.plazos[id]?.venceEn ?? null,
       reaperturas: this.plazos[id]?.reaperturas ?? 0,
