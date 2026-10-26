@@ -161,7 +161,7 @@ describe('Consulta de la bitácora (SPEC 41)', () => {
   it('parámetros inválidos → 400: un rango de 93 días, una acción fuera del catálogo o un parámetro extra', async () => {
     const supervisor = { Authorization: `Bearer ${tokens.supervisor}` };
     expect((await request(app).get('/api/v1/bitacora?desde=2026-08-01&hasta=2026-11-01').set(supervisor)).status).toBe(400);
-    expect((await consultar('supervisor', '&accion=sesion.iniciar')).status).toBe(400);
+    expect((await consultar('supervisor', '&accion=sesion.renovar')).status).toBe(400);
     expect((await consultar('supervisor', '&otro=1')).status).toBe(400);
   });
 
@@ -184,6 +184,60 @@ describe('Consulta de la bitácora (SPEC 41)', () => {
     const asignar = datos.find((r) => r.accion === 'ticket.asignar')!;
     expect(asignar).toMatchObject({ usuario: { id: ids.coordinador, nombre: 'Usuario coordinador', rol: 'coordinador' }, ip: '10.0.0.7' });
     expect(datos.find((r) => r.accion === 'zona.editar')).toMatchObject({ ticketNumero: null, dependencia: null });
+  });
+
+  it('numero también trae los comentarios y adjuntos de la queja, con ticketNumero; el coordinador no ve la autenticación (SPEC 42)', async () => {
+    const [comentario] = await db('comentarios')
+      .insert({ ticket_id: ids.ticket, autor_id: ids.tecnico, cuerpo: 'Revisado', es_interno: true })
+      .returning('id');
+    const base = { ip: null, creado_en: '2026-11-05T16:00:00.000Z' };
+    await db('bitacora').insert([
+      {
+        ...base,
+        accion: 'comentario.crear',
+        entidad: 'comentario',
+        entidad_id: String(comentario.id),
+        usuario_id: ids.tecnico,
+        dependencia_id: ids.obras,
+        detalle: JSON.stringify({ datos: { ticketId: ids.ticket, interno: true, cuerpo: 'Revisado' } }),
+      },
+      {
+        ...base,
+        accion: 'adjunto.subir',
+        entidad: 'adjunto',
+        entidad_id: '77',
+        usuario_id: ids.tecnico,
+        dependencia_id: ids.obras,
+        detalle: JSON.stringify({ datos: { ticketId: ids.ticket, nombre: 'foto.jpg' } }),
+      },
+      // De otra queja: no entra en el filtro.
+      {
+        ...base,
+        accion: 'comentario.crear',
+        entidad: 'comentario',
+        entidad_id: '999',
+        usuario_id: ids.tecnico,
+        dependencia_id: ids.obras,
+        detalle: JSON.stringify({ datos: { ticketId: ids.ticket + 1000, interno: false } }),
+      },
+      { ...base, accion: 'sesion.iniciar', entidad: 'usuario', entidad_id: String(ids.coordinador), usuario_id: ids.coordinador, dependencia_id: null },
+    ]);
+    const consultaDel5 = (quien: string, query = '') =>
+      request(app).get(`/api/v1/bitacora?desde=2026-11-01&hasta=2026-11-05${query}`).set('Authorization', `Bearer ${tokens[quien]}`);
+
+    const porNumero: RegistroDto[] = (await consultaDel5('supervisor', '&numero=Q-2026-000042')).body.datos;
+    expect(porNumero.map((r) => [r.accion, r.ticketNumero])).toEqual([
+      ['adjunto.subir', 'Q-2026-000042'],
+      ['comentario.crear', 'Q-2026-000042'],
+      ['ticket.escalar', 'Q-2026-000042'],
+      ['ticket.asignar', 'Q-2026-000042'],
+      ['ticket.aceptar', 'Q-2026-000042'],
+    ]);
+
+    const delCoordinador = acciones(await consultaDel5('coordinador'));
+    expect(delCoordinador).toContain('comentario.crear');
+    expect(delCoordinador).not.toContain('sesion.iniciar');
+    expect(acciones(await consultaDel5('supervisor', '&accion=sesion.iniciar'))).toEqual(['sesion.iniciar']);
   });
 
   it('GET /bitacora/acciones devuelve el catálogo con su entidad', async () => {

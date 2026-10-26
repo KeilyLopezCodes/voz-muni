@@ -16,4 +16,8 @@ export interface EventoAuditoria {
 // acción. Valida la acción contra el catálogo, sanea el detalle y toma la IP del contexto de la solicitud.
 export interface Auditoria {
   registrar(evento: EventoAuditoria): Promise<void>;
+  // Para los eventos de fallo (SPEC 42: sesion.fallar y sesion.bloquear), que terminan en error y no tienen una
+  // transacción que confirmar: escribe en su propia transacción, que se confirma aunque la del llamador se revierta.
+  // Si falla, lo registra en el log y no lanza: la respuesta del caso de uso no cambia.
+  registrarIndependiente(evento: EventoAuditoria): Promise<void>;
 }

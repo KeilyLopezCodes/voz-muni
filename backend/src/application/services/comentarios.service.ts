@@ -1,3 +1,4 @@
+import { calcularCambios } from '../../domain/auditoria/saneamiento';
 import { filtroTicketsParaAccion } from '../../domain/autorizacion/alcance-tickets';
 import {
   debeReanudar,
@@ -53,6 +54,14 @@ export class ComentariosService {
           interno: datos.interno,
           creadoEn: ahora,
         });
+        // SPEC 42: el saneamiento trunca el cuerpo a 200 caracteres.
+        await repos.auditoria.registrar({
+          accion: 'comentario.crear',
+          entidadId: id,
+          usuarioId: usuario.id,
+          dependenciaId: actual.ticket.dependenciaId,
+          datos: { ticketId, interno: datos.interno, cuerpo },
+        });
 
         // RF-22: la respuesta del vecino devuelve la queja a en_proceso, a su nombre y sin motivo.
         let estado = actual.ticket.estado;
@@ -70,7 +79,7 @@ export class ComentariosService {
             ahora,
           );
           await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
-          // El comentario en sí se registra con SPEC 42; aquí, el cambio de estado (SPEC 41).
+          // Además del comentario (SPEC 42), el cambio de estado (SPEC 41).
           await repos.auditoria.registrar(eventoTicket('ticket.reanudar', actual.ticket, resultado.ticket, usuario.id));
           estado = resultado.ticket.estado;
         }
@@ -131,11 +140,12 @@ export class ComentariosService {
     return { datos: leidos.map((c) => this.aDto(c, usuario, ahora)) };
   }
 
-  // Solo el autor, durante 5 minutos. No cambia `interno`, no reanuda la queja y no guarda el texto anterior.
+  // Solo el autor, durante 5 minutos. No cambia `interno` y no reanuda la queja. El texto anterior solo queda en la
+  // bitácora (SPEC 42), truncado.
   editar(usuario: UsuarioAutenticado, ticketId: number, comentarioId: number, cuerpo: string): Promise<ComentarioDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.ver');
     return conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura, comentarios }) => {
+      this.transaccion.ejecutar(async ({ ticketsEscritura, comentarios, auditoria }) => {
         const actual = await ticketsEscritura.obtenerParaActualizar(ticketId, filtro);
         const comentario = actual ? await comentarios.obtenerDelAutor(ticketId, comentarioId, usuario.id) : null;
         if (!actual || !comentario) {
@@ -144,7 +154,17 @@ export class ComentariosService {
         const ahora = this.clock.now();
         exigirEditable(comentario.creadoEn, ahora);
         exigirComentable(actual.ticket.estado, comentario.interno);
-        await comentarios.editar(comentarioId, validarCuerpo(cuerpo), ahora);
+        const anterior = (await comentarios.obtener(comentarioId))!.cuerpo;
+        const nuevo = validarCuerpo(cuerpo);
+        await comentarios.editar(comentarioId, nuevo, ahora);
+        await auditoria.registrar({
+          accion: 'comentario.editar',
+          entidadId: comentarioId,
+          usuarioId: usuario.id,
+          dependenciaId: actual.ticket.dependenciaId,
+          cambios: calcularCambios({ cuerpo: anterior }, { cuerpo: nuevo }),
+          datos: { ticketId, interno: comentario.interno },
+        });
         return this.aDto((await comentarios.obtener(comentarioId))!, usuario, ahora);
       }),
     );

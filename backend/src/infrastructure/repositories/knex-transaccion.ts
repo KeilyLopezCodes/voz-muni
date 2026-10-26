@@ -58,7 +58,7 @@ export class KnexTransaccion implements Transaccion {
         destinatarios: new KnexDestinatariosRepository(trx),
         encuestas: new KnexEncuestaRepository(trx),
         catalogosAdmin: new KnexCatalogosAdminRepository(trx),
-        auditoria: new KnexAuditoria(trx, this.contexto),
+        auditoria: new KnexAuditoria(trx, this.contexto, this.db),
         parametros: new KnexParametroRepository(trx),
       }),
     );

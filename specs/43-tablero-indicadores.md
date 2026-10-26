@@ -1,6 +1,6 @@
 # SPEC 43 — Tablero de quejas e indicadores de SLA
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 08, SPEC 11, SPEC 14, SPEC 17, SPEC 21, SPEC 22, SPEC 27, SPEC 30, SPEC 32
 > **Fecha:** 2026-10-23
 > **Objetivo:** Mostrar en `/reportes`, a partir de `GET /api/v1/reportes/resumen`, cuántas quejas hay por estado, categoría, dependencia y zona entre dos fechas de registro, junto con los tiempos promedio de respuesta y de resolución en horas hábiles y el porcentaje de cumplimiento de SLA por dependencia y por categoría, siempre dentro del alcance de `reportes.ver`.

@@ -5,7 +5,7 @@ import request from 'supertest';
 import { createApp } from '../../src/app';
 import { buildContainer, type Container } from '../../src/container';
 import type { EnviadorCorreo, MensajeCorreo } from '../../src/domain/notificaciones/enviador-correo';
-import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
+import { createTestKnex, envDePrueba, reiniciarEsquema, vaciarBitacora } from './knex-test';
 
 const PASSWORD = 'Clave-registro-1';
 const MENSAJE = { mensaje: 'Revisa tu correo para continuar.' };
@@ -70,6 +70,7 @@ describe('API de registro /api/v1/auth/registro y /verificar', () => {
     await db('sesiones').delete();
     await db('restablecimientos').delete();
     await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
+    await vaciarBitacora(db); // la bitácora apunta a usuarios (SPEC 41 y 42)
     await db('usuarios').delete();
   });
 

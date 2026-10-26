@@ -9,6 +9,7 @@ export interface TicketParaAdjuntar {
   estado: EstadoTicket;
   solicitanteId: number;
   registradoPor: number | null;
+  dependenciaId: number | null; // la de la bitácora (SPEC 42)
 }
 
 export interface NuevoAdjunto {

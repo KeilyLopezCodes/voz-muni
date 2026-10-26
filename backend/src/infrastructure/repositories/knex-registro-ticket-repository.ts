@@ -74,7 +74,7 @@ export class KnexRegistroTicketRepository implements RegistroTicketRepository {
       const creado = { id, numero, creadoEn };
       await alRegistrar?.(creado, {
         correos: new KnexCorreoSalienteRepository(trx),
-        auditoria: new KnexAuditoria(trx, this.contexto),
+        auditoria: new KnexAuditoria(trx, this.contexto, this.db),
       });
       return creado;
     });

@@ -3,7 +3,7 @@ import type { Knex } from 'knex';
 import request from 'supertest';
 import { createApp } from '../../src/app';
 import { buildContainer, type Container } from '../../src/container';
-import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
+import { createTestKnex, envDePrueba, reiniciarEsquema, vaciarBitacora } from './knex-test';
 
 // Seeds de desarrollo compilados, como los ejecuta `npm run seed:dev`.
 const seedsDesarrolloDir = path.resolve(__dirname, '../../dist/infrastructure/database/seeds-desarrollo');
@@ -29,6 +29,7 @@ describe('Usuarios de desarrollo (seeds-desarrollo/06_usuarios)', () => {
     try {
       await db('sesiones').delete();
       await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
+      await vaciarBitacora(db); // la bitácora apunta a usuarios (SPEC 41 y 42)
       await db('usuarios').delete();
     } finally {
       await container.dispose();

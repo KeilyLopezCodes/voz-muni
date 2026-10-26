@@ -179,7 +179,12 @@ describe('Bitácora: cada acción sobre quejas y de administración (SPEC 41)', 
       expect(espera.detalle.datos).toEqual({ motivo: 'Una foto' });
 
       // El comentario en sí es de SPEC 42: aquí solo el cambio de estado, a nombre del vecino.
-      const [reanudar] = await registrosDe(() => api.post(`/tickets/${ticket}/comentarios`, { cuerpo: 'Aquí va', interno: false }, 'vecino'), 201);
+      // El comentario (SPEC 42) y el cambio de estado que provoca (SPEC 41).
+      const [comentario, reanudar] = await registrosDe(
+        () => api.post(`/tickets/${ticket}/comentarios`, { cuerpo: 'Aquí va', interno: false }, 'vecino'),
+        201,
+      );
+      expect(comentario).toMatchObject({ accion: 'comentario.crear', usuario_id: id('vecino') });
       expect(reanudar).toMatchObject({ accion: 'ticket.reanudar', usuario_id: id('vecino'), dependencia_id: id('obras') });
 
       const [resolver] = await registrosDe(() => transicion(ticket, { accion: 'resolver', descripcion: 'Se rellenó' }, 'tecnico'));

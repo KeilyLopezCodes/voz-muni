@@ -14,7 +14,9 @@ const TOKEN_INVALIDO = 'El enlace de recuperación no existe, venció o ya se us
 // Los enlaces que acepta /auth/restablecer. Los de verificación de correo van a /auth/verificar (SPEC 16).
 const TIPOS_RESTABLECER = ['recuperacion', 'invitacion'] as const;
 
-// Recuperación de contraseña por correo (RF-03).
+// Recuperación de contraseña por correo (RF-03). Bitácora (SPEC 42): password.solicitar solo para una cuenta que
+// recibe el enlace, y password.definir con el tipo del enlace (recuperación o invitación, SPEC 10 y 13); la sesión
+// que devuelve restablecer no deja además un sesion.iniciar.
 export class RecuperacionService {
   constructor(
     private readonly usuarios: UsuarioRepository,
@@ -37,18 +39,23 @@ export class RecuperacionService {
     }
 
     const ahora = this.clock.now();
-    // Solo sirve el último enlace pedido.
-    await this.restablecimientos.invalidarPendientes(usuario.id, ahora);
-    const token = this.tokens.generarRenovacion();
-    await this.restablecimientos.crear(usuario.id, this.tokens.hashRenovacion(token), 'recuperacion', ahora);
+    const correoId = await this.transaccion.ejecutar(async (repos) => {
+      // Solo sirve el último enlace pedido.
+      await repos.restablecimientos.invalidarPendientes(usuario.id, ahora);
+      const token = this.tokens.generarRenovacion();
+      await repos.restablecimientos.crear(usuario.id, this.tokens.hashRenovacion(token), 'recuperacion', ahora);
 
-    const enlace = `${this.appUrl}/restablecer?token=${token}`;
-    // Con el vencimiento del enlace: si no sale a tiempo, se descarta en lugar de enviarse (SPEC 34).
-    const correoId = await this.correo.encolar(
-      'recuperacion_password',
-      { nombre: usuario.nombre, enlace },
-      { para: email, usuarioId: usuario.id, expiraEn: new Date(ahora.getTime() + VIGENCIA_RESTABLECIMIENTO_MS.recuperacion) },
-    );
+      const enlace = `${this.appUrl}/restablecer?token=${token}`;
+      // Con el vencimiento del enlace: si no sale a tiempo, se descarta en lugar de enviarse (SPEC 34).
+      const id = await this.correo.encolar(
+        'recuperacion_password',
+        { nombre: usuario.nombre, enlace },
+        { para: email, usuarioId: usuario.id, expiraEn: new Date(ahora.getTime() + VIGENCIA_RESTABLECIMIENTO_MS.recuperacion) },
+        repos.correosSalientes,
+      );
+      await repos.auditoria.registrar({ accion: 'password.solicitar', entidadId: usuario.id, usuarioId: usuario.id, dependenciaId: null });
+      return id;
+    });
     await this.correo.despachar([correoId]);
   }
 
@@ -88,6 +95,13 @@ export class RecuperacionService {
       await repos.restablecimientos.marcarUsado(sigueVigente.id, ahora);
       // La única sesión viva queda siendo la nueva.
       await repos.sesiones.revocarTodasDelUsuario(usuario.id, ahora);
+      await repos.auditoria.registrar({
+        accion: 'password.definir',
+        entidadId: usuario.id,
+        usuarioId: usuario.id,
+        dependenciaId: null,
+        datos: { tipo: sigueVigente.tipo },
+      });
       return abrirSesion(this.tokens, repos.sesiones, datos, ahora);
     });
 

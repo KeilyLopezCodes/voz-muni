@@ -46,7 +46,14 @@ interface FilaRegistro {
 const CREADO_EN = "date_trunc('milliseconds', b.creado_en)";
 
 // La queja de un registro de queja o de su encuesta (su entidad_id es el id de la queja).
-const UNION_TICKET = `b.entidad IN ('ticket', 'encuesta') AND t.id = (CASE WHEN b.entidad_id ~ '^[0-9]+$' THEN b.entidad_id::bigint END)`;
+// El ticket de cada registro: su entidad_id en las quejas y encuestas, y detalle.datos.ticketId en los comentarios y
+// adjuntos (SPEC 42). Los CASE evitan convertir un texto que no es un número.
+const TICKET_DE_COMENTARIO = `(b.detalle -> 'datos' ->> 'ticketId')`;
+const UNION_TICKET = `t.id = (CASE
+  WHEN b.entidad IN ('ticket', 'encuesta') AND b.entidad_id ~ '^[0-9]+$' THEN b.entidad_id::bigint
+  WHEN b.entidad IN ('comentario', 'adjunto') AND ${TICKET_DE_COMENTARIO} ~ '^[0-9]+$' THEN ${TICKET_DE_COMENTARIO}::bigint
+END)`;
+const ID_POR_NUMERO = '(SELECT id::text FROM tickets WHERE numero = ?)';
 
 export class KnexBitacoraLecturaRepository implements BitacoraLecturaRepository {
   constructor(private readonly db: Knex) {}
@@ -102,7 +109,16 @@ export class KnexBitacoraLecturaRepository implements BitacoraLecturaRepository 
       consulta.where('b.usuario_id', criterios.usuarioId);
     }
     if (criterios.numero !== null) {
-      consulta.where('b.entidad', 'ticket').where('t.numero', criterios.numero);
+      // Todo lo que pasó en la queja: sus acciones y las de sus comentarios y adjuntos (SPEC 42). La comparación
+      // con el texto usa el índice de expresión bitacora_ticket_datos_idx (0035).
+      const numero = criterios.numero;
+      consulta.where((o) =>
+        o
+          .where((q) => q.where('b.entidad', 'ticket').whereRaw(`b.entidad_id = ${ID_POR_NUMERO}`, [numero]))
+          .orWhere((q) =>
+            q.whereIn('b.entidad', ['comentario', 'adjunto']).whereRaw(`${TICKET_DE_COMENTARIO} = ${ID_POR_NUMERO}`, [numero]),
+          ),
+      );
     }
     if (criterios.cursor !== null) {
       consulta.whereRaw(`(${CREADO_EN}, b.id) < (?, ?)`, [criterios.cursor.creadoEn, criterios.cursor.id]);

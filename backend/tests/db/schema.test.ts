@@ -1006,6 +1006,22 @@ describe('Esquema de base de datos', () => {
     });
   });
 
+  describe('bitácora por número de queja (0035)', () => {
+    it('crea el índice de expresión parcial sobre detalle.datos.ticketId; revertir 0035 lo quita', async () => {
+      const indice = () => db('pg_indexes').where({ tablename: 'bitacora', indexname: 'bitacora_ticket_datos_idx' }).first('indexdef');
+      const fila = await indice();
+      expect(fila?.indexdef).toMatch(/\(\(detalle -> 'datos'::text\) ->> 'ticketId'::text\)/);
+      expect(fila?.indexdef).toMatch(/WHERE.*comentario.*adjunto/);
+
+      await db.migrate.down({ name: '0035_bitacora_ticket_idx.js' });
+      try {
+        expect(await indice()).toBeUndefined();
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
   describe('catálogos administrables (0033)', () => {
     it('zonas.activa vale true por defecto', () =>
       withRollback(async (trx) => {

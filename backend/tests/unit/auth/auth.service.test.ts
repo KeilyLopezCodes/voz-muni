@@ -1,6 +1,7 @@
 import { AuthService } from '../../../src/application/services/auth.service';
 import { AutorizacionService } from '../../../src/application/services/autorizacion.service';
 import {
+  AuditoriaEnMemoria,
   DIA,
   HasherFalso,
   MINUTO,
@@ -8,6 +9,7 @@ import {
   RelojFalso,
   SesionesEnMemoria,
   TokensFalsos,
+  TransaccionEnMemoria,
   type UsuarioFalso,
   UsuariosEnMemoria,
   usuario,
@@ -19,12 +21,15 @@ function crearEscenario(filas: UsuarioFalso[] = [usuario()]) {
   const hasher = new HasherFalso();
   const tokens = new TokensFalsos();
   const reloj = new RelojFalso(new Date('2026-10-22T15:00:00.000Z'));
+  const auditoria = new AuditoriaEnMemoria();
+  const transaccion = new TransaccionEnMemoria({ usuarios, sesiones, auditoria });
   return {
     usuarios,
     sesiones,
     hasher,
     reloj,
-    auth: new AuthService(usuarios, sesiones, hasher, tokens, reloj),
+    auditoria,
+    auth: new AuthService(usuarios, sesiones, hasher, tokens, reloj, transaccion, auditoria),
     autorizacion: new AutorizacionService(usuarios, tokens, reloj),
   };
 }

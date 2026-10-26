@@ -5,7 +5,7 @@ import request from 'supertest';
 import { createApp } from '../../src/app';
 import { buildContainer, type Container } from '../../src/container';
 import type { EnviadorCorreo, MensajeCorreo } from '../../src/domain/notificaciones/enviador-correo';
-import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
+import { createTestKnex, envDePrueba, reiniciarEsquema, vaciarBitacora } from './knex-test';
 
 const PASSWORD = 'Clave-anterior-1';
 const NUEVA = 'Clave-nueva-2026';
@@ -64,6 +64,7 @@ describe('API de recuperación /api/v1/auth/recuperar y /restablecer', () => {
     await db('sesiones').delete();
     await db('restablecimientos').delete();
     await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
+    await vaciarBitacora(db); // la bitácora apunta a usuarios (SPEC 41 y 42)
     await db('usuarios').delete();
   });
 

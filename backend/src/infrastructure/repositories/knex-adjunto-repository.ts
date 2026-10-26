@@ -61,10 +61,11 @@ export class KnexAdjuntoRepository implements AdjuntoRepository {
     if (filtro === null) {
       return null;
     }
-    const fila: { id: string; estado: EstadoTicket; solicitante_id: string; registrado_por: string | null } | undefined =
-      await aplicarFiltro(this.db('tickets as t').where('t.id', id), filtro, COLUMNAS_TICKET, 't')
-        .forUpdate()
-        .first('t.id', 't.estado', 't.solicitante_id', 't.registrado_por');
+    const fila:
+      | { id: string; estado: EstadoTicket; solicitante_id: string; registrado_por: string | null; dependencia_id: string | null }
+      | undefined = await aplicarFiltro(this.db('tickets as t').where('t.id', id), filtro, COLUMNAS_TICKET, 't')
+      .forUpdate()
+      .first('t.id', 't.estado', 't.solicitante_id', 't.registrado_por', 't.dependencia_id');
     if (!fila) {
       return null;
     }
@@ -73,6 +74,7 @@ export class KnexAdjuntoRepository implements AdjuntoRepository {
       estado: fila.estado,
       solicitanteId: Number(fila.solicitante_id),
       registradoPor: fila.registrado_por === null ? null : Number(fila.registrado_por),
+      dependenciaId: fila.dependencia_id === null ? null : Number(fila.dependencia_id),
     };
   }
 

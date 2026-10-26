@@ -56,6 +56,8 @@ function montar({
           { accion: 'ticket.aceptar', entidad: 'ticket' },
           { accion: 'ticket.asignar', entidad: 'ticket' },
           { accion: 'zona.editar', entidad: 'zona' },
+          { accion: 'sesion.fallar', entidad: 'usuario' },
+          { accion: 'comentario.crear', entidad: 'comentario' },
         ],
       }),
     'GET /bitacora': (url) => respuesta(200, paginas[url.searchParams.get('cursor') ?? 'primera']),
@@ -187,6 +189,38 @@ describe('BitacoraPage', () => {
     await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(2))
     expect(ultimaConsulta(fetchMock).searchParams.get('cursor')).toBe('cursor-1')
     expect(screen.queryByRole('button', { name: textos.verMas })).not.toBeInTheDocument()
+  })
+
+  it('las acciones de SPEC 42 aparecen traducidas en el filtro y en la lista, con el motivo y la marca del comentario', async () => {
+    const fallo = registro(10, {
+      accion: 'sesion.fallar',
+      entidad: 'usuario',
+      entidadId: '7',
+      ticketNumero: null,
+      dependencia: null,
+      detalle: { datos: { motivo: 'password_incorrecta', intentos: 2 } },
+    })
+    const nota = registro(11, {
+      accion: 'comentario.crear',
+      entidad: 'comentario',
+      entidadId: '300',
+      ticketNumero: 'Q-2026-000015',
+      detalle: { datos: { ticketId: 15, interno: true, cuerpo: 'Revisado' } },
+    })
+    montar({ paginas: { primera: { datos: [fallo, nota], siguienteCursor: null } } })
+
+    const [tarjetaFallo, tarjetaNota] = await screen.findAllByRole('article')
+    expect(within(tarjetaFallo).getByRole('heading', { name: textos.acciones.sesion.fallar })).toBeInTheDocument()
+    expect(within(tarjetaFallo).getByText(`Motivo: ${textos.motivosFallo.password_incorrecta}`)).toBeInTheDocument()
+
+    expect(within(tarjetaNota).getByRole('heading', { name: textos.acciones.comentario.crear })).toBeInTheDocument()
+    expect(within(tarjetaNota).getByText(textos.registro.comentarioInterno)).toBeInTheDocument()
+    // El enlace va a la queja del comentario, no al id del comentario.
+    expect(within(tarjetaNota).getByRole('link', { name: 'Ver la queja Q-2026-000015' })).toHaveAttribute('href', '/tickets/15')
+
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: textos.filtros.acciones }))
+    expect(await screen.findByRole('option', { name: textos.acciones.sesion.fallar })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: textos.acciones.comentario.crear })).toBeInTheDocument()
   })
 
   it('sin registros muestra "No hay registros para estos filtros"', async () => {

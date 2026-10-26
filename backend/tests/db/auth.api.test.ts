@@ -4,7 +4,7 @@ import type { Knex } from 'knex';
 import request from 'supertest';
 import { createApp } from '../../src/app';
 import { buildContainer, type Container } from '../../src/container';
-import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
+import { createTestKnex, envDePrueba, reiniciarEsquema, vaciarBitacora } from './knex-test';
 
 const PASSWORD = 'Clave-de-prueba-1';
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
@@ -36,6 +36,7 @@ describe('API de autenticación /api/v1/auth', () => {
     try {
       await db('sesiones').delete();
       await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
+      await vaciarBitacora(db); // la bitácora apunta a usuarios (SPEC 41 y 42)
       await db('usuarios').delete();
     } finally {
       await container.dispose();
@@ -46,6 +47,7 @@ describe('API de autenticación /api/v1/auth', () => {
   beforeEach(async () => {
     await db('sesiones').delete();
     await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
+    await vaciarBitacora(db); // la bitácora apunta a usuarios (SPEC 41 y 42)
     await db('usuarios').delete();
   });
 
