@@ -41,7 +41,7 @@ export class AdjuntosService {
     const escritas: string[] = [];
     try {
       return await conReglasDeNegocio(() =>
-        this.transaccion.ejecutar(async ({ adjuntos }) => {
+        this.transaccion.ejecutar(async ({ adjuntos, auditoria }) => {
           // FOR UPDATE: dos subidas a la vez no se saltan el cupo.
           const ticket = await adjuntos.ticketParaAdjuntar(ticketId, filtro);
           if (!ticket) {
@@ -70,19 +70,33 @@ export class AdjuntosService {
           for (const [i, archivo] of archivos.entries()) {
             const ruta = await this.almacen.guardar(archivo.contenido);
             escritas.push(ruta);
-            ids.push(
-              await adjuntos.crear({
+            const id = await adjuntos.crear({
+              ticketId,
+              nombre: validados[i].nombre,
+              ruta,
+              mime: validados[i].mime,
+              tamanoBytes: archivo.contenido.length,
+              subidoPor: usuario.id,
+              interno,
+              origen,
+              creadoEn: ahora,
+            });
+            ids.push(id);
+            // Un registro por archivo (SPEC 42), con la dependencia de la queja.
+            await auditoria.registrar({
+              accion: 'adjunto.subir',
+              entidadId: id,
+              usuarioId: usuario.id,
+              dependenciaId: ticket.dependenciaId,
+              datos: {
                 ticketId,
                 nombre: validados[i].nombre,
-                ruta,
-                mime: validados[i].mime,
+                tipoMime: validados[i].mime,
                 tamanoBytes: archivo.contenido.length,
-                subidoPor: usuario.id,
                 interno,
                 origen,
-                creadoEn: ahora,
-              }),
-            );
+              },
+            });
           }
           const leidos = await adjuntos.listar(ticketId, true);
           return { adjuntos: leidos.filter((a) => ids.includes(a.id)).map((a) => this.aDto(a, usuario, ahora)) };
@@ -126,14 +140,21 @@ export class AdjuntosService {
   async borrar(usuario: UsuarioAutenticado, ticketId: number, adjuntoId: number): Promise<void> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.ver');
     const ruta = await conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ adjuntos }) => {
+      this.transaccion.ejecutar(async ({ adjuntos, auditoria }) => {
         const ticket = await adjuntos.ticketParaAdjuntar(ticketId, filtro);
         const adjunto = ticket ? await adjuntos.obtenerDelAutor(ticketId, adjuntoId, usuario.id) : null;
-        if (!adjunto) {
+        if (!ticket || !adjunto) {
           throw new ErrorDeAplicacion('NO_ENCONTRADO', `No existe el adjunto ${adjuntoId}`);
         }
         exigirBorrable(adjunto.creadoEn, this.clock.now());
         await adjuntos.borrar(adjunto.id);
+        await auditoria.registrar({
+          accion: 'adjunto.borrar',
+          entidadId: adjunto.id,
+          usuarioId: usuario.id,
+          dependenciaId: ticket.dependenciaId,
+          datos: { ticketId, nombre: adjunto.nombre, interno: adjunto.interno },
+        });
         return adjunto.ruta;
       }),
     );

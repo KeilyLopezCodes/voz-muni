@@ -483,8 +483,15 @@ export class EnviadorEnMemoria implements EnviadorCorreo {
 export class AuditoriaEnMemoria implements Auditoria {
   readonly eventos: EventoAuditoria[] = [];
 
+  // Los independientes (SPEC 42) se guardan aparte: sobreviven aunque la transacción del caso de uso falle.
+  readonly independientes: EventoAuditoria[] = [];
+
   async registrar(evento: EventoAuditoria): Promise<void> {
     this.eventos.push(evento);
+  }
+
+  async registrarIndependiente(evento: EventoAuditoria): Promise<void> {
+    this.independientes.push(evento);
   }
 }
 

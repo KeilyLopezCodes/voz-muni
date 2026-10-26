@@ -64,7 +64,7 @@ class AdjuntosEnMemoria implements AdjuntoRepository {
   fallarEnCrear: number | null = null; // número de inserción que falla
 
   agregarTicket(id: number, estado: EstadoTicket, registradoPor: number | null = 7): void {
-    this.tickets.set(id, { id, estado, solicitanteId: 7, registradoPor });
+    this.tickets.set(id, { id, estado, solicitanteId: 7, registradoPor, dependenciaId: 4 });
   }
 
   async ticketParaAdjuntar(id: number, filtro: FiltroTickets): Promise<TicketParaAdjuntar | null> {

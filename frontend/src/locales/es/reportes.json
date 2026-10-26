@@ -42,7 +42,10 @@
       "sinDetalle": "Este registro no tiene detalle.",
       "vacio": "—",
       "entidadConId": "{{entidad}} #{{id}}",
-      "verQueja": "Ver la queja {{numero}}"
+      "verQueja": "Ver la queja {{numero}}",
+      "motivo": "Motivo: {{motivo}}",
+      "comentarioInterno": "Nota interna",
+      "comentarioPublico": "Público"
     },
     "entidades": {
       "ticket": "Queja",
@@ -52,7 +55,9 @@
       "dependencia": "Dependencia",
       "categoria": "Categoría",
       "zona": "Zona",
-      "parametro": "Parámetro"
+      "parametro": "Parámetro",
+      "comentario": "Comentario",
+      "adjunto": "Adjunto"
     },
     "acciones": {
       "ticket": {
@@ -84,7 +89,9 @@
         "editar": "Editó un usuario",
         "activar": "Activó un usuario",
         "desactivar": "Desactivó un usuario",
-        "desbloquear": "Desbloqueó un usuario"
+        "desbloquear": "Desbloqueó un usuario",
+        "registrar": "Se registró en el portal",
+        "verificar_correo": "Verificó su correo"
       },
       "dependencia": {
         "crear": "Creó una dependencia",
@@ -104,7 +111,30 @@
       },
       "parametro": {
         "actualizar": "Cambió un parámetro"
+      },
+      "sesion": {
+        "iniciar": "Inicio de sesión",
+        "fallar": "Inicio de sesión fallido",
+        "bloquear": "Cuenta bloqueada por intentos",
+        "cerrar": "Cierre de sesión"
+      },
+      "password": {
+        "solicitar": "Pidió recuperar la contraseña",
+        "definir": "Definió su contraseña"
+      },
+      "comentario": {
+        "crear": "Comentó",
+        "editar": "Editó un comentario"
+      },
+      "adjunto": {
+        "subir": "Subió un adjunto",
+        "borrar": "Borró un adjunto"
       }
+    },
+    "motivosFallo": {
+      "password_incorrecta": "Contraseña incorrecta",
+      "cuenta_bloqueada": "Cuenta bloqueada",
+      "cuenta_inactiva": "Cuenta inactiva o sin contraseña"
     }
   }
 }

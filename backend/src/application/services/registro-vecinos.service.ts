@@ -1,3 +1,4 @@
+import { calcularCambios } from '../../domain/auditoria/saneamiento';
 import type { PasswordHasher } from '../../domain/auth/password-hasher';
 import { type TokenService, VIGENCIA_RESTABLECIMIENTO_MS } from '../../domain/auth/token-service';
 import { ReglaDeNegocioError } from '../../domain/errors/regla-de-negocio-error';
@@ -21,7 +22,8 @@ type Aviso =
   | { clave: 'cuenta_existente' | 'registro_no_completado'; usuarioId: number }
   | null;
 
-// Registro del vecino en el portal y verificación de su correo (RF-01, SPEC 16).
+// Registro del vecino en el portal y verificación de su correo (RF-01, SPEC 16). Bitácora (SPEC 42):
+// usuario.registrar solo cuando se crea una cuenta nueva, y usuario.verificar_correo; globales (sin dependencia).
 export class RegistroVecinosService {
   constructor(
     private readonly transaccion: Transaccion,
@@ -76,6 +78,14 @@ export class RegistroVecinosService {
     switch (decision.caso) {
       case 'nuevo': {
         const { id } = await repos.registroVecinos.crearPendiente(nuevo);
+        // El saneamiento enmascara el DPI, el teléfono y el correo, y nunca guarda la contraseña.
+        await repos.auditoria.registrar({
+          accion: 'usuario.registrar',
+          entidadId: id,
+          usuarioId: id,
+          dependenciaId: null,
+          cambios: calcularCambios(null, { nombre: nuevo.nombre, dpi: nuevo.dpi, email: nuevo.email, telefono: nuevo.telefono }),
+        });
         const token = this.tokens.generarRenovacion();
         await repos.restablecimientos.crear(id, this.tokens.hashRenovacion(token), 'verificacion', ahora);
         return { clave: 'verificacion_correo', usuarioId: id, nombre: nuevo.nombre, token };
@@ -127,6 +137,7 @@ export class RegistroVecinosService {
       }
       await repos.registroVecinos.marcarVerificado(usuario.id, ahora);
       await repos.restablecimientos.marcarUsado(vigente.id, ahora);
+      await repos.auditoria.registrar({ accion: 'usuario.verificar_correo', entidadId: usuario.id, usuarioId: usuario.id, dependenciaId: null });
     });
   }
 }

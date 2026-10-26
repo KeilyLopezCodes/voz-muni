@@ -41,6 +41,7 @@ import type { EnviadorCorreo } from './domain/notificaciones/enviador-correo';
 import type { BitacoraLecturaRepository } from './domain/repositories/bitacora-lectura-repository';
 import type { ReporteLecturaRepository } from './domain/repositories/reporte-lectura-repository';
 import { ContextoSolicitudAls } from './infrastructure/auditoria/contexto-solicitud-als';
+import { KnexAuditoria } from './infrastructure/auditoria/knex-auditoria';
 import { BcryptPasswordHasher } from './infrastructure/auth/bcrypt-password-hasher';
 import { JwtTokenService } from './infrastructure/auth/jwt-token-service';
 import { SystemClock } from './infrastructure/clock/system-clock';
@@ -165,6 +166,8 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
   // La IP de cada petición para la bitácora (SPEC 41): el middleware la pone, KnexAuditoria la lee.
   const contextoSolicitud = new ContextoSolicitudAls();
   const transaccion = new KnexTransaccion(db, contextoSolicitud);
+  // Fuera de una transacción, para los eventos de fallo (SPEC 42: registrarIndependiente).
+  const auditoria = new KnexAuditoria(db, contextoSolicitud, db, (mensaje) => console.error(mensaje));
   const vecinos = new KnexVecinoRepository(db);
   const catalogo = new KnexCatalogoLecturaRepository(db);
   const parametros = new ParametrosService(new KnexParametroRepository(db), transaccion);
@@ -233,7 +236,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     bitacoraService: new BitacoraService(new KnexBitacoraLecturaRepository(db), clock),
     encuestasService: new EncuestasService(transaccion, new KnexParametroRepository(db), clock, notificacionesInternas),
     healthService: new HealthService(clock, new KnexDatabaseHealthCheck(db)),
-    authService: new AuthService(usuarios, sesiones, hasher, tokens, clock),
+    authService: new AuthService(usuarios, sesiones, hasher, tokens, clock, transaccion, auditoria),
     autorizacionService: new AutorizacionService(usuarios, tokens, clock),
     recuperacionService: new RecuperacionService(
       usuarios,

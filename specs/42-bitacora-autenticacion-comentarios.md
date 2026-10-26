@@ -1,6 +1,6 @@
 # SPEC 42 — Bitácora de autenticación, comentarios y adjuntos
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** SPEC 08, SPEC 09, SPEC 10, SPEC 13, SPEC 16, SPEC 23, SPEC 24, SPEC 41
 > **Fecha:** 2026-10-23
 > **Objetivo:** Completar RF-42 registrando en la bitácora de SPEC 41 los inicios de sesión (correctos, fallidos y bloqueos), los cierres de sesión, la recuperación y definición de contraseñas, el registro y la verificación de vecinos, y la creación y edición de comentarios y la subida y el borrado de adjuntos, con escrituras independientes para los eventos de fallo.

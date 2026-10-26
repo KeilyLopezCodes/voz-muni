@@ -1,6 +1,7 @@
 import type { Knex } from 'knex';
 import type { AccionBitacora } from '../../src/domain/auditoria/acciones';
 import { ContextoSolicitudAls } from '../../src/infrastructure/auditoria/contexto-solicitud-als';
+import { KnexAuditoria } from '../../src/infrastructure/auditoria/knex-auditoria';
 import { KnexTransaccion } from '../../src/infrastructure/repositories/knex-transaccion';
 import { createTestKnex, reiniciarEsquema } from './knex-test';
 
@@ -42,7 +43,7 @@ describe('Auditoria (SPEC 41)', () => {
 
   it('una acción fuera del catálogo lanza un error y no guarda nada', async () => {
     const antes = await db('bitacora').count({ total: '*' });
-    await expect(registrar('sesion.iniciar' as AccionBitacora)).rejects.toThrow('Acción de bitácora desconocida');
+    await expect(registrar('sesion.renovar' as AccionBitacora)).rejects.toThrow('Acción de bitácora desconocida');
     expect(await db('bitacora').count({ total: '*' })).toEqual(antes);
   });
 
@@ -72,5 +73,45 @@ describe('Auditoria (SPEC 41)', () => {
       datos: { motivo: `${'x'.repeat(200)}…` },
     });
     expect(JSON.stringify(detalle)).not.toContain('secreto');
+  });
+
+  describe('registrarIndependiente (SPEC 42)', () => {
+    it('se confirma aunque la transacción del llamador se revierta, con la IP del contexto', async () => {
+      await expect(
+        contexto.ejecutar('10.9.9.9', () =>
+          transaccion.ejecutar(async ({ auditoria }) => {
+            await auditoria.registrarIndependiente({
+              accion: 'sesion.fallar',
+              entidadId: 3,
+              usuarioId: null,
+              dependenciaId: null,
+              datos: { motivo: 'password_incorrecta', intentos: 2 },
+            });
+            throw new Error('revertir');
+          }),
+        ),
+      ).rejects.toThrow('revertir');
+
+      expect(await ultimo()).toMatchObject({
+        accion: 'sesion.fallar',
+        entidad: 'usuario',
+        entidad_id: '3',
+        ip: '10.9.9.9',
+        detalle: { datos: { motivo: 'password_incorrecta', intentos: 2 } },
+      });
+    });
+
+    it('con la base de la bitácora fallando no lanza y escribe en el log', async () => {
+      const caida = createTestKnex();
+      await caida.destroy();
+      const errores: string[] = [];
+      const auditoria = new KnexAuditoria(caida, contexto, caida, (mensaje) => errores.push(mensaje));
+
+      await expect(
+        auditoria.registrarIndependiente({ accion: 'sesion.bloquear', entidadId: 3, usuarioId: 3, dependenciaId: null }),
+      ).resolves.toBeUndefined();
+      expect(errores).toHaveLength(1);
+      expect(errores[0]).toMatch(/^No se pudo registrar sesion\.bloquear en la bitácora \(usuario 3\)/);
+    });
   });
 });

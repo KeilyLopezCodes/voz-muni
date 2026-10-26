@@ -35,7 +35,20 @@ export const ACCIONES_BITACORA = {
   'zona.editar': { entidad: 'zona' },
   'politica_sla.reemplazar': { entidad: 'categoria' }, // SPEC 29
   'parametro.actualizar': { entidad: 'parametro' }, // SPEC 15
-  // Reservadas para SPEC 42: sesion.*, usuario.registrar, password.*, comentario.*, adjunto.*
+  // Autenticación (SPEC 42): globales, con dependencia_id NULL
+  'sesion.iniciar': { entidad: 'usuario' }, // SPEC 08
+  'sesion.fallar': { entidad: 'usuario' }, // escritura independiente
+  'sesion.bloquear': { entidad: 'usuario' }, // escritura independiente (RNF-09)
+  'sesion.cerrar': { entidad: 'usuario' },
+  'password.solicitar': { entidad: 'usuario' }, // SPEC 09
+  'password.definir': { entidad: 'usuario' }, // SPEC 09, 10 y 13 (recuperación o invitación)
+  'usuario.registrar': { entidad: 'usuario' }, // SPEC 16
+  'usuario.verificar_correo': { entidad: 'usuario' },
+  // Comentarios y adjuntos (SPEC 42): con detalle.datos.ticketId
+  'comentario.crear': { entidad: 'comentario' }, // SPEC 23
+  'comentario.editar': { entidad: 'comentario' },
+  'adjunto.subir': { entidad: 'adjunto' }, // SPEC 24
+  'adjunto.borrar': { entidad: 'adjunto' },
 } as const;
 
 export type AccionBitacora = keyof typeof ACCIONES_BITACORA;

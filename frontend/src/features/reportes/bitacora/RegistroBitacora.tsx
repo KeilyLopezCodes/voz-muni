@@ -4,6 +4,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
+import Chip from '@mui/material/Chip'
 import Collapse from '@mui/material/Collapse'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
@@ -32,6 +33,15 @@ function valorLegible(valor: unknown, vacio: string): string {
 
 const celda = { overflowWrap: 'anywhere', verticalAlign: 'top' } as const
 
+// El id de la queja para el enlace: su entidad_id, o detalle.datos.ticketId en comentarios y adjuntos (SPEC 42).
+function idDeLaQueja(registro: Registro): string | null {
+  if (registro.entidad === 'comentario' || registro.entidad === 'adjunto') {
+    const ticketId = registro.detalle.datos?.ticketId
+    return typeof ticketId === 'number' || typeof ticketId === 'string' ? String(ticketId) : null
+  }
+  return registro.entidadId
+}
+
 // Un registro de la bitácora (SPEC 41): fecha en Guatemala, quién (o "VozMuni" para el sistema), la acción traducida,
 // la entidad y la dependencia. Al expandirlo, los cambios "Campo · Antes · Después", los datos y la IP.
 export function RegistroBitacora({ registro, onFiltrarUsuario }: Props) {
@@ -43,6 +53,9 @@ export function RegistroBitacora({ registro, onFiltrarUsuario }: Props) {
   const datos = Object.entries(registro.detalle.datos ?? {})
   const accion = t(`bitacora.acciones.${registro.accion}`, { defaultValue: registro.accion })
   const entidad = t(`bitacora.entidades.${registro.entidad}`, { defaultValue: registro.entidad })
+  const quejaId = idDeLaQueja(registro)
+  const motivoFallo = registro.accion === 'sesion.fallar' ? registro.detalle.datos?.motivo : undefined
+  const interno = registro.entidad === 'comentario' ? registro.detalle.datos?.interno : undefined
 
   return (
     <Card variant="outlined" component="article" aria-label={`${accion} · ${fechaHoraGuatemala(registro.creadoEn, i18n.language)}`}>
@@ -73,10 +86,10 @@ export function RegistroBitacora({ registro, onFiltrarUsuario }: Props) {
           <Typography variant="body2" color="text.secondary">
             ·
           </Typography>
-          {registro.ticketNumero !== null && registro.entidadId !== null ? (
+          {registro.ticketNumero !== null && quejaId !== null ? (
             <Link
               component={RouterLink}
-              to={`/tickets/${registro.entidadId}`}
+              to={`/tickets/${quejaId}`}
               variant="body2"
               aria-label={t('bitacora.registro.verQueja', { numero: registro.ticketNumero })}
             >
@@ -91,6 +104,21 @@ export function RegistroBitacora({ registro, onFiltrarUsuario }: Props) {
         <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
           {registro.dependencia?.nombre ?? t('bitacora.registro.sinDependencia')}
         </Typography>
+        {typeof motivoFallo === 'string' && (
+          <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+            {t('bitacora.registro.motivo', {
+              motivo: t(`bitacora.motivosFallo.${motivoFallo}`, { defaultValue: motivoFallo }),
+            })}
+          </Typography>
+        )}
+        {typeof interno === 'boolean' && (
+          <Chip
+            size="small"
+            variant="outlined"
+            label={interno ? t('bitacora.registro.comentarioInterno') : t('bitacora.registro.comentarioPublico')}
+            sx={{ mt: 0.5 }}
+          />
+        )}
 
         <Button
           size="small"
