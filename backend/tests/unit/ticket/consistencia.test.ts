@@ -33,6 +33,8 @@ function ticketEn(estado: EstadoTicket): Ticket {
     asignadoA: 9,
     prioridad: 'media',
     escalado: false,
+    escaladoEn: null,
+    escaladoPor: null,
     resueltoEn: null,
     cerradoEn: null,
     resolucion: null,

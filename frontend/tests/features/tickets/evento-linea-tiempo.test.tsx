@@ -55,6 +55,11 @@ describe('EventoLineaTiempo', () => {
     ['un comentario', { tipo: 'comentario', comentarioId: 9, interno: false }, 'Tomás Pérez (Técnico) comentó'],
     ['una nota interna', { tipo: 'comentario', comentarioId: 9, interno: true }, 'Tomás Pérez (Técnico) agregó una nota interna'],
     ['un adjunto', { tipo: 'adjunto', adjuntoId: 4, nombre: 'foto.jpg', interno: false }, 'Tomás Pérez (Técnico) adjuntó foto.jpg'],
+    [
+      'un escalamiento (SPEC 32)',
+      { tipo: 'escalamiento', plazo: 'resolucion' },
+      'VozMuni escaló la queja por vencer el plazo de resolución',
+    ],
   ])('%s muestra su frase traducida', (_caso, detalle, texto) => {
     montar(evento(detalle))
     expect(screen.getByText(texto)).toBeInTheDocument()

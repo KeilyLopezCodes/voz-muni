@@ -53,6 +53,13 @@ export const RUTAS_PROTEGIDAS: readonly RutaProtegida[] = [
     enMenu: true,
   },
   {
+    // Escalamientos (SPEC 32): quien tiene tickets.triage, hoy el supervisor.
+    path: '/escaladas',
+    roles: ['supervisor'],
+    etiqueta: 'comun:menu.escaladas',
+    enMenu: true,
+  },
+  {
     path: '/reportes',
     roles: ['tecnico', 'coordinador', 'supervisor', 'administrador'],
     etiqueta: 'comun:menu.reportes',

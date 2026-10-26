@@ -1,6 +1,6 @@
 # SPEC 32 — Escalamiento automático al vencer el SLA
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 04, SPEC 19, SPEC 21, SPEC 28, SPEC 30, SPEC 31
 > **Fecha:** 2026-10-23
 > **Objetivo:** Marcar como escalada, con fecha y plazo, toda queja activa cuyo plazo de primera respuesta o de resolución venció, notificar a quienes tienen `tickets.triage` desde el mismo job de SLA de SPEC 31, y darle al supervisor la bandeja `/escaladas`, con el evento en la línea de tiempo interna.

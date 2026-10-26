@@ -1,8 +1,9 @@
 import type { Rol } from '../auth/roles';
 import type { EstadoTicket } from '../ticket/estado-ticket';
+import type { TipoPlazo } from '../ticket/ticket';
 
 // Línea de tiempo de la queja (RF-25, SPEC 28). No tiene tabla propia: se lee en vivo de ticket_historial,
-// ticket_asignaciones, solicitudes_traslado, comentarios y adjuntos.
+// ticket_asignaciones, solicitudes_traslado, comentarios, adjuntos y el escalamiento vigente de tickets (SPEC 32).
 
 export type TipoEvento =
   | 'estado'
@@ -12,7 +13,8 @@ export type TipoEvento =
   | 'traslado_retirado'
   | 'traslado_sin_efecto'
   | 'comentario'
-  | 'adjunto';
+  | 'adjunto'
+  | 'escalamiento'; // SPEC 32, solo en la vista interna
 
 export type ActorEvento =
   | { tipo: 'usuario'; id: number; nombre: string; rol: Rol; esSolicitante: boolean } // vista interna
@@ -41,7 +43,8 @@ export type DetalleEvento =
       motivo: string | null;
     }
   | { tipo: 'comentario'; comentarioId: number; interno: boolean }
-  | { tipo: 'adjunto'; adjuntoId: number; nombre: string; interno: boolean };
+  | { tipo: 'adjunto'; adjuntoId: number; nombre: string; interno: boolean }
+  | { tipo: 'escalamiento'; plazo: TipoPlazo };
 
 export interface EventoLineaTiempo {
   id: string; // `${tipo}:${idDeOrigen}`, único dentro de la queja

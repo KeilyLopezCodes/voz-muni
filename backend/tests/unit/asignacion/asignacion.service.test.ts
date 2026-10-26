@@ -55,6 +55,8 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
         asignadoA,
         prioridad: 'media',
         escalado: false,
+        escaladoEn: null,
+        escaladoPor: null,
         resueltoEn: null,
         cerradoEn: null,
         resolucion: null,
@@ -134,7 +136,7 @@ class BandejaFalsa implements PorAsignarLecturaRepository {
       zona: { id: 1, nombre: 'Zona 1', tipo: 'zona' },
       tecnico: null,
       creadoEn: AHORA,
-      sla: { venceRespuesta: AHORA, primeraRespuestaEn: null, venceResolucion: null, restanteMinutosEnPausa: null },
+      sla: { venceRespuesta: AHORA, primeraRespuestaEn: null, venceResolucion: null, restanteMinutosEnPausa: null, escalado: false, escaladoEn: null, escaladoPor: null },
     };
     return { datos: [ticket], pagina, tamano, total: 1 };
   }

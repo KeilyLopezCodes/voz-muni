@@ -20,6 +20,7 @@ const ACCESO: Record<string, { roles: readonly Rol[]; titulo: string; tituloPorR
   '/triage': { roles: ['supervisor'], titulo: tickets.triage.titulo },
   '/asignacion': { roles: ['coordinador', 'supervisor'], titulo: tickets.asignacion.titulo },
   '/traslados': { roles: ['supervisor'], titulo: tickets.traslados.titulo },
+  '/escaladas': { roles: ['supervisor'], titulo: tickets.escaladas.titulo },
   '/atencion': { roles: ['tecnico', 'coordinador', 'supervisor'], titulo: tickets.atencion.titulo },
   '/reportes': {
     roles: ['tecnico', 'coordinador', 'supervisor', 'administrador'],

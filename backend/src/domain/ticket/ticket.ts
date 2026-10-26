@@ -7,6 +7,9 @@ import { esFinal, type EstadoTicket } from './estado-ticket';
 import { esPrioridad, type Prioridad } from './prioridad';
 import type { RegistroHistorial } from './registro-historial';
 
+// Los dos plazos del SLA (SPEC 30): la primera respuesta y la resolución.
+export type TipoPlazo = 'respuesta' | 'resolucion';
+
 export interface TicketProps {
   readonly id: number;
   readonly numero: string;
@@ -15,6 +18,8 @@ export interface TicketProps {
   readonly asignadoA: number | null;
   readonly prioridad: Prioridad | null;
   readonly escalado: boolean;
+  readonly escaladoEn: Date | null; // cuándo venció el plazo que la escaló (SPEC 32)
+  readonly escaladoPor: TipoPlazo | null; // qué plazo venció
   readonly resueltoEn: Date | null;
   readonly cerradoEn: Date | null;
   readonly resolucion: string | null; // descripción de la resolución vigente, recortada (SPEC 26)
@@ -133,6 +138,14 @@ export class Ticket {
 
   get escalado(): boolean {
     return this.props.escalado;
+  }
+
+  get escaladoEn(): Date | null {
+    return this.props.escaladoEn;
+  }
+
+  get escaladoPor(): TipoPlazo | null {
+    return this.props.escaladoPor;
   }
 
   get resueltoEn(): Date | null {
@@ -268,7 +281,8 @@ export class Ticket {
     });
   }
 
-  // Vuelve al mismo técnico y reinicia el plazo de resolución, por eso limpia resueltoEn y escalado. La resolución
+  // Vuelve al mismo técnico y reinicia el plazo de resolución, por eso limpia resueltoEn y la marca de escalada
+  // con su fecha y su plazo (SPEC 32). La resolución
   // deja de estar vigente: el historial la conserva (SPEC 26). Suma una reapertura y limpia el plazo de
   // confirmación; el límite se revisa después del estado y del plazo (SPEC 27).
   reabrir(
@@ -294,21 +308,24 @@ export class Ticket {
           confirmacionVenceEn: null,
           reaperturas: this.reaperturas + 1,
           escalado: false,
+          escaladoEn: null,
+          escaladoPor: null,
         },
         motivo: motivoRecortado,
       };
     });
   }
 
-  // Escalada es una marca, no un estado: no genera historial. Cuándo se marca lo decide la spec de SLA.
-  marcarEscalado(): Ticket {
+  // Escalada es una marca, no un estado: no genera historial. La marca el job de SLA al vencer un plazo (SPEC 32);
+  // si ya estaba escalada, conserva la fecha y el plazo originales.
+  marcarEscalado(ahora: Date, plazo: TipoPlazo): Ticket {
     if (esFinal(this.estado)) {
       throw new ReglaDeNegocioError(
         'OPERACION_NO_PERMITIDA',
         `No se puede escalar una queja en estado final ${this.estado}`,
       );
     }
-    return this.escalado ? this : new Ticket({ ...this.props, escalado: true });
+    return this.escalado ? this : new Ticket({ ...this.props, escalado: true, escaladoEn: ahora, escaladoPor: plazo });
   }
 
   // Orden de validación de la SPEC 04: primero el estado de origen, después los datos.

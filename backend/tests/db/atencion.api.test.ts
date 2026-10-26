@@ -187,7 +187,7 @@ describe('Atención de la queja (SPEC 22)', () => {
         trasladoPendiente: false,
         creadoEn: expect.stringMatching(/Z$/),
         // Insertada sin aceptar por el triage: sin vencimientos (SPEC 30).
-        sla: { venceRespuesta: null, primeraRespuestaEn: null, venceResolucion: null, pausado: false, restanteMinutosEnPausa: null },
+        sla: { venceRespuesta: null, primeraRespuestaEn: null, venceResolucion: null, pausado: false, restanteMinutosEnPausa: null, escalado: false, escaladoEn: null, escaladoPor: null },
       });
       const texto = JSON.stringify(res.body);
       expect(texto).not.toContain('vecino@atencion.test');

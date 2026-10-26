@@ -5,6 +5,7 @@ import { KnexAlertasSlaRepository } from './knex-alertas-sla-repository';
 import { KnexAsignacionRepository } from './knex-asignacion-repository';
 import { KnexCategoriaAdminRepository } from './knex-categoria-admin-repository';
 import { KnexComentarioRepository } from './knex-comentario-repository';
+import { KnexEscalamientoRepository } from './knex-escalamiento-repository';
 import { KnexNotificacionRepository } from './knex-notificacion-repository';
 import { KnexPoliticaSlaRepository } from './knex-politica-sla-repository';
 import { KnexRegistroVecinoRepository } from './knex-registro-vecino-repository';
@@ -38,6 +39,7 @@ export class KnexTransaccion implements Transaccion {
         politicasSla: new KnexPoliticaSlaRepository(trx),
         alertasSla: new KnexAlertasSlaRepository(trx),
         notificaciones: new KnexNotificacionRepository(trx),
+        escalamiento: new KnexEscalamientoRepository(trx),
       }),
     );
   }

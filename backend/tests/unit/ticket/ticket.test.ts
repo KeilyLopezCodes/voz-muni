@@ -15,6 +15,8 @@ const BASE: TicketProps = {
   asignadoA: null,
   prioridad: null,
   escalado: false,
+  escaladoEn: null,
+  escaladoPor: null,
   resueltoEn: null,
   cerradoEn: null,
   resolucion: null,
@@ -329,6 +331,8 @@ describe('Ticket', () => {
         asignadoA: 9,
         prioridad: 'media',
         escalado: true,
+        escaladoEn: new Date('2026-10-21T15:00:00.000Z'),
+        escaladoPor: 'respuesta',
         resueltoEn: new Date('2026-10-22T10:00:00.000Z'),
         resolucion: 'Se cambió la lámpara',
         resueltoPor: 9,
@@ -414,6 +418,9 @@ describe('Ticket', () => {
         expect(ticket.resolucion).toBeNull();
         expect(ticket.resueltoPor).toBeNull();
         expect(ticket.escalado).toBe(false);
+        // SPEC 32: también la fecha y el plazo del escalamiento.
+        expect(ticket.escaladoEn).toBeNull();
+        expect(ticket.escaladoPor).toBeNull();
         expect(historial).toMatchObject({
           estadoAnterior: 'resuelta',
           estadoNuevo: 'en_proceso',
@@ -461,22 +468,30 @@ describe('Ticket', () => {
   });
 
   describe('marcarEscalado', () => {
-    it.each(otrosEstados('rechazada', 'cerrada'))('en %s marca escalado sin cambiar de estado', (estado) => {
+    const VENCIO = new Date('2026-11-03T15:00:00.000Z');
+
+    it.each(otrosEstados('rechazada', 'cerrada'))('en %s marca escalado con la fecha y el plazo, sin cambiar de estado', (estado) => {
       const original = ticketEn(estado);
-      const ticket = original.marcarEscalado();
+      const ticket = original.marcarEscalado(VENCIO, 'resolucion');
 
       expect(ticket.escalado).toBe(true);
+      expect(ticket.escaladoEn).toEqual(VENCIO);
+      expect(ticket.escaladoPor).toBe('resolucion');
       expect(ticket.estado).toBe(estado);
       expect(original.escalado).toBe(false);
+      expect(original.escaladoEn).toBeNull();
     });
 
-    it('es idempotente', () => {
-      const ticket = ticketEn('en_proceso').marcarEscalado().marcarEscalado();
-      expect(ticket.escalado).toBe(true);
+    it('marcar dos veces conserva la fecha y el plazo originales', () => {
+      const primera = ticketEn('en_proceso').marcarEscalado(VENCIO, 'respuesta');
+      const segunda = primera.marcarEscalado(new Date('2026-11-04T15:00:00.000Z'), 'resolucion');
+      expect(segunda).toBe(primera);
+      expect(segunda.escaladoEn).toEqual(VENCIO);
+      expect(segunda.escaladoPor).toBe('respuesta');
     });
 
     it.each<EstadoTicket>(['rechazada', 'cerrada'])('en %s lanza OPERACION_NO_PERMITIDA', (estado) => {
-      esperarRegla(() => ticketEn(estado).marcarEscalado(), 'OPERACION_NO_PERMITIDA');
+      esperarRegla(() => ticketEn(estado).marcarEscalado(VENCIO, 'respuesta'), 'OPERACION_NO_PERMITIDA');
     });
   });
 

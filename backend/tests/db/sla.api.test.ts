@@ -409,6 +409,9 @@ describe('Vencimientos del SLA (SPEC 30)', () => {
         venceResolucion: null,
         pausado: true,
         restanteMinutosEnPausa: 2340,
+        escalado: false,
+        escaladoEn: null,
+        escaladoPor: null,
       };
 
       const porAsignar = await obtener('coordinador', '/tickets/por-asignar?vista=abiertas&tamano=50', ahora);

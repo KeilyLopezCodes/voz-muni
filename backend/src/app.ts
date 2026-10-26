@@ -6,6 +6,7 @@ import { AuthController } from './presentation/controllers/auth.controller';
 import { CamposExtraController } from './presentation/controllers/campos-extra.controller';
 import { CatalogosController } from './presentation/controllers/catalogos.controller';
 import { ComentariosController } from './presentation/controllers/comentarios.controller';
+import { EscaladasController } from './presentation/controllers/escaladas.controller';
 import { NotificacionesController } from './presentation/controllers/notificaciones.controller';
 import { ParametrosController } from './presentation/controllers/parametros.controller';
 import { PoliticasSlaController } from './presentation/controllers/politicas-sla.controller';
@@ -28,6 +29,7 @@ import { authRoutes } from './presentation/routes/auth.routes';
 import { camposExtraRoutes } from './presentation/routes/campos-extra.routes';
 import { catalogosRoutes } from './presentation/routes/catalogos.routes';
 import { comentariosRoutes } from './presentation/routes/comentarios.routes';
+import { escaladasRoutes } from './presentation/routes/escaladas.routes';
 import { notificacionesRoutes } from './presentation/routes/notificaciones.routes';
 import { parametrosRoutes } from './presentation/routes/parametros.routes';
 import { politicasSlaRoutes } from './presentation/routes/politicas-sla.routes';
@@ -83,6 +85,10 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1/tickets',
     adjuntosRoutes(new AdjuntosController(container.adjuntosService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1/tickets',
+    escaladasRoutes(new EscaladasController(container.escaladasService), autenticar(container.autorizacionService)),
   );
   // Después de los routers con rutas fijas bajo /api/v1/tickets: su GET /:id las taparía (SPEC 25).
   app.use(

@@ -1,6 +1,7 @@
 import AttachFileRounded from '@mui/icons-material/AttachFileRounded'
 import ChatBubbleOutlineRounded from '@mui/icons-material/ChatBubbleOutlineRounded'
 import FlagRounded from '@mui/icons-material/FlagRounded'
+import NotificationImportantRounded from '@mui/icons-material/NotificationImportantRounded'
 import PersonAddAltRounded from '@mui/icons-material/PersonAddAltRounded'
 import SwapHorizRounded from '@mui/icons-material/SwapHorizRounded'
 import Box from '@mui/material/Box'
@@ -22,6 +23,7 @@ const ICONO: Record<Evento['detalle']['tipo'], ReactElement> = {
   traslado_sin_efecto: <SwapHorizRounded fontSize="small" />,
   comentario: <ChatBubbleOutlineRounded fontSize="small" />,
   adjunto: <AttachFileRounded fontSize="small" />,
+  escalamiento: <NotificationImportantRounded fontSize="small" />,
 }
 
 type T = (clave: string, opciones?: Record<string, unknown>) => string
@@ -93,6 +95,9 @@ function frase({ actor: quien, detalle }: Evento, t: T): Frase {
         enlace: { href: `#comentario-${detalle.comentarioId}`, texto: t('lineaTiempo.verComentario') },
         interno: detalle.interno,
       }
+    case 'escalamiento':
+      // La frase ya nombra a VozMuni, el actor de las acciones del sistema.
+      return { ...base, texto: t('lineaTiempo.eventos.escalamiento', { plazo: t(`plazos.${detalle.plazo}`) }) }
     case 'adjunto':
       return {
         ...base,

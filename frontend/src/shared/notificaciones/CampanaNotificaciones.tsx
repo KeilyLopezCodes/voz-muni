@@ -22,7 +22,7 @@ import {
 } from './notificaciones-api'
 
 const ZONA_HORARIA = 'America/Guatemala'
-const TIPOS_CONOCIDOS = ['sla_alerta_respuesta', 'sla_alerta_resolucion']
+const TIPOS_CONOCIDOS = ['sla_alerta_respuesta', 'sla_alerta_resolucion', 'sla_escalamiento']
 
 type T = (clave: string, opciones?: Record<string, unknown>) => string
 
@@ -38,6 +38,8 @@ export function textoNotificacion(notificacion: Notificacion, t: T, idioma: stri
   return t(`notificaciones.tipos.${notificacion.tipo}`, {
     numero: notificacion.ticket?.numero ?? '',
     umbral: notificacion.datos.umbral,
+    // sla_escalamiento (SPEC 32): qué plazo venció.
+    plazo: typeof notificacion.datos.plazo === 'string' ? t(`notificaciones.plazos.${notificacion.datos.plazo}`) : '',
     fecha,
   })
 }
