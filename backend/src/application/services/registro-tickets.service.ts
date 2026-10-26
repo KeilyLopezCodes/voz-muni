@@ -67,7 +67,16 @@ export class RegistroTicketsService {
       const creado = await this.registros.registrar(
         registro,
         (campos) => validarDatosExtra(campos, datos.datosExtra, hoy),
-        async (nuevo, correos) => {
+        async (nuevo, { correos, auditoria }) => {
+          // La bitácora, en la transacción del registro (SPEC 41). Todavía no tiene dependencia.
+          await auditoria.registrar({
+            accion: 'ticket.registrar',
+            entidadId: nuevo.id,
+            usuarioId: usuario.id,
+            dependenciaId: null,
+            cambios: { estado: { antes: null, despues: 'nueva' } },
+            datos: { canal, categoriaId: datos.categoriaId },
+          });
           if (solicitante.email) {
             correoId = await this.correo.encolar(
               'queja_registrada',

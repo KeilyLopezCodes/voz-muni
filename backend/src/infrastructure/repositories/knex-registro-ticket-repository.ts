@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import type { ContextoSolicitud } from '../../domain/auditoria/contexto-solicitud';
 import { ReglaDeNegocioError } from '../../domain/errors/regla-de-negocio-error';
 import type { CampoExtra } from '../../domain/categorias/campo-extra';
 import type {
@@ -10,11 +11,15 @@ import type {
 import { anioGuatemala, formatearNumero, MAX_CORRELATIVO } from '../../domain/ticket/numero-ticket';
 import type { TicketRegistrado } from '../../domain/ticket/ticket';
 import { KnexCorreoSalienteRepository } from './knex-correo-saliente-repository';
+import { KnexAuditoria } from '../auditoria/knex-auditoria';
 
 const CHECK_VIOLATION = '23514';
 
 export class KnexRegistroTicketRepository implements RegistroTicketRepository {
-  constructor(private readonly db: Knex) {}
+  constructor(
+    private readonly db: Knex,
+    private readonly contexto: ContextoSolicitud, // la IP de la bitácora (SPEC 41)
+  ) {}
 
   registrar(
     { datos, estado, historial }: TicketRegistrado,
@@ -67,7 +72,10 @@ export class KnexRegistroTicketRepository implements RegistroTicketRepository {
       });
 
       const creado = { id, numero, creadoEn };
-      await alRegistrar?.(creado, new KnexCorreoSalienteRepository(trx));
+      await alRegistrar?.(creado, {
+        correos: new KnexCorreoSalienteRepository(trx),
+        auditoria: new KnexAuditoria(trx, this.contexto),
+      });
       return creado;
     });
   }

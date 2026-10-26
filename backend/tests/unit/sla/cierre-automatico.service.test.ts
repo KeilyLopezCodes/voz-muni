@@ -4,7 +4,7 @@ import type { TicketEscrituraRepository, TicketParaTransicion } from '../../../s
 import type { ReposTransaccionales, Transaccion } from '../../../src/domain/repositories/transaccion';
 import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { type ResultadoTransicion, Ticket } from '../../../src/domain/ticket/ticket';
-import { correosPendientes, EnviadorEnMemoria, PlantillasEnMemoria } from '../auth/dobles';
+import { AuditoriaEnMemoria, correosPendientes, EnviadorEnMemoria, PlantillasEnMemoria } from '../auth/dobles';
 import { SLA_VACIO } from './dobles-sla';
 import { notificadorDePrueba } from '../notificaciones/dobles-correo';
 
@@ -70,10 +70,11 @@ function montar(ids: number[], sinPlazo = 0) {
   const cierre = new CierreEnMemoria(ids, sinPlazo);
   const tickets = new TicketsEnMemoria();
   let transacciones = 0;
+  const auditoria = new AuditoriaEnMemoria();
   const transaccion: Transaccion = {
     ejecutar: (trabajo) => {
       transacciones++;
-      return trabajo({ cierreAutomatico: cierre, ticketsEscritura: tickets } as unknown as ReposTransaccionales);
+      return trabajo({ cierreAutomatico: cierre, ticketsEscritura: tickets, auditoria } as unknown as ReposTransaccionales);
     },
   };
   const plantillas = new PlantillasEnMemoria();

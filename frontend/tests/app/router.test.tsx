@@ -26,6 +26,7 @@ const ACCESO: Record<string, { roles: readonly Rol[]; titulo: string; tituloPorR
     roles: ['tecnico', 'coordinador', 'supervisor', 'administrador'],
     titulo: reportes.titulo,
   },
+  '/bitacora': { roles: ['coordinador', 'supervisor', 'administrador'], titulo: reportes.bitacora.titulo },
   '/admin': { roles: ['administrador'], titulo: admin.titulo },
   '/admin/sla': { roles: ['administrador'], titulo: admin.sla.titulo },
   '/admin/dependencias': { roles: ['administrador'], titulo: admin.catalogos.dependencias.titulo },

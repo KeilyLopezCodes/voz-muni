@@ -3,6 +3,7 @@ import type { Container } from './container';
 import { AdjuntosController } from './presentation/controllers/adjuntos.controller';
 import { AsignacionController } from './presentation/controllers/asignacion.controller';
 import { AuthController } from './presentation/controllers/auth.controller';
+import { BitacoraController } from './presentation/controllers/bitacora.controller';
 import { CatalogosAdminController } from './presentation/controllers/catalogos-admin.controller';
 import { CamposExtraController } from './presentation/controllers/campos-extra.controller';
 import { CatalogosController } from './presentation/controllers/catalogos.controller';
@@ -23,6 +24,7 @@ import { TrasladosController } from './presentation/controllers/traslados.contro
 import { UsuariosController } from './presentation/controllers/usuarios.controller';
 import { VecinosController } from './presentation/controllers/vecinos.controller';
 import { autenticar } from './presentation/middlewares/autenticar';
+import { contextoSolicitud } from './presentation/middlewares/contexto-solicitud';
 import { limiteLogin } from './presentation/middlewares/limite-login';
 import { limitePorIp } from './presentation/middlewares/limite-por-ip';
 import { limiteRecuperacion } from './presentation/middlewares/limite-recuperacion';
@@ -30,6 +32,7 @@ import { manejadorErrores, rutaNoEncontrada } from './presentation/middlewares/m
 import { adjuntosRoutes } from './presentation/routes/adjuntos.routes';
 import { asignacionRoutes } from './presentation/routes/asignacion.routes';
 import { authRoutes } from './presentation/routes/auth.routes';
+import { bitacoraRoutes } from './presentation/routes/bitacora.routes';
 import { catalogosAdminRoutes } from './presentation/routes/catalogos-admin.routes';
 import { camposExtraRoutes } from './presentation/routes/campos-extra.routes';
 import { catalogosRoutes } from './presentation/routes/catalogos.routes';
@@ -52,6 +55,8 @@ import { vecinosRoutes } from './presentation/routes/vecinos.routes';
 export function createApp(container: Container): Express {
   const app = express();
   app.use(express.json());
+  // Cada petición con su contexto (la IP de la bitácora, SPEC 41).
+  app.use(contextoSolicitud(container.contextoSolicitud));
   app.use(healthRoutes(new HealthController(container.healthService)));
   app.use(
     '/api/v1/auth',
@@ -144,6 +149,10 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1/admin',
     politicasSlaRoutes(new PoliticasSlaController(container.politicasSlaService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1/bitacora',
+    bitacoraRoutes(new BitacoraController(container.bitacoraService), autenticar(container.autorizacionService)),
   );
   app.use(
     '/api/v1',

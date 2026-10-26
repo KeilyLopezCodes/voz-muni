@@ -1,3 +1,4 @@
+import type { CatalogosAdminRepository } from '../../../src/domain/repositories/catalogos-admin-repository';
 import { CamposExtraService } from '../../../src/application/services/campos-extra.service';
 import type { CampoExtra } from '../../../src/domain/categorias/campo-extra';
 import type { CategoriaAdminRepository } from '../../../src/domain/repositories/categoria-admin-repository';
@@ -37,7 +38,9 @@ function crear(conTickets: number[] = []) {
     ]),
     new Set(conTickets),
   );
-  const servicio = new CamposExtraService(new TransaccionEnMemoria({ categoriasAdmin: categorias }));
+  // La bitácora lee la dependencia de la categoría (SPEC 41).
+  const catalogosAdmin = { categoria: async () => ({ dependencia: { id: 4 } }) } as unknown as CatalogosAdminRepository;
+  const servicio = new CamposExtraService(new TransaccionEnMemoria({ categoriasAdmin: categorias, catalogosAdmin }));
   return { servicio, categorias };
 }
 
@@ -45,7 +48,7 @@ describe('CamposExtraService.actualizar', () => {
   it('sin quejas acepta cualquier definición válida, incluso un cambio de tipo', async () => {
     const { servicio, categorias } = crear();
 
-    const resultado = await servicio.actualizar(1, [COMO_TEXTO]);
+    const resultado = await servicio.actualizar(1, 1, [COMO_TEXTO]);
 
     expect(resultado).toEqual({ id: 1, nombre: 'Agua potable', camposExtra: [COMO_TEXTO] });
     expect(categorias.categorias.get(1)!.camposExtra).toEqual([COMO_TEXTO]);
@@ -55,7 +58,7 @@ describe('CamposExtraService.actualizar', () => {
   it('con quejas rechaza el cambio de tipo con CAMBIO_INCOMPATIBLE y su detalle, sin guardar', async () => {
     const { servicio, categorias } = crear([1]);
 
-    await expect(servicio.actualizar(1, [COMO_TEXTO])).rejects.toMatchObject({
+    await expect(servicio.actualizar(1, 1, [COMO_TEXTO])).rejects.toMatchObject({
       name: 'ErrorDeAplicacion',
       codigo: 'CAMBIO_INCOMPATIBLE',
       detalles: [{ campo: 'litros', problema: 'TIPO_CAMBIADO' }],
@@ -66,7 +69,7 @@ describe('CamposExtraService.actualizar', () => {
   it('con quejas acepta un cambio compatible (solo la etiqueta)', async () => {
     const { servicio } = crear([1]);
 
-    await expect(servicio.actualizar(1, [{ ...NUMERO, etiqueta: 'Litros perdidos' }])).resolves.toMatchObject({
+    await expect(servicio.actualizar(1, 1, [{ ...NUMERO, etiqueta: 'Litros perdidos' }])).resolves.toMatchObject({
       camposExtra: [{ etiqueta: 'Litros perdidos' }],
     });
   });
@@ -74,7 +77,7 @@ describe('CamposExtraService.actualizar', () => {
   it('una definición inválida lanza DEFINICION_INVALIDA con detalles, sin tocar la base', async () => {
     const { servicio, categorias } = crear();
 
-    await expect(servicio.actualizar(1, [{ ...COMO_TEXTO, clave: 'Mal' }])).rejects.toMatchObject({
+    await expect(servicio.actualizar(1, 1, [{ ...COMO_TEXTO, clave: 'Mal' }])).rejects.toMatchObject({
       name: 'ErrorDeAplicacion',
       codigo: 'DEFINICION_INVALIDA',
       detalles: [{ campo: 'campos[0]', problema: 'CLAVE_INVALIDA' }],
@@ -83,6 +86,6 @@ describe('CamposExtraService.actualizar', () => {
   });
 
   it('una categoría inexistente responde NO_ENCONTRADO', async () => {
-    await expect(crear().servicio.actualizar(99, [])).rejects.toMatchObject({ codigo: 'NO_ENCONTRADO' });
+    await expect(crear().servicio.actualizar(1, 99, [])).rejects.toMatchObject({ codigo: 'NO_ENCONTRADO' });
   });
 });

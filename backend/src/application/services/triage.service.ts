@@ -15,6 +15,7 @@ import { puedeTransicionar } from '../../domain/ticket/transiciones';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { ComandoTriage, TicketTriageDto, TransicionDto } from '../dto/triage.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import { eventoTicket } from './auditoria-tickets';
 import type { NotificadorCorreo } from './notificador-correo.service';
 import type { SlaService } from './sla.service';
 
@@ -42,8 +43,15 @@ export class TriageService {
 
   async transicionar(usuario: UsuarioAutenticado, id: number, comando: ComandoTriage): Promise<TransicionDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.triage');
-    const hecha = await this.transaccion.ejecutar(async ({ ticketsEscritura, correosSalientes }) => {
+    const hecha = await this.transaccion.ejecutar(async ({ ticketsEscritura, correosSalientes, auditoria }) => {
       const aplicada = await this.aplicar(ticketsEscritura, filtro, usuario, id, comando);
+      // La bitácora en la misma transacción (SPEC 41).
+      await auditoria.registrar(
+        eventoTicket(`ticket.${comando.accion}`, aplicada.actual.ticket, aplicada.resultado.ticket, usuario.id, {
+          ...(comando.accion === 'rechazar' ? { motivo: comando.motivo } : {}),
+          ...(comando.accion === 'aceptar' ? { categoriaId: aplicada.categoriaId } : {}),
+        }),
+      );
       // El aviso se encola en la misma transacción (SPEC 34): si se revierte, no queda correo.
       return { ...aplicada, correoId: await this.encolarAviso(comando, aplicada, correosSalientes) };
     });

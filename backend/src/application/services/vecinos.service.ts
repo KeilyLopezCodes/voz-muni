@@ -1,3 +1,4 @@
+import { calcularCambios } from '../../domain/auditoria/saneamiento';
 import { type TokenService, VIGENCIA_RESTABLECIMIENTO_MS } from '../../domain/auth/token-service';
 import type { Clock } from '../../domain/health/clock';
 import type { Transaccion } from '../../domain/repositories/transaccion';
@@ -53,7 +54,7 @@ export class VecinosService {
   }
 
   // Crea el vecino activo y sin contraseña. Si dio correo, lo invita a definir su contraseña (24 h).
-  async crear(datos: DatosVecinoNuevo): Promise<VecinoCreadoDto> {
+  async crear(actorId: number, datos: DatosVecinoNuevo): Promise<VecinoCreadoDto> {
     return conReglasDeNegocio(async () => {
       const vecino = validarVecinoNuevo(datos);
       const ahora = this.clock.now();
@@ -61,6 +62,20 @@ export class VecinosService {
 
       const { id, correoId } = await this.transaccion.ejecutar(async (repos) => {
         const creado = await repos.vecinos.crear(vecino);
+        // El alta en ventanilla se registra como usuario.crear, sin dependencia (SPEC 41).
+        await repos.auditoria.registrar({
+          accion: 'usuario.crear',
+          entidadId: creado.id,
+          usuarioId: actorId,
+          dependenciaId: null,
+          cambios: calcularCambios(null, {
+            nombre: vecino.nombre,
+            email: vecino.email,
+            telefono: vecino.telefono,
+            dpi: vecino.dpi,
+            rol: 'vecino',
+          }),
+        });
         if (vecino.email === null) {
           return { id: creado.id, correoId: null };
         }

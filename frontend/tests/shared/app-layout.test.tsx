@@ -25,9 +25,19 @@ const MENU_ESPERADO: Record<Rol, string[]> = {
   vecino: ['/tickets', '/tickets/nueva'],
   receptor: ['/tickets', '/tickets/nueva'],
   tecnico: ['/tickets', '/atencion', '/reportes'],
-  coordinador: ['/tickets', '/asignacion', '/atencion', '/reportes'],
-  supervisor: ['/tickets', '/tickets/nueva', '/triage', '/asignacion', '/atencion', '/traslados', '/escaladas', '/reportes'],
-  administrador: ['/tickets', '/reportes', '/admin'],
+  coordinador: ['/tickets', '/asignacion', '/atencion', '/reportes', '/bitacora'],
+  supervisor: [
+    '/tickets',
+    '/tickets/nueva',
+    '/triage',
+    '/asignacion',
+    '/atencion',
+    '/traslados',
+    '/escaladas',
+    '/reportes',
+    '/bitacora',
+  ],
+  administrador: ['/tickets', '/reportes', '/bitacora', '/admin'],
 }
 
 describe('AppLayout', () => {

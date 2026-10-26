@@ -1,5 +1,6 @@
 import type { Transaccion } from '../../domain/repositories/transaccion';
 import { conReglasDeNegocio } from '../errors/error-de-aplicacion';
+import { eventoTicket } from './auditoria-tickets';
 
 export const TAMANO_LOTE_ESCALAMIENTO = 200;
 
@@ -17,7 +18,7 @@ export class EscalamientoService {
     let escaladas = 0;
     for (;;) {
       const lote = await conReglasDeNegocio(() =>
-        this.transaccion.ejecutar(async ({ escalamiento, ticketsEscritura, notificaciones, destinatarios }) => {
+        this.transaccion.ejecutar(async ({ escalamiento, ticketsEscritura, notificaciones, destinatarios, auditoria }) => {
           const pendientes = await escalamiento.reclamarPendientes(ahora, TAMANO_LOTE_ESCALAMIENTO);
           if (pendientes.length === 0) {
             return 0;
@@ -29,7 +30,10 @@ export class EscalamientoService {
             if (!actual) {
               continue;
             }
-            await ticketsEscritura.guardarEscalado(actual.ticket.marcarEscalado(ahora, pendiente.plazo));
+            const escalado = actual.ticket.marcarEscalado(ahora, pendiente.plazo);
+            await ticketsEscritura.guardarEscalado(escalado);
+            // El sistema actúa: sin usuario (SPEC 41).
+            await auditoria.registrar(eventoTicket('ticket.escalar', actual.ticket, escalado, null, { plazo: pendiente.plazo }));
             if (supervisores.length === 0) {
               // Se escala igual: la marca registra que el plazo venció.
               this.log(`Escalamiento del ticket ${pendiente.ticketId} sin supervisores activos`);

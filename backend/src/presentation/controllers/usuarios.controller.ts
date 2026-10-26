@@ -23,7 +23,7 @@ export class UsuariosController {
   crear = async (req: Request, res: Response): Promise<void> => {
     const datos = altaUsuarioSchema.parse(req.body);
     res.status(201).json(
-      await this.usuariosService.crear({
+      await this.usuariosService.crear(req.usuario!.id, {
         ...datos,
         telefono: datos.telefono ?? null,
         dependenciaId: datos.dependenciaId ?? null,
@@ -44,11 +44,11 @@ export class UsuariosController {
 
   activar = async (req: Request, res: Response): Promise<void> => {
     const { id } = idUsuarioSchema.parse(req.params);
-    res.status(200).json(await this.usuariosService.activar(id));
+    res.status(200).json(await this.usuariosService.activar(req.usuario!.id, id));
   };
 
   desbloquear = async (req: Request, res: Response): Promise<void> => {
     const { id } = idUsuarioSchema.parse(req.params);
-    res.status(200).json(await this.usuariosService.desbloquear(id));
+    res.status(200).json(await this.usuariosService.desbloquear(req.usuario!.id, id));
   };
 }

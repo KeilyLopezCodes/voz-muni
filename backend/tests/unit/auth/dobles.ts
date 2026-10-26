@@ -1,4 +1,5 @@
 // Dobles de prueba en memoria para los servicios de autenticación (SPEC 08 y SPEC 09).
+import type { Auditoria, EventoAuditoria } from '../../../src/domain/auditoria/auditoria';
 import type { EstadoBloqueo } from '../../../src/domain/auth/bloqueo';
 import { ReglaDeNegocioError } from '../../../src/domain/errors/regla-de-negocio-error';
 import type { EnviadorCorreo, MensajeCorreo } from '../../../src/domain/notificaciones/enviador-correo';
@@ -478,11 +479,25 @@ export class EnviadorEnMemoria implements EnviadorCorreo {
 
 // Sin rollback real: los dobles en memoria no lo necesitan para estas pruebas.
 // Cada prueba pasa solo los repositorios que su servicio usa.
+// La bitácora en memoria (SPEC 41): guarda los eventos para que las pruebas los comprueben si quieren.
+export class AuditoriaEnMemoria implements Auditoria {
+  readonly eventos: EventoAuditoria[] = [];
+
+  async registrar(evento: EventoAuditoria): Promise<void> {
+    this.eventos.push(evento);
+  }
+}
+
+// Sin `auditoria` explícita usa una en memoria propia: los casos de uso siempre registran (SPEC 41).
 export class TransaccionEnMemoria implements Transaccion {
-  constructor(private readonly repos: Partial<ReposTransaccionales>) {}
+  readonly auditoria: AuditoriaEnMemoria;
+
+  constructor(private readonly repos: Partial<ReposTransaccionales>) {
+    this.auditoria = (repos.auditoria as AuditoriaEnMemoria | undefined) ?? new AuditoriaEnMemoria();
+  }
 
   ejecutar<T>(trabajo: (repos: ReposTransaccionales) => Promise<T>): Promise<T> {
-    return trabajo(this.repos as ReposTransaccionales);
+    return trabajo({ ...this.repos, auditoria: this.auditoria } as ReposTransaccionales);
   }
 }
 

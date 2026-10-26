@@ -1,3 +1,4 @@
+import { calcularCambios } from '../../domain/auditoria/saneamiento';
 import { validarDefinicion } from '../../domain/categorias/campo-extra';
 import { cambiosIncompatibles } from '../../domain/categorias/compatibilidad';
 import type { CategoriaFormulario } from '../../domain/repositories/catalogo-lectura-repository';
@@ -9,7 +10,7 @@ export class CamposExtraService {
   constructor(private readonly transaccion: Transaccion) {}
 
   // Reemplaza la lista completa. En una categoría con quejas, solo acepta cambios compatibles con los datos guardados.
-  async actualizar(categoriaId: number, campos: unknown): Promise<CategoriaFormulario> {
+  async actualizar(actorId: number, categoriaId: number, campos: unknown): Promise<CategoriaFormulario> {
     return conReglasDeNegocio(async () => {
       const definicion = validarDefinicion(campos);
 
@@ -30,6 +31,19 @@ export class CamposExtraService {
           }
         }
         await repos.categoriasAdmin.guardarCampos(categoriaId, definicion);
+        // Con la dependencia de la categoría; las claves antes y después, sin copiar cada definición (SPEC 41).
+        const categoria = await repos.catalogosAdmin.categoria(categoriaId);
+        await repos.auditoria.registrar({
+          accion: 'categoria.campos_extra',
+          entidadId: categoriaId,
+          usuarioId: actorId,
+          dependenciaId: categoria?.dependencia.id ?? null,
+          cambios: calcularCambios(
+            { campos: actual.camposExtra.map((c) => c.clave) },
+            { campos: definicion.map((c) => c.clave) },
+          ),
+          datos: { cantidadCampos: definicion.length },
+        });
         return { id: actual.id, nombre: actual.nombre, camposExtra: definicion };
       });
     });

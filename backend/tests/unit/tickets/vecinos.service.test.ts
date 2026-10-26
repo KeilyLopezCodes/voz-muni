@@ -64,6 +64,8 @@ function crearEscenario(vecinosBusqueda?: VecinoRepository) {
   return { servicio, usuarios, restablecimientos, enviador, errores };
 }
 
+const ID_RECEPTOR = 2;
+
 describe('enmascarado', () => {
   it('correo: primer carácter, *** y el dominio', () => {
     expect(enmascararEmail('ana.lopez@municipalidad.gt')).toBe('a***@municipalidad.gt');
@@ -133,7 +135,7 @@ describe('VecinosService.crear', () => {
   it('con correo crea el vecino y una invitación de 24 h, y envía invitacion_vecino', async () => {
     const e = crearEscenario();
 
-    const resultado = await e.servicio.crear(alta);
+    const resultado = await e.servicio.crear(ID_RECEPTOR, alta);
 
     expect(resultado).toEqual({
       vecino: { id: 1, nombre: 'María López', email: 'm***@correo.gt', telefono: '****0000' },
@@ -164,7 +166,7 @@ describe('VecinosService.crear', () => {
   it('sin correo no crea el enlace ni envía nada', async () => {
     const e = crearEscenario();
 
-    const resultado = await e.servicio.crear({ ...alta, email: null });
+    const resultado = await e.servicio.crear(ID_RECEPTOR, { ...alta, email: null });
 
     expect(resultado).toEqual({
       vecino: { id: 1, nombre: 'María López', email: null, telefono: '****0000' },
@@ -178,7 +180,7 @@ describe('VecinosService.crear', () => {
     const e = crearEscenario();
     e.enviador.fallar = true;
 
-    const resultado = await e.servicio.crear(alta);
+    const resultado = await e.servicio.crear(ID_RECEPTOR, alta);
 
     expect(resultado.invitacionEnviada).toBe(false);
     expect(e.usuarios.filas).toHaveLength(1);
@@ -187,7 +189,7 @@ describe('VecinosService.crear', () => {
   });
 
   it('la respuesta nunca incluye el DPI', async () => {
-    const { vecino } = await crearEscenario().servicio.crear(alta);
+    const { vecino } = await crearEscenario().servicio.crear(ID_RECEPTOR, alta);
 
     expect(JSON.stringify(vecino)).not.toContain('2547123450101');
   });
@@ -200,15 +202,15 @@ describe('VecinosService.crear', () => {
   ])('rechaza %o con %s y no crea nada', async (cambios, codigo) => {
     const e = crearEscenario();
 
-    await expect(e.servicio.crear({ ...alta, ...cambios })).rejects.toMatchObject({ name: 'ErrorDeAplicacion', codigo });
+    await expect(e.servicio.crear(ID_RECEPTOR, { ...alta, ...cambios })).rejects.toMatchObject({ name: 'ErrorDeAplicacion', codigo });
     expect(e.usuarios.filas).toEqual([]);
   });
 
   it('un correo o un DPI repetidos → EMAIL_DUPLICADO y DPI_DUPLICADO', async () => {
     const e = crearEscenario();
-    await e.servicio.crear(alta);
+    await e.servicio.crear(ID_RECEPTOR, alta);
 
-    await expect(e.servicio.crear({ ...alta, dpi: '2547123450102' })).rejects.toMatchObject({ codigo: 'EMAIL_DUPLICADO' });
-    await expect(e.servicio.crear({ ...alta, email: 'otra@correo.gt' })).rejects.toMatchObject({ codigo: 'DPI_DUPLICADO' });
+    await expect(e.servicio.crear(ID_RECEPTOR, { ...alta, dpi: '2547123450102' })).rejects.toMatchObject({ codigo: 'EMAIL_DUPLICADO' });
+    await expect(e.servicio.crear(ID_RECEPTOR, { ...alta, email: 'otra@correo.gt' })).rejects.toMatchObject({ codigo: 'DPI_DUPLICADO' });
   });
 });

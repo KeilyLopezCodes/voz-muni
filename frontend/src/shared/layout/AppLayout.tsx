@@ -5,6 +5,7 @@ import FactCheckRounded from '@mui/icons-material/FactCheckRounded'
 import HandymanRounded from '@mui/icons-material/HandymanRounded'
 import InsertChartRounded from '@mui/icons-material/InsertChartRounded'
 import ListAltRounded from '@mui/icons-material/ListAltRounded'
+import ManageSearchRounded from '@mui/icons-material/ManageSearchRounded'
 import MenuRounded from '@mui/icons-material/MenuRounded'
 import NotificationImportantRounded from '@mui/icons-material/NotificationImportantRounded'
 import SwapHorizRounded from '@mui/icons-material/SwapHorizRounded'
@@ -39,6 +40,7 @@ export const ICONO_POR_RUTA: Record<string, ComponentType> = {
   '/traslados': SwapHorizRounded,
   '/escaladas': NotificationImportantRounded,
   '/reportes': InsertChartRounded,
+  '/bitacora': ManageSearchRounded,
   '/admin': AdminPanelSettingsRounded,
 }
 

@@ -1,3 +1,5 @@
+import type { EventoAuditoria } from '../../domain/auditoria/auditoria';
+import { calcularCambios } from '../../domain/auditoria/saneamiento';
 import { type TokenService, VIGENCIA_RESTABLECIMIENTO_MS } from '../../domain/auth/token-service';
 import type { Clock } from '../../domain/health/clock';
 import type { Transaccion } from '../../domain/repositories/transaccion';
@@ -31,6 +33,32 @@ function rolInterno(rol: string): RolInterno {
   return rol;
 }
 
+// El evento de la bitácora de un usuario interno (SPEC 41): su dependencia del momento y lo que cambió. El DPI, el
+// teléfono y el correo se enmascaran al registrar.
+function eventoUsuario(
+  accion: 'usuario.crear' | 'usuario.editar' | 'usuario.activar' | 'usuario.desactivar' | 'usuario.desbloquear',
+  actorId: number,
+  antes: UsuarioInterno | null,
+  despues: UsuarioInterno,
+): EventoAuditoria {
+  const datos = (u: UsuarioInterno) => ({
+    nombre: u.nombre,
+    email: u.email,
+    telefono: u.telefono,
+    dpi: u.dpi,
+    rol: u.rol,
+    dependenciaId: u.dependenciaId,
+    activo: u.activo,
+  });
+  return {
+    accion,
+    entidadId: despues.id,
+    usuarioId: actorId,
+    dependenciaId: despues.dependenciaId,
+    cambios: calcularCambios(antes ? datos(antes) : null, datos(despues)),
+  };
+}
+
 // Gestión de usuarios internos por el administrador (RF-04). Los usuarios nunca se borran.
 export class UsuariosService {
   constructor(
@@ -55,7 +83,7 @@ export class UsuariosService {
   }
 
   // El usuario nace activo y sin contraseña; la define con el enlace de invitación (24 h).
-  async crear(datos: DatosAltaUsuario): Promise<UsuarioCreadoDto> {
+  async crear(actorId: number, datos: DatosAltaUsuario): Promise<UsuarioCreadoDto> {
     return conReglasDeNegocio(async () => {
       const rol = rolInterno(datos.rol);
       validarAsignacion(rol, datos.dependenciaId);
@@ -66,6 +94,7 @@ export class UsuariosService {
       const token = this.tokens.generarRenovacion();
       const { usuario, correoId } = await this.transaccion.ejecutar(async (repos) => {
         const creado = await repos.usuariosAdmin.crear({ ...datos, rol, dpi });
+        await repos.auditoria.registrar(eventoUsuario('usuario.crear', actorId, null, creado));
         await repos.restablecimientos.crear(creado.id, this.tokens.hashRenovacion(token), 'invitacion', ahora);
         // La invitación se encola en la misma transacción (SPEC 34), con el vencimiento del enlace.
         const id = await this.correo.encolar(
@@ -115,6 +144,7 @@ export class UsuariosService {
         if (cambiaAcceso) {
           await repos.sesiones.revocarTodasDelUsuario(id, ahora);
         }
+        await repos.auditoria.registrar(eventoUsuario('usuario.editar', actorId, actual, resultado));
         return resultado;
       });
       return aDto(actualizado);
@@ -134,6 +164,7 @@ export class UsuariosService {
         const resultado = await repos.usuariosAdmin.actualizar(id, { activo: false });
         await repos.sesiones.revocarTodasDelUsuario(id, ahora);
         await repos.restablecimientos.invalidarPendientes(id, ahora);
+        await repos.auditoria.registrar(eventoUsuario('usuario.desactivar', actorId, actual, resultado));
         const correo = await this.correo.encolar(
           'cuenta_desactivada',
           { nombre: resultado.nombre },
@@ -149,17 +180,32 @@ export class UsuariosService {
   }
 
   // Idempotente. No envía correo ni crea un enlace: sin contraseña, se usa "olvidé mi contraseña".
-  async activar(id: number): Promise<UsuarioInternoDto> {
+  async activar(actorId: number, id: number): Promise<UsuarioInternoDto> {
     const actual = await this.obtenerInterno(id);
     if (actual.activo) {
       return aDto(actual);
     }
-    return aDto(await this.usuarios.actualizar(id, { activo: true }));
+    return aDto(
+      await this.transaccion.ejecutar(async (repos) => {
+        const resultado = await repos.usuariosAdmin.actualizar(id, { activo: true });
+        await repos.auditoria.registrar(eventoUsuario('usuario.activar', actorId, actual, resultado));
+        return resultado;
+      }),
+    );
   }
 
-  async desbloquear(id: number): Promise<UsuarioInternoDto> {
-    await this.obtenerInterno(id);
-    return aDto(await this.usuarios.actualizar(id, { desbloquear: true }));
+  async desbloquear(actorId: number, id: number): Promise<UsuarioInternoDto> {
+    const actual = await this.obtenerInterno(id);
+    return aDto(
+      await this.transaccion.ejecutar(async (repos) => {
+        const resultado = await repos.usuariosAdmin.actualizar(id, { desbloquear: true });
+        await repos.auditoria.registrar({
+          ...eventoUsuario('usuario.desbloquear', actorId, actual, resultado),
+          cambios: calcularCambios({ bloqueadoHasta: actual.bloqueadoHasta }, { bloqueadoHasta: resultado.bloqueadoHasta }),
+        });
+        return resultado;
+      }),
+    );
   }
 
   private async obtenerInterno(id: number): Promise<UsuarioInterno> {

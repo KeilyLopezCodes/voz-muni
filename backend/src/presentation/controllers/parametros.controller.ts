@@ -11,6 +11,6 @@ export class ParametrosController {
 
   guardarLimites = async (req: Request, res: Response): Promise<void> => {
     const valor = limitesMunicipioSchema.parse(req.body);
-    res.status(200).json({ limites: await this.parametrosService.guardarLimites(valor) });
+    res.status(200).json({ limites: await this.parametrosService.guardarLimites(req.usuario!.id, valor) });
   };
 }

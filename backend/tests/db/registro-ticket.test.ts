@@ -1,6 +1,7 @@
 import type { Knex } from 'knex';
 import { type DatosRegistro, Ticket } from '../../src/domain/ticket/ticket';
 import { KnexCatalogoLecturaRepository } from '../../src/infrastructure/repositories/knex-catalogo-lectura-repository';
+import { ContextoSolicitudAls } from '../../src/infrastructure/auditoria/contexto-solicitud-als';
 import { KnexRegistroTicketRepository } from '../../src/infrastructure/repositories/knex-registro-ticket-repository';
 import { createTestKnex, reiniciarEsquema } from './knex-test';
 
@@ -18,7 +19,7 @@ describe('Registro de tickets con correlativo (SPEC 12)', () => {
     db = createTestKnex();
     await reiniciarEsquema(db);
     await db.migrate.latest();
-    repo = new KnexRegistroTicketRepository(db);
+    repo = new KnexRegistroTicketRepository(db, new ContextoSolicitudAls());
     catalogo = new KnexCatalogoLecturaRepository(db);
 
     const [activa, inactiva] = (

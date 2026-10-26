@@ -1,5 +1,7 @@
 import type { Knex } from 'knex';
+import type { ContextoSolicitud } from '../../domain/auditoria/contexto-solicitud';
 import type { ReposTransaccionales, Transaccion } from '../../domain/repositories/transaccion';
+import { KnexAuditoria } from '../auditoria/knex-auditoria';
 import { KnexAdjuntoRepository } from './knex-adjunto-repository';
 import { KnexAlertasSlaRepository } from './knex-alertas-sla-repository';
 import { KnexAsignacionRepository } from './knex-asignacion-repository';
@@ -13,6 +15,7 @@ import { KnexDestinatariosRepository } from './knex-destinatarios-repository';
 import { KnexEncuestaRepository } from './knex-encuesta-repository';
 import { KnexEscalamientoRepository } from './knex-escalamiento-repository';
 import { KnexNotificacionRepository } from './knex-notificacion-repository';
+import { KnexParametroRepository } from './knex-parametro-repository';
 import { KnexPoliticaSlaRepository } from './knex-politica-sla-repository';
 import { KnexRegistroVecinoRepository } from './knex-registro-vecino-repository';
 import { KnexRestablecimientoRepository } from './knex-restablecimiento-repository';
@@ -25,7 +28,10 @@ import { KnexVecinoRepository } from './knex-vecino-repository';
 
 // Los repositorios Knex aceptan una transacción en lugar de la conexión.
 export class KnexTransaccion implements Transaccion {
-  constructor(private readonly db: Knex) {}
+  constructor(
+    private readonly db: Knex,
+    private readonly contexto: ContextoSolicitud, // la IP de la bitácora (SPEC 41)
+  ) {}
 
   ejecutar<T>(trabajo: (repos: ReposTransaccionales) => Promise<T>): Promise<T> {
     return this.db.transaction((trx) =>
@@ -52,6 +58,8 @@ export class KnexTransaccion implements Transaccion {
         destinatarios: new KnexDestinatariosRepository(trx),
         encuestas: new KnexEncuestaRepository(trx),
         catalogosAdmin: new KnexCatalogosAdminRepository(trx),
+        auditoria: new KnexAuditoria(trx, this.contexto),
+        parametros: new KnexParametroRepository(trx),
       }),
     );
   }

@@ -1,3 +1,4 @@
+import { calcularCambios } from '../../domain/auditoria/saneamiento';
 import type { Clock } from '../../domain/health/clock';
 import type { CategoriaConSla, PoliticaSlaRepository } from '../../domain/repositories/politica-sla-repository';
 import type { Transaccion } from '../../domain/repositories/transaccion';
@@ -36,12 +37,24 @@ export class PoliticasSlaService {
   reemplazar(usuario: UsuarioAutenticado, categoriaId: number, plazos: PlazoSla[]): Promise<CategoriaSlaDto> {
     return conReglasDeNegocio(async () => {
       const matriz = validarMatriz(plazos);
-      return this.transaccion.ejecutar(async ({ politicasSla }) => {
-        if (!(await politicasSla.obtenerCategoria(categoriaId))) {
+      return this.transaccion.ejecutar(async ({ politicasSla, auditoria }) => {
+        const anterior = await politicasSla.obtenerCategoria(categoriaId);
+        if (!anterior) {
           throw new ErrorDeAplicacion('NO_ENCONTRADO', `No existe la categoría ${categoriaId}`);
         }
         await politicasSla.reemplazar(categoriaId, matriz, usuario.id, this.clock.now());
-        return aDto((await politicasSla.obtenerCategoria(categoriaId))!);
+        const nueva = (await politicasSla.obtenerCategoria(categoriaId))!;
+        // Los cambios por prioridad, con la dependencia de la categoría (SPEC 41).
+        const porPrioridad = (c: typeof nueva) =>
+          Object.fromEntries(c.plazos.map((p) => [p.prioridad, { horasRespuesta: p.horasRespuesta, horasResolucion: p.horasResolucion }]));
+        await auditoria.registrar({
+          accion: 'politica_sla.reemplazar',
+          entidadId: categoriaId,
+          usuarioId: usuario.id,
+          dependenciaId: nueva.dependencia.id,
+          cambios: calcularCambios(porPrioridad(anterior), porPrioridad(nueva)),
+        });
+        return aDto(nueva);
       });
     });
   }

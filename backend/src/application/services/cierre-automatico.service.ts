@@ -1,6 +1,7 @@
 import type { CierreAutomaticoRepository } from '../../domain/repositories/cierre-automatico-repository';
 import type { Transaccion } from '../../domain/repositories/transaccion';
 import { conReglasDeNegocio } from '../errors/error-de-aplicacion';
+import { eventoTicket } from './auditoria-tickets';
 import type { NotificadorCorreo } from './notificador-correo.service';
 
 export const TAMANO_LOTE_CIERRE = 200;
@@ -22,7 +23,7 @@ export class CierreAutomaticoService {
     let cerradas = 0;
     for (;;) {
       const { reclamadas, cerradasLote, correos } = await conReglasDeNegocio(() =>
-        this.transaccion.ejecutar(async ({ cierreAutomatico, ticketsEscritura, correosSalientes }) => {
+        this.transaccion.ejecutar(async ({ cierreAutomatico, ticketsEscritura, correosSalientes, auditoria }) => {
           const ids = await cierreAutomatico.reclamarVencidas(ahora, TAMANO_LOTE_CIERRE);
           let cerradasLote = 0;
           const correos: (number | null)[] = [];
@@ -37,6 +38,11 @@ export class CierreAutomaticoService {
               actual.ticket.confirmacionVenceEn,
             );
             await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id);
+            await auditoria.registrar(
+              eventoTicket('ticket.cerrar_automatico', actual.ticket, resultado.ticket, null, {
+                confirmacionVenceEn: actual.ticket.confirmacionVenceEn,
+              }),
+            );
             cerradasLote++;
             // El aviso se encola en la transacción del lote (SPEC 34).
             const { solicitante } = actual;
