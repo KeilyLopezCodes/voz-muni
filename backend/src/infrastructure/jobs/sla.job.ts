@@ -4,8 +4,13 @@ import type { CierreAutomaticoService } from '../../application/services/cierre-
 import type { EscalamientoService } from '../../application/services/escalamiento.service';
 import type { Clock } from '../../domain/health/clock';
 
-// Cómo se programa una tarea: node-cron en producción, un doble en las pruebas.
-export type Programador = (expresion: string, tarea: () => Promise<void>) => { stop(): void | Promise<void> };
+// Cómo se programa una tarea: node-cron en producción, un doble en las pruebas. `zonaHoraria` interpreta la expresión
+// en esa zona (SPEC 36); sin ella, en la del proceso.
+export type Programador = (
+  expresion: string,
+  tarea: () => Promise<void>,
+  opciones?: { zonaHoraria?: string },
+) => { stop(): void | Promise<void> };
 
 export interface RegistroJob {
   info(mensaje: string): void;
@@ -18,7 +23,8 @@ export interface PasosSla {
   cierre: Pick<CierreAutomaticoService, 'procesar'>; // SPEC 33
 }
 
-const programarConNodeCron: Programador = (expresion, tarea) => cron.schedule(expresion, tarea);
+const programarConNodeCron: Programador = (expresion, tarea, opciones) =>
+  cron.schedule(expresion, tarea, opciones?.zonaHoraria ? { timezone: opciones.zonaHoraria } : undefined);
 
 // El único job de SLA (SPEC 31, 32 y 33), delgado: en cada corrida ejecuta las alertas, el escalamiento y el cierre
 // automático, en ese orden y con el mismo `ahora`. Las reglas viven en application/, como pide CLAUDE.md. Un error en

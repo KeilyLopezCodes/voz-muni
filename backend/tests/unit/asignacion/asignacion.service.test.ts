@@ -21,6 +21,7 @@ import { Ticket } from '../../../src/domain/ticket/ticket';
 import { EnviadorEnMemoria, PlantillasEnMemoria, RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
 import { notificadorDePrueba } from '../notificaciones/dobles-correo';
 import { SLA_VACIO } from '../sla/dobles-sla';
+import { NotificacionesInternasFalsas } from '../notificaciones/dobles-notificaciones';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
 const OBRAS = 4;
@@ -151,6 +152,7 @@ function armar() {
   const tickets = new TicketsEnMemoria();
   const asignaciones = new AsignacionesEnMemoria(tickets);
   const bandeja = new BandejaFalsa();
+  const internas = new NotificacionesInternasFalsas();
   const servicio = new AsignacionService(
     new TransaccionEnMemoria({ ticketsEscritura: tickets as unknown as TicketEscrituraRepository, asignaciones }),
     bandeja,
@@ -158,8 +160,9 @@ function armar() {
     // El solicitante de estas pruebas no tiene correo: el aviso se prueba en tests/db/correos-vecino (SPEC 35).
     notificadorDePrueba(new PlantillasEnMemoria(), new EnviadorEnMemoria(), () => {}),
     'https://vozmuni.test',
+    internas,
   );
-  return { tickets, asignaciones, bandeja, servicio };
+  return { tickets, asignaciones, bandeja, servicio, internas };
 }
 
 function capturar(promesa: Promise<unknown>): Promise<unknown> {
@@ -194,6 +197,18 @@ describe('AsignacionService', () => {
 
     expect(respuesta).toMatchObject({ asignadoA: 10, tecnicoAnterior: 9 });
     expect(asignaciones.registros[0]).toMatchObject({ tecnicoAnterior: 9, tecnicoNuevo: 10, motivo: 'Vacaciones' });
+  });
+
+  it('avisa al anterior antes que al nuevo, siempre con el coordinador como autor (SPEC 36)', async () => {
+    const { tickets, servicio, internas } = armar();
+    tickets.agregar(1, 'asignada', 9);
+
+    await servicio.asignar(COORDINADOR, 1, { tecnicoId: 10, motivo: 'Vacaciones' });
+
+    expect(internas.eventos).toMatchObject([
+      { tipo: 'asignacion_retirada', autorId: COORDINADOR.id, candidatos: { usuarios: [9] } },
+      { tipo: 'asignacion_recibida', autorId: COORDINADOR.id, candidatos: { usuarios: [10] } },
+    ]);
   });
 
   it('en en_proceso el estado no cambia', async () => {

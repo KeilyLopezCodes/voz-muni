@@ -73,11 +73,24 @@
     "nueva": "Nueva",
     "marcarTodas": "Marcar todas como leídas",
     "errorCarga": "No pudimos cargar las notificaciones.",
+    "incluyeInternas": "(incluye notas internas)",
     "tipos": {
       "sla_alerta_respuesta": "La queja {{numero}} llegó al {{umbral}} % del plazo de respuesta. Vence el {{fecha}}",
       "sla_alerta_resolucion": "La queja {{numero}} llegó al {{umbral}} % del plazo de resolución. Vence el {{fecha}}",
       "desconocido": "Nueva notificación",
-      "sla_escalamiento": "La queja {{numero}} se escaló por vencer el plazo de {{plazo}} el {{fecha}}"
+      "sla_escalamiento": "La queja {{numero}} se escaló por vencer el plazo de {{plazo}} el {{fecha}}",
+      "asignacion_recibida": "Te asignaron la queja {{numero}}",
+      "asignacion_retirada": "La queja {{numero}} se asignó a otro técnico",
+      "comentario_nuevo_one": "{{count}} comentario nuevo en {{numero}}",
+      "comentario_nuevo_other": "{{count}} comentarios nuevos en {{numero}}",
+      "respuesta_vecino": "El vecino respondió en {{numero}}. La queja volvió a En proceso",
+      "queja_reabierta": "Se reabrió la queja {{numero}}",
+      "traslado_solicitado": "Se solicitó trasladar la queja {{numero}}",
+      "traslado_resuelto": {
+        "aprobada": "Se aprobó el traslado de {{numero}}",
+        "rechazada": "Se rechazó el traslado de {{numero}}",
+        "sin_efecto": "El traslado de {{numero}} quedó sin efecto"
+      }
     },
     "plazos": {
       "respuesta": "respuesta",

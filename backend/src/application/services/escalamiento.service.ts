@@ -17,12 +17,12 @@ export class EscalamientoService {
     let escaladas = 0;
     for (;;) {
       const lote = await conReglasDeNegocio(() =>
-        this.transaccion.ejecutar(async ({ escalamiento, ticketsEscritura, notificaciones }) => {
+        this.transaccion.ejecutar(async ({ escalamiento, ticketsEscritura, notificaciones, destinatarios }) => {
           const pendientes = await escalamiento.reclamarPendientes(ahora, TAMANO_LOTE_ESCALAMIENTO);
           if (pendientes.length === 0) {
             return 0;
           }
-          const supervisores = await escalamiento.supervisores();
+          const supervisores = await destinatarios.supervisores();
           for (const pendiente of pendientes) {
             // El job no actúa en nombre de un usuario: sin filtro de alcance. La fila ya está bloqueada.
             const actual = await ticketsEscritura.obtenerParaActualizar(pendiente.ticketId, []);

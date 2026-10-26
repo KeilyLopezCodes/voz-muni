@@ -17,6 +17,7 @@ import { PoliticasSlaService } from './application/services/politicas-sla.servic
 import { SlaService } from './application/services/sla.service';
 import { ConsultaTicketsService } from './application/services/consulta-tickets.service';
 import { DespachoCorreosService } from './application/services/despacho-correos.service';
+import { NotificacionesInternasService } from './application/services/notificaciones-internas.service';
 import { NotificadorCorreo } from './application/services/notificador-correo.service';
 import { EscaladasService } from './application/services/escaladas.service';
 import { EscalamientoService } from './application/services/escalamiento.service';
@@ -177,6 +178,15 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     // En las pruebas el primer intento se espera, para comprobar el enviador falso sin depender de tiempos.
     { despachoSincronico: opciones.despachoSincronico ?? env.NODE_ENV === 'test' },
   );
+  // La campana (SPEC 31) y la purga diaria de las leídas (SPEC 36).
+  const notificacionesService = new NotificacionesService(
+    new KnexNotificacionRepository(db),
+    clock,
+    new KnexParametroRepository(db),
+    (mensaje) => console.error(mensaje),
+  );
+  // Notificaciones a los internos (SPEC 36), en la transacción de cada caso de uso.
+  const notificacionesInternas = new NotificacionesInternasService();
   // Avisos de comentarios públicos al vecino (SPEC 35): los usa la creación de comentarios y el job de correos.
   const avisosComentarios = new AvisosComentariosService(
     transaccion,
@@ -228,8 +238,15 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     camposExtraService: new CamposExtraService(transaccion),
     parametrosService: parametros,
     triageService: new TriageService(transaccion, new KnexTriageLecturaRepository(db), correo, clock, env.APP_URL, sla),
-    asignacionService: new AsignacionService(transaccion, new KnexPorAsignarLecturaRepository(db), clock, correo, env.APP_URL),
-    trasladosService: new TrasladosService(transaccion, catalogo, clock, correo, env.APP_URL),
+    asignacionService: new AsignacionService(
+      transaccion,
+      new KnexPorAsignarLecturaRepository(db),
+      clock,
+      correo,
+      env.APP_URL,
+      notificacionesInternas,
+    ),
+    trasladosService: new TrasladosService(transaccion, catalogo, clock, correo, env.APP_URL, notificacionesInternas),
     atencionService: new AtencionService(
       transaccion,
       new KnexAtencionLecturaRepository(db),
@@ -239,7 +256,15 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
       correo,
       env.APP_URL,
     ),
-    confirmacionService: new ConfirmacionService(transaccion, plazosConfirmacion, correo, clock, env.APP_URL, sla),
+    confirmacionService: new ConfirmacionService(
+      transaccion,
+      plazosConfirmacion,
+      correo,
+      clock,
+      env.APP_URL,
+      sla,
+      notificacionesInternas,
+    ),
     comentariosService: new ComentariosService(
       transaccion,
       new KnexTicketLecturaRepository(db),
@@ -247,6 +272,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
       sla,
       avisosComentarios,
       correo,
+      notificacionesInternas,
     ),
     adjuntosService: new AdjuntosService(
       transaccion,
@@ -259,7 +285,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     lineaTiempoService: new LineaTiempoService(consultaTickets, new KnexLineaTiempoRepository(db)),
     politicasSlaService: new PoliticasSlaService(new KnexPoliticaSlaRepository(db), transaccion, clock),
     alertasSlaService: alertasSla,
-    notificacionesService: new NotificacionesService(new KnexNotificacionRepository(db)),
+    notificacionesService,
     escalamientoService: escalamiento,
     escaladasService: new EscaladasService(new KnexEscaladasLecturaRepository(db)),
     cierreAutomaticoService: cierre,
@@ -271,7 +297,11 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
       iniciarJobSla({ alertas: alertasSla, escalamiento, cierre }, { cron: env.SLA_JOB_CRON }, clock),
     correosJobActivo: env.CORREOS_JOB_ACTIVO,
     iniciarJobCorreos: () =>
-      iniciarJobCorreos({ avisos: avisosComentarios, despacho: despachoCorreos }, { cron: env.CORREOS_JOB_CRON }, clock),
+      iniciarJobCorreos(
+        { avisos: avisosComentarios, despacho: despachoCorreos, purga: notificacionesService },
+        { cron: env.CORREOS_JOB_CRON, purgaCron: env.NOTIFICACIONES_PURGA_CRON },
+        clock,
+      ),
     prepararAlmacen: () => almacen.preparar(),
     dispose: () => db.destroy(),
   };

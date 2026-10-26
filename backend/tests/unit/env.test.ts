@@ -24,6 +24,7 @@ describe('loadEnv', () => {
     SLA_JOB_CRON: '*/5 * * * *',
     CORREOS_JOB_ACTIVO: true,
     CORREOS_JOB_CRON: '* * * * *',
+    NOTIFICACIONES_PURGA_CRON: '0 3 * * *',
   };
 
   it('devuelve la configuración con una entrada válida', () => {
@@ -40,6 +41,7 @@ describe('loadEnv', () => {
         SLA_JOB_CRON: '* * * * *',
         CORREOS_JOB_ACTIVO: 'false',
         CORREOS_JOB_CRON: '*/2 * * * *',
+        NOTIFICACIONES_PURGA_CRON: '30 2 * * *',
       }),
     ).toEqual({
       ...minimo,
@@ -53,6 +55,7 @@ describe('loadEnv', () => {
       SLA_JOB_CRON: '* * * * *',
       CORREOS_JOB_ACTIVO: false,
       CORREOS_JOB_CRON: '*/2 * * * *',
+      NOTIFICACIONES_PURGA_CRON: '30 2 * * *',
     });
   });
 
@@ -76,6 +79,11 @@ describe('loadEnv', () => {
     expect(loadEnv({ ...minimo, NODE_ENV: 'test', CORREOS_JOB_ACTIVO: 'true' }).CORREOS_JOB_ACTIVO).toBe(true);
     expect(() => loadEnv({ ...minimo, CORREOS_JOB_CRON: 'cada minuto' })).toThrow(/CORREOS_JOB_CRON/);
     expect(() => loadEnv({ ...minimo, CORREOS_JOB_ACTIVO: 'si' })).toThrow(/CORREOS_JOB_ACTIVO/);
+  });
+
+  it('la purga de notificaciones corre a las 03:00 por defecto y valida su expresión (SPEC 36)', () => {
+    expect(loadEnv(minimo).NOTIFICACIONES_PURGA_CRON).toBe('0 3 * * *');
+    expect(() => loadEnv({ ...minimo, NOTIFICACIONES_PURGA_CRON: 'de madrugada' })).toThrow(/NOTIFICACIONES_PURGA_CRON/);
   });
 
   describe('nombres de SPEC 31 (obsoletos)', () => {

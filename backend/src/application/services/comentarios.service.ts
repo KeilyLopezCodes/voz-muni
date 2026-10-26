@@ -15,6 +15,7 @@ import type { ComentarioCreadoDto, ComentarioDto, DatosComentario } from '../dto
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 import type { AvisosComentariosService } from './avisos-comentarios.service';
 import type { NotificadorCorreo } from './notificador-correo.service';
+import type { NotificacionesInternasService } from './notificaciones-internas.service';
 import type { SlaService } from './sla.service';
 
 // Comentarios públicos y notas internas (RF-19, RF-22, SPEC 23). El permiso para escribir (comentarios.publico o
@@ -28,12 +29,14 @@ export class ComentariosService {
     private readonly sla: Pick<SlaService, 'alReanudar'>,
     private readonly avisos: Pick<AvisosComentariosService, 'alComentar'>,
     private readonly correo: Pick<NotificadorCorreo, 'despachar'>,
+    private readonly notificaciones: Pick<NotificacionesInternasService, 'notificar'>, // SPEC 36
   ) {}
 
   async comentar(usuario: UsuarioAutenticado, ticketId: number, datos: DatosComentario): Promise<ComentarioCreadoDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.ver');
     const { creado, correoId } = await conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura, comentarios, avisosComentarios, correosSalientes }) => {
+      this.transaccion.ejecutar(async (repos) => {
+        const { ticketsEscritura, comentarios, avisosComentarios, correosSalientes } = repos;
         // FOR UPDATE: si el comentario reanuda la queja, no compite con otra transición.
         const actual = await ticketsEscritura.obtenerParaActualizar(ticketId, filtro);
         if (!actual) {
@@ -68,6 +71,30 @@ export class ComentariosService {
           await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
           estado = resultado.ticket.estado;
         }
+
+        // A los internos (SPEC 36): la respuesta del vecino que reanuda pide acción y no se agrupa; cualquier otro
+        // comentario se agrupa por queja. Las notas internas solo llegan a quien puede leerlas.
+        const { asignadoA, dependenciaId } = actual.ticket;
+        await this.notificaciones.notificar(
+          repos,
+          reanuda
+            ? {
+                tipo: 'respuesta_vecino',
+                ticketId,
+                autorId: usuario.id,
+                candidatos: asignadoA !== null ? { usuarios: [asignadoA] } : { coordinadoresDe: dependenciaId },
+                datos: {},
+              }
+            : {
+                tipo: 'comentario_nuevo',
+                ticketId,
+                autorId: usuario.id,
+                candidatos: { usuarios: [asignadoA], participantes: true },
+                datos: {},
+                requiereComentariosInternos: datos.interno,
+              },
+          ahora,
+        );
 
         // Con el ticket ya bloqueado: dos comentarios simultáneos no envían dos avisos. Las notas internas y los
         // comentarios del propio vecino nunca avisan.

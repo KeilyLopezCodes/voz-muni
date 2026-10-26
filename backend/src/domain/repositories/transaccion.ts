@@ -6,6 +6,7 @@ import type { CategoriaAdminRepository } from './categoria-admin-repository';
 import type { CierreAutomaticoRepository } from './cierre-automatico-repository';
 import type { ComentarioRepository } from './comentario-repository';
 import type { CorreoSalienteRepository } from './correo-saliente-repository';
+import type { DestinatariosRepository } from './destinatarios-repository';
 import type { EscalamientoRepository } from './escalamiento-repository';
 import type { NotificacionRepository } from './notificacion-repository';
 import type { PoliticaSlaRepository } from './politica-sla-repository';
@@ -39,6 +40,7 @@ export interface ReposTransaccionales {
   cierreAutomatico: CierreAutomaticoRepository;
   correosSalientes: CorreoSalienteRepository;
   avisosComentarios: AvisosComentariosRepository; // SPEC 35
+  destinatarios: DestinatariosRepository; // SPEC 36
 }
 
 // Puerto: ejecuta `trabajo` en una transacción; si lanza, no queda nada escrito.

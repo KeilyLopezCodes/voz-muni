@@ -16,6 +16,7 @@ import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { type ResultadoTransicion, Ticket } from '../../../src/domain/ticket/ticket';
 import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
 import { SLA_VACIO, SlaNulo } from '../sla/dobles-sla';
+import { NotificacionesInternasFalsas } from '../notificaciones/dobles-notificaciones';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
 const VECINO_ID = 7;
@@ -139,6 +140,7 @@ function armar() {
   const lectura = { obtener: async (id: number) => (tickets.tickets.has(id) ? ({ id } as never) : null) };
   const avisos: number[] = [];
   const despachados: (number | null)[] = [];
+  const internas = new NotificacionesInternasFalsas();
   const servicio = new ComentariosService(
     new TransaccionEnMemoria({ ticketsEscritura: tickets as unknown as TicketEscrituraRepository, comentarios }),
     lectura as unknown as TicketLecturaRepository,
@@ -147,8 +149,9 @@ function armar() {
     // La regla de la ventana se prueba en tests/unit/notificaciones y en tests/db/correos-vecino (SPEC 35).
     { alComentar: async (_repos, queja) => (avisos.push(queja.id), 99) },
     { despachar: async (ids) => void despachados.push(...ids) },
+    internas,
   );
-  return { tickets, comentarios, reloj, servicio, avisos, despachados };
+  return { tickets, comentarios, reloj, servicio, avisos, despachados, internas };
 }
 
 function capturar(promesa: Promise<unknown>): Promise<unknown> {
@@ -222,6 +225,16 @@ describe('ComentariosService', () => {
       usuarioId: VECINO_ID,
       motivo: null,
     });
+  });
+
+  it('la respuesta que reanuda avisa respuesta_vecino; cualquier otro comentario, comentario_nuevo (SPEC 36)', async () => {
+    const { tickets, servicio, internas } = armar();
+    tickets.agregar(1, 'en_espera');
+    await servicio.comentar(VECINO, 1, { cuerpo: 'Es la casa 12', interno: false });
+    await servicio.comentar(TECNICO, 1, { cuerpo: 'Llevar pala', interno: true });
+
+    expect(internas.tipos()).toEqual(['respuesta_vecino', 'comentario_nuevo']);
+    expect(internas.eventos[1]).toMatchObject({ autorId: TECNICO.id, candidatos: { participantes: true }, requiereComentariosInternos: true });
   });
 
   it('el vecino comenta en en_proceso: no cambia el estado', async () => {

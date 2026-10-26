@@ -18,6 +18,7 @@ import {
 } from '../auth/dobles';
 import { SLA_VACIO, SlaNulo } from '../sla/dobles-sla';
 import { notificadorDePrueba } from '../notificaciones/dobles-correo';
+import { NotificacionesInternasFalsas } from '../notificaciones/dobles-notificaciones';
 
 const AHORA = new Date('2026-11-05T15:00:00.000Z');
 const VENCE = new Date('2026-11-10T05:59:59.999Z');
@@ -104,6 +105,7 @@ function armar({ maxReaperturas = 2, ahora = AHORA }: { maxReaperturas?: number;
   const tickets = new TicketsEnMemoria();
   const enviador = new EnviadorEnMemoria();
   const errores: string[] = [];
+  const internas = new NotificacionesInternasFalsas();
   const servicio = new ConfirmacionService(
     new TransaccionEnMemoria({ ticketsEscritura: tickets as unknown as TicketEscrituraRepository }),
     { maxReaperturas: async () => maxReaperturas },
@@ -111,8 +113,9 @@ function armar({ maxReaperturas = 2, ahora = AHORA }: { maxReaperturas?: number;
     new RelojFalso(ahora),
     'https://vozmuni.test',
     new SlaNulo(),
+    internas,
   );
-  return { tickets, enviador, errores, servicio };
+  return { tickets, enviador, errores, servicio, internas };
 }
 
 function capturar(promesa: Promise<unknown>): Promise<unknown> {

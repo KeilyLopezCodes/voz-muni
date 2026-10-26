@@ -46,6 +46,7 @@ class EscalamientoEnMemoria implements EscalamientoRepository {
     return lote;
   }
 
+  // Hace también de DestinatariosRepository (SPEC 36): solo se usan los supervisores.
   async supervisores(): Promise<number[]> {
     return this.ids;
   }
@@ -87,7 +88,12 @@ function montar(pendientes: EscalamientoPendiente[], supervisores?: number[]) {
   const transaccion: Transaccion = {
     ejecutar: (trabajo) => {
       transacciones++;
-      return trabajo({ escalamiento, ticketsEscritura: tickets, notificaciones } as unknown as ReposTransaccionales);
+      return trabajo({
+        escalamiento,
+        ticketsEscritura: tickets,
+        notificaciones,
+        destinatarios: escalamiento,
+      } as unknown as ReposTransaccionales);
     },
   };
   const logs: string[] = [];

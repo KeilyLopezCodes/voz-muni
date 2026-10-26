@@ -22,7 +22,20 @@ import {
 } from './notificaciones-api'
 
 const ZONA_HORARIA = 'America/Guatemala'
-const TIPOS_CONOCIDOS = ['sla_alerta_respuesta', 'sla_alerta_resolucion', 'sla_escalamiento']
+const TIPOS_CONOCIDOS = [
+  'sla_alerta_respuesta',
+  'sla_alerta_resolucion',
+  'sla_escalamiento',
+  // Avisos a los internos (SPEC 36).
+  'asignacion_recibida',
+  'asignacion_retirada',
+  'comentario_nuevo',
+  'respuesta_vecino',
+  'queja_reabierta',
+  'traslado_solicitado',
+  'traslado_resuelto',
+]
+const RESULTADOS_TRASLADO = ['aprobada', 'rechazada', 'sin_efecto']
 
 type T = (clave: string, opciones?: Record<string, unknown>) => string
 
@@ -31,15 +44,27 @@ export function textoNotificacion(notificacion: Notificacion, t: T, idioma: stri
   if (!TIPOS_CONOCIDOS.includes(notificacion.tipo)) {
     return t('notificaciones.tipos.desconocido')
   }
-  const vence = typeof notificacion.datos.vence === 'string' ? notificacion.datos.vence : null
+  const numero = notificacion.ticket?.numero ?? ''
+  const { datos } = notificacion
+  // comentario_nuevo se agrupa por queja (SPEC 36): singular o plural, y la marca de notas internas.
+  if (notificacion.tipo === 'comentario_nuevo') {
+    const count = typeof datos.cantidad === 'number' ? datos.cantidad : 1
+    const texto = t('notificaciones.tipos.comentario_nuevo', { count, numero })
+    return datos.incluyeInternas === true ? `${texto} ${t('notificaciones.incluyeInternas')}` : texto
+  }
+  if (notificacion.tipo === 'traslado_resuelto') {
+    const resultado = typeof datos.resultado === 'string' && RESULTADOS_TRASLADO.includes(datos.resultado) ? datos.resultado : null
+    return resultado ? t(`notificaciones.tipos.traslado_resuelto.${resultado}`, { numero }) : t('notificaciones.tipos.desconocido')
+  }
+  const vence = typeof datos.vence === 'string' ? datos.vence : null
   const fecha = vence
     ? new Intl.DateTimeFormat(idioma, { dateStyle: 'medium', timeStyle: 'short', timeZone: ZONA_HORARIA }).format(new Date(vence))
     : ''
   return t(`notificaciones.tipos.${notificacion.tipo}`, {
-    numero: notificacion.ticket?.numero ?? '',
-    umbral: notificacion.datos.umbral,
+    numero,
+    umbral: datos.umbral,
     // sla_escalamiento (SPEC 32): qué plazo venció.
-    plazo: typeof notificacion.datos.plazo === 'string' ? t(`notificaciones.plazos.${notificacion.datos.plazo}`) : '',
+    plazo: typeof datos.plazo === 'string' ? t(`notificaciones.plazos.${datos.plazo}`) : '',
     fecha,
   })
 }

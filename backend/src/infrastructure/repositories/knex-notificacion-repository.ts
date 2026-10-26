@@ -49,6 +49,28 @@ export class KnexNotificacionRepository implements NotificacionRepository {
     );
   }
 
+  async agruparComentario(usuarioId: number, ticketId: number, interno: boolean, ahora: Date): Promise<void> {
+    // El conflicto lo detecta notificaciones_comentario_sin_leer_uq (0031): dos comentarios simultáneos suman, no
+    // crean dos filas.
+    await this.db.raw(
+      `INSERT INTO notificaciones (usuario_id, ticket_id, tipo, datos, creado_en)
+       VALUES (:usuarioId, :ticketId, 'comentario_nuevo',
+               jsonb_build_object('cantidad', 1, 'incluyeInternas', :interno::boolean), :ahora)
+       ON CONFLICT (usuario_id, ticket_id) WHERE tipo = 'comentario_nuevo' AND NOT leida DO UPDATE SET
+         datos = jsonb_build_object(
+           'cantidad', (notificaciones.datos ->> 'cantidad')::int + 1,
+           'incluyeInternas', (notificaciones.datos ->> 'incluyeInternas')::boolean OR :interno::boolean
+         ),
+         creado_en = EXCLUDED.creado_en`,
+      { usuarioId, ticketId, interno, ahora },
+    );
+  }
+
+  async purgarLeidas(leidasAntesDe: Date): Promise<number> {
+    // Usa notificaciones_leidas_idx (0031). Las no leídas nunca se borran.
+    return this.db('notificaciones').where('leida', true).where('leida_en', '<', leidasAntesDe).delete();
+  }
+
   async listar(usuarioId: number, limite: number): Promise<NotificacionLeida[]> {
     const filas: FilaNotificacion[] = await this.consulta()
       .where('n.usuario_id', usuarioId)
@@ -65,8 +87,10 @@ export class KnexNotificacionRepository implements NotificacionRepository {
     return Number(total);
   }
 
-  async marcarLeida(usuarioId: number, id: number): Promise<NotificacionLeida | null> {
-    const actualizadas = await this.db('notificaciones').where({ id, usuario_id: usuarioId }).update({ leida: true });
+  async marcarLeida(usuarioId: number, id: number, ahora: Date): Promise<NotificacionLeida | null> {
+    const actualizadas = await this.db('notificaciones')
+      .where({ id, usuario_id: usuarioId })
+      .update({ leida: true, leida_en: this.db.raw('COALESCE(leida_en, ?)', [ahora]) });
     if (actualizadas === 0) {
       return null;
     }
@@ -74,8 +98,10 @@ export class KnexNotificacionRepository implements NotificacionRepository {
     return fila ? aNotificacion(fila) : null;
   }
 
-  async marcarTodasLeidas(usuarioId: number): Promise<void> {
-    await this.db('notificaciones').where({ usuario_id: usuarioId, leida: false }).update({ leida: true });
+  async marcarTodasLeidas(usuarioId: number, ahora: Date): Promise<void> {
+    await this.db('notificaciones')
+      .where({ usuario_id: usuarioId, leida: false })
+      .update({ leida: true, leida_en: ahora });
   }
 
   private consulta(): Knex.QueryBuilder {

@@ -173,6 +173,7 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['leida', 'boolean'],
     ['creado_en', 'timestamp with time zone'],
     ['datos', 'jsonb'],
+    ['leida_en', 'timestamp with time zone'],
   ],
   correos_salientes: [
     ['id', 'bigint'],
@@ -960,6 +961,83 @@ describe('Esquema de base de datos', () => {
         ).toEqual([]);
       } finally {
         await db.migrate.latest();
+      }
+    });
+  });
+
+  describe('notificaciones internas (0031)', () => {
+    async function notificacion(trx: Knex.Transaction, cambios: Record<string, unknown> = {}) {
+      const ticketId = await insertTicket(trx);
+      const { solicitante_id: usuarioId } = await trx('tickets').where({ id: ticketId }).first('solicitante_id');
+      return { ticketId, usuarioId, fila: { usuario_id: usuarioId, ticket_id: ticketId, tipo: 'comentario_nuevo', ...cambios } };
+    }
+
+    it('leida_en acompaña a leida: el CHECK rechaza una sin la otra', () =>
+      withRollback(async (trx) => {
+        const { fila } = await notificacion(trx);
+        await trx('notificaciones').insert({ ...fila, leida: true, leida_en: new Date() });
+        await expect(trx('notificaciones').insert({ ...fila, tipo: 'otro', leida: true })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }));
+
+    it('dos comentario_nuevo sin leer del mismo usuario y queja violan el índice único; leída, no', () =>
+      withRollback(async (trx) => {
+        const { fila } = await notificacion(trx);
+        await trx('notificaciones').insert({ ...fila, leida: true, leida_en: new Date() });
+        await trx('notificaciones').insert(fila);
+        await expect(trx('notificaciones').insert(fila)).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
+      }));
+
+    it('crea el índice de purga y el parámetro notificaciones_retencion_dias = 30', async () => {
+      const indice = await db('pg_indexes')
+        .where({ schemaname: 'public', tablename: 'notificaciones', indexname: 'notificaciones_leidas_idx' })
+        .first('indexdef');
+      expect(indice.indexdef).toContain('(leida_en) WHERE leida');
+      expect(await db('parametros').where({ clave: 'notificaciones_retencion_dias' }).first('valor')).toEqual({ valor: 30 });
+    });
+
+    it('el down lo quita todo, y aplicar 0031 rellena leida_en = creado_en en las leídas', async () => {
+      await db.migrate.down({ name: '0031_notificaciones_internas.js' });
+      let ticketId = '';
+      try {
+        expect(await db.schema.hasColumn('notificaciones', 'leida_en')).toBe(false);
+        expect(
+          await db('pg_indexes')
+            .where({ tablename: 'notificaciones' })
+            .whereIn('indexname', ['notificaciones_leidas_idx', 'notificaciones_comentario_sin_leer_uq'])
+            .select('indexname'),
+        ).toEqual([]);
+        expect(await db('parametros').where({ clave: 'notificaciones_retencion_dias' }).select('clave')).toEqual([]);
+        // Filas de antes de la migración, confirmadas para que 0031 las vea.
+        await db.transaction(async (trx) => {
+          const { ticketId: id, fila } = await notificacion(trx);
+          ticketId = id;
+          await trx('notificaciones').insert([
+            { ...fila, tipo: 'sla_escalamiento', leida: true, creado_en: new Date('2026-10-01T12:00:00.000Z') },
+            { ...fila, tipo: 'sla_escalamiento', leida: false },
+          ]);
+        });
+      } finally {
+        await db.migrate.latest();
+      }
+      try {
+        const filas = await db('notificaciones').where({ ticket_id: ticketId }).orderBy('id').select('leida', 'leida_en');
+        expect(filas).toEqual([
+          { leida: true, leida_en: new Date('2026-10-01T12:00:00.000Z') },
+          { leida: false, leida_en: null },
+        ]);
+      } finally {
+        const ticket = await db('tickets').where({ id: ticketId }).first('solicitante_id', 'categoria_id', 'zona_id');
+        const { dependencia_id: dependenciaId } = await db('categorias').where({ id: ticket.categoria_id }).first('dependencia_id');
+        const { rol_id: rolId } = await db('usuarios').where({ id: ticket.solicitante_id }).first('rol_id');
+        await db('notificaciones').where({ ticket_id: ticketId }).delete();
+        await db('tickets').where({ id: ticketId }).delete();
+        await db('usuarios').where({ id: ticket.solicitante_id }).delete();
+        await db('categorias').where({ id: ticket.categoria_id }).delete();
+        await db('zonas').where({ id: ticket.zona_id }).delete();
+        await db('dependencias').where({ id: dependenciaId }).delete();
+        await db('roles').where({ id: rolId }).delete();
       }
     });
   });
