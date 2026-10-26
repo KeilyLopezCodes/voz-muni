@@ -352,6 +352,51 @@ describe('Vencimientos del SLA (SPEC 30)', () => {
     });
   });
 
+  describe('instantes de alerta (SPEC 31)', () => {
+    const alertas = (id: number) =>
+      db('tickets')
+        .where({ id })
+        .first('alerta_respuesta_en', 'alerta_resolucion_en', 'alerta_respuesta_enviada_en', 'alerta_resolucion_enviada_en');
+
+    it('aceptar guarda los dos instantes al 80 % y deja las marcas en NULL', async () => {
+      const id = await ticket('en_revision', { alerta_respuesta_enviada_en: REGISTRO, alerta_resolucion_enviada_en: REGISTRO });
+      expect((await transicion('supervisor', id, { accion: 'aceptar', prioridad: 'alta' }, gt('2026-11-02', '10:00'))).status).toBe(200);
+      // 80 % de 8 h = 6 h 24 min desde el lunes 09:00; 80 % de 48 h = 2304 min = viernes 6 a las 15:24.
+      expect(await alertas(id)).toEqual({
+        alerta_respuesta_en: gt('2026-11-02', '15:24'),
+        alerta_resolucion_en: gt('2026-11-06', '15:24'),
+        alerta_respuesta_enviada_en: null,
+        alerta_resolucion_enviada_en: null,
+      });
+    });
+
+    it('iniciar limpia la de respuesta; la espera limpia la de resolución y reanudar la recalcula', async () => {
+      const id = await aceptada();
+      await transicion('tecnico', id, { accion: 'iniciar' }, gt('2026-11-02', '11:00'));
+      expect(await alertas(id)).toMatchObject({ alerta_respuesta_en: null, alerta_resolucion_en: gt('2026-11-06', '15:24') });
+
+      await transicion('tecnico', id, { accion: 'poner_en_espera', motivo: 'Envíe una foto' }, gt('2026-11-03', '10:00'));
+      expect(await alertas(id)).toMatchObject({ alerta_resolucion_en: null });
+
+      await transicion('tecnico', id, { accion: 'reanudar' }, gt('2026-11-03', '12:00'));
+      // Faltaban 2340 min; al umbral faltan 576: la alerta queda a 1764 min de las 12:00 del martes.
+      expect(await alertas(id)).toMatchObject({ alerta_resolucion_en: gt('2026-11-09', '09:24') });
+    });
+
+    it('con sla_umbral_alerta = 0, aceptar responde 409 PARAMETRO_INVALIDO y la queja no cambia', async () => {
+      const id = await ticket('en_revision');
+      await db('parametros').where({ clave: 'sla_umbral_alerta' }).update({ valor: JSON.stringify(0) });
+      try {
+        const res = await transicion('supervisor', id, { accion: 'aceptar', prioridad: 'alta' }, gt('2026-11-02', '10:00'));
+        expect(res.status).toBe(409);
+        expect(res.body.codigo).toBe('PARAMETRO_INVALIDO');
+        expect(await sla(id)).toMatchObject({ estado: 'en_revision', vence_respuesta: null });
+      } finally {
+        await db('parametros').where({ clave: 'sla_umbral_alerta' }).update({ valor: JSON.stringify(80) });
+      }
+    });
+  });
+
   describe('lectura (SPEC 20, 22 y 25)', () => {
     it('las bandejas y el detalle llevan sla para los internos; el vecino recibe sla: null en el detalle', async () => {
       const id = await aceptada();

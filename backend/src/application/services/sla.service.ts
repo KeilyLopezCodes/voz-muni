@@ -11,9 +11,11 @@ import {
   alReabrir,
   alReanudar,
   type CambiosSla,
+  CLAVE_UMBRAL_ALERTA,
   type EstadoSla,
   type PlazoHoras,
   type RelojHabil,
+  validarUmbralAlerta,
 } from '../../domain/sla/vencimientos';
 import type { Prioridad } from '../../domain/ticket/prioridad';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
@@ -23,6 +25,7 @@ export type TicketConPolitica = EstadoSla & { categoriaId: number; prioridad: Pr
 // Único lugar donde se calculan los vencimientos del SLA (RF-27, SPEC 30). Los casos de uso lo llaman dentro de su
 // transacción, después del método de dominio, y guardan los CambiosSla con la transición. Si no se puede
 // calcular (SLA_NO_CONFIGURADO, CALENDARIO_INCOMPLETO, PARAMETRO_INVALIDO, todos 409), la transacción se revierte.
+// También calcula los instantes de las alertas al umbral (SPEC 31).
 // Las lecturas (jornada, calendario y política) no necesitan bloqueo: no van en la transacción.
 export class SlaService {
   constructor(
@@ -44,17 +47,23 @@ export class SlaService {
     return conReglasDeNegocio(async () => alPonerEnEspera(ticket, ahora, await this.reloj()));
   }
 
-  // Único camino para salir de la pausa: reanudar (SPEC 22) y la respuesta del solicitante (SPEC 23).
-  alReanudar(ticket: EstadoSla, ahora: Date): Promise<CambiosSla> {
-    return conReglasDeNegocio(async () => alReanudar(ticket, ahora, await this.reloj()));
+  // Único camino para salir de la pausa: reanudar (SPEC 22) y la respuesta del solicitante (SPEC 23). Sin pausa
+  // abierta (queja anterior a SPEC 30) no lee nada.
+  alReanudar(ticket: TicketConPolitica, ahora: Date): Promise<CambiosSla> {
+    if (ticket.pausadoDesde === null) {
+      return Promise.resolve({});
+    }
+    return conReglasDeNegocio(async () => alReanudar(ticket, await this.plazo(ticket), ahora, await this.reloj()));
   }
 
   alReabrir(ticket: TicketConPolitica, ahora: Date): Promise<CambiosSla> {
     return conReglasDeNegocio(async () => alReabrir(ticket, await this.plazo(ticket), ahora, await this.reloj()));
   }
 
-  // La política vigente de la categoría y la prioridad (SPEC 29). Nunca se inventa un plazo.
+  // La política vigente de la categoría y la prioridad (SPEC 29) y el umbral de la alerta (SPEC 31), leído en cada
+  // uso. Nunca se inventa un plazo.
   private async plazo({ categoriaId, prioridad }: TicketConPolitica): Promise<PlazoHoras> {
+    const umbralAlerta = validarUmbralAlerta(await this.parametros.obtener(CLAVE_UMBRAL_ALERTA));
     const politica = (await this.politicas.obtenerCategoria(categoriaId))?.plazos.find((p) => p.prioridad === prioridad);
     if (!politica) {
       throw new ErrorDeAplicacion(
@@ -62,7 +71,7 @@ export class SlaService {
         `La categoría ${categoriaId} no tiene política de SLA para la prioridad ${prioridad}`,
       );
     }
-    return { horasRespuesta: politica.horasRespuesta, horasResolucion: politica.horasResolucion };
+    return { horasRespuesta: politica.horasRespuesta, horasResolucion: politica.horasResolucion, umbralAlerta };
   }
 
   // La jornada se lee en cada uso, como los parámetros de SPEC 27.

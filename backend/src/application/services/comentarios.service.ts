@@ -56,7 +56,10 @@ export class ComentariosService {
         if (reanuda) {
           const resultado = actual.ticket.reanudar({ actorId: usuario.id, ahora });
           // Mismo cálculo que reanudar en la atención (SPEC 30): la pausa se cierra en un solo lugar.
-          const cambiosSla = await this.sla.alReanudar(actual.sla, ahora);
+          const cambiosSla = await this.sla.alReanudar(
+            { ...actual.sla, categoriaId: actual.categoria.id, prioridad: actual.ticket.prioridad! },
+            ahora,
+          );
           await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
           estado = resultado.ticket.estado;
         }

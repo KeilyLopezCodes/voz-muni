@@ -6,6 +6,7 @@ import { buildContainer } from './container';
 
 const container = buildContainer();
 let server: Server | undefined;
+let detenerAlertas: (() => void) | undefined;
 
 // La carpeta de adjuntos debe existir antes de recibir subidas (SPEC 24).
 async function iniciar(): Promise<void> {
@@ -13,12 +14,19 @@ async function iniciar(): Promise<void> {
 
   server = createApp(container).listen(container.port, () => {
     console.log(`VozMuni backend escuchando en el puerto ${container.port}`);
+    // El job no lo inicia app.ts: así Supertest nunca lo dispara (SPEC 31).
+    if (container.alertasSlaActivo) {
+      detenerAlertas = container.iniciarAlertasSla();
+    } else {
+      console.log('Alertas de SLA desactivadas (SLA_ALERTAS_ACTIVO=false)');
+    }
   });
 }
 
-// Cierra primero HTTP y luego Knex.
+// Detiene el job, cierra HTTP y luego Knex.
 function shutdown(signal: NodeJS.Signals): void {
   console.log(`${signal} recibido, cerrando VozMuni backend`);
+  detenerAlertas?.();
 
   const cerrarBase = async () => {
     await container.dispose();

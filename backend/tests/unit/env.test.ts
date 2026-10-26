@@ -20,6 +20,8 @@ describe('loadEnv', () => {
     SMTP_PORT: 587,
     SMTP_SECURE: false,
     RECUPERACION_LIMITE_POR_VENTANA: 5,
+    SLA_ALERTAS_ACTIVO: true,
+    SLA_ALERTAS_CRON: '*/5 * * * *',
   };
 
   it('devuelve la configuración con una entrada válida', () => {
@@ -32,6 +34,8 @@ describe('loadEnv', () => {
         SMTP_PORT: '465',
         SMTP_SECURE: 'true',
         RECUPERACION_LIMITE_POR_VENTANA: '3',
+        SLA_ALERTAS_ACTIVO: 'false',
+        SLA_ALERTAS_CRON: '* * * * *',
       }),
     ).toEqual({
       ...minimo,
@@ -41,7 +45,23 @@ describe('loadEnv', () => {
       SMTP_PORT: 465,
       SMTP_SECURE: true,
       RECUPERACION_LIMITE_POR_VENTANA: 3,
+      SLA_ALERTAS_ACTIVO: false,
+      SLA_ALERTAS_CRON: '* * * * *',
     });
+  });
+
+  it('rechaza una SLA_ALERTAS_CRON inválida (SPEC 31)', () => {
+    expect(() => loadEnv({ ...minimo, SLA_ALERTAS_CRON: 'cada 5 minutos' })).toThrow(/SLA_ALERTAS_CRON/);
+  });
+
+  it('rechaza un SLA_ALERTAS_ACTIVO que no es true ni false', () => {
+    expect(() => loadEnv({ ...minimo, SLA_ALERTAS_ACTIVO: 'si' })).toThrow(/SLA_ALERTAS_ACTIVO/);
+  });
+
+  it('en NODE_ENV=test el job de alertas queda desactivado por defecto, y se puede activar', () => {
+    expect(loadEnv({ ...minimo, NODE_ENV: 'test' }).SLA_ALERTAS_ACTIVO).toBe(false);
+    expect(loadEnv({ ...minimo, NODE_ENV: 'test', SLA_ALERTAS_ACTIVO: 'true' }).SLA_ALERTAS_ACTIVO).toBe(true);
+    expect(loadEnv({ ...minimo, NODE_ENV: 'production' }).SLA_ALERTAS_ACTIVO).toBe(true);
   });
 
   it('lanza un error que nombra DATABASE_URL cuando falta', () => {

@@ -64,5 +64,18 @@
     "media": "Media",
     "alta": "Alta",
     "urgente": "Urgente"
+  },
+  "notificaciones": {
+    "abrir": "Notificaciones, {{count}} sin leer",
+    "titulo": "Notificaciones",
+    "vacio": "No tienes notificaciones",
+    "nueva": "Nueva",
+    "marcarTodas": "Marcar todas como leídas",
+    "errorCarga": "No pudimos cargar las notificaciones.",
+    "tipos": {
+      "sla_alerta_respuesta": "La queja {{numero}} llegó al {{umbral}} % del plazo de respuesta. Vence el {{fecha}}",
+      "sla_alerta_resolucion": "La queja {{numero}} llegó al {{umbral}} % del plazo de resolución. Vence el {{fecha}}",
+      "desconocido": "Nueva notificación"
+    }
   }
 }

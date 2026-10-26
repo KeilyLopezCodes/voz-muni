@@ -6,6 +6,7 @@ import { AuthController } from './presentation/controllers/auth.controller';
 import { CamposExtraController } from './presentation/controllers/campos-extra.controller';
 import { CatalogosController } from './presentation/controllers/catalogos.controller';
 import { ComentariosController } from './presentation/controllers/comentarios.controller';
+import { NotificacionesController } from './presentation/controllers/notificaciones.controller';
 import { ParametrosController } from './presentation/controllers/parametros.controller';
 import { PoliticasSlaController } from './presentation/controllers/politicas-sla.controller';
 import { HealthController } from './presentation/controllers/health.controller';
@@ -27,6 +28,7 @@ import { authRoutes } from './presentation/routes/auth.routes';
 import { camposExtraRoutes } from './presentation/routes/campos-extra.routes';
 import { catalogosRoutes } from './presentation/routes/catalogos.routes';
 import { comentariosRoutes } from './presentation/routes/comentarios.routes';
+import { notificacionesRoutes } from './presentation/routes/notificaciones.routes';
 import { parametrosRoutes } from './presentation/routes/parametros.routes';
 import { politicasSlaRoutes } from './presentation/routes/politicas-sla.routes';
 import { healthRoutes } from './presentation/routes/health.routes';
@@ -102,6 +104,13 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1/admin/categorias',
     camposExtraRoutes(new CamposExtraController(container.camposExtraService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1/notificaciones',
+    notificacionesRoutes(
+      new NotificacionesController(container.notificacionesService),
+      autenticar(container.autorizacionService),
+    ),
   );
   app.use(
     '/api/v1/admin',

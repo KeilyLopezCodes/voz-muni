@@ -19,7 +19,9 @@ import type { AtencionService } from '../../../src/application/services/atencion
 import type { ConfirmacionService } from '../../../src/application/services/confirmacion.service';
 import type { ComentariosService } from '../../../src/application/services/comentarios.service';
 import type { AdjuntosService } from '../../../src/application/services/adjuntos.service';
+import type { AlertasSlaService } from '../../../src/application/services/alertas-sla.service';
 import type { LineaTiempoService } from '../../../src/application/services/linea-tiempo.service';
+import type { NotificacionesService } from '../../../src/application/services/notificaciones.service';
 import type { PoliticasSlaService } from '../../../src/application/services/politicas-sla.service';
 import type { ConsultaTicketsService } from '../../../src/application/services/consulta-tickets.service';
 import type { BitacoraLecturaRepository } from '../../../src/domain/repositories/bitacora-lectura-repository';
@@ -60,6 +62,10 @@ function buildTestContainer(): Container {
     adjuntosService: {} as AdjuntosService,
     lineaTiempoService: {} as LineaTiempoService,
     politicasSlaService: {} as PoliticasSlaService,
+    alertasSlaService: {} as AlertasSlaService,
+    notificacionesService: {} as NotificacionesService,
+    alertasSlaActivo: false,
+    iniciarAlertasSla: () => () => {},
     prepararAlmacen: async () => {},
     dispose: async () => {},
   };
