@@ -102,6 +102,8 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['alerta_resolucion_enviada_en', 'timestamp with time zone'],
     ['escalado_en', 'timestamp with time zone'],
     ['escalado_por', 'text'],
+    ['aviso_comentario_en', 'timestamp with time zone'],
+    ['avisos_comentario_pendientes', 'integer'],
   ],
   ticket_historial: [
     ['id', 'bigint'],
@@ -459,7 +461,7 @@ describe('Esquema de base de datos', () => {
       } finally {
         await db.migrate.latest();
       }
-      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '15' }]);
+      expect(await db('plantillas_notificacion').count({ total: '*' })).toEqual([{ total: '20' }]);
     });
   });
 
@@ -956,6 +958,61 @@ describe('Esquema de base de datos', () => {
         expect(
           await db('information_schema.columns').where({ table_name: 'comentarios', column_name: 'editado_en' }).select('column_name'),
         ).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
+  describe('correos al vecino (0030)', () => {
+    const CLAVES_0030 = [
+      'comentario_publico',
+      'comentarios_publicos_agrupados',
+      'informacion_solicitada',
+      'queja_trasladada',
+      'tecnico_asignado',
+    ];
+
+    it('agrega las columnas de aviso con su CHECK, sin aviso y sin pendientes por defecto', () =>
+      withRollback(async (trx) => {
+        const ticketId = await insertTicket(trx);
+        expect(await trx('tickets').where({ id: ticketId }).first('aviso_comentario_en', 'avisos_comentario_pendientes')).toEqual({
+          aviso_comentario_en: null,
+          avisos_comentario_pendientes: 0,
+        });
+        await expect(trx('tickets').where({ id: ticketId }).update({ avisos_comentario_pendientes: -1 })).rejects.toMatchObject({
+          code: CHECK_VIOLATION,
+        });
+      }));
+
+    it('crea el índice parcial, el parámetro de la ventana y las 5 plantillas', async () => {
+      const indice = await db('pg_indexes')
+        .where({ schemaname: 'public', tablename: 'tickets', indexname: 'tickets_avisos_comentario_pendientes_idx' })
+        .first('indexdef');
+      expect(indice.indexdef).toContain('(aviso_comentario_en) WHERE (avisos_comentario_pendientes > 0)');
+      expect(await db('parametros').where({ clave: 'aviso_comentarios_ventana_minutos' }).first('valor')).toEqual({ valor: 30 });
+      expect(await db('plantillas_notificacion').whereIn('clave', CLAVES_0030).orderBy('clave').select('clave', 'asunto')).toEqual([
+        { clave: 'comentario_publico', asunto: 'VozMuni: tienes un comentario nuevo en tu queja {{numero}}' },
+        { clave: 'comentarios_publicos_agrupados', asunto: 'VozMuni: tienes {{cantidad}} comentarios nuevos en tu queja {{numero}}' },
+        { clave: 'informacion_solicitada', asunto: 'VozMuni: necesitamos información sobre tu queja {{numero}}' },
+        { clave: 'queja_trasladada', asunto: 'VozMuni: tu queja {{numero}} cambió de área' },
+        { clave: 'tecnico_asignado', asunto: 'VozMuni: ya atendemos tu queja {{numero}}' },
+      ]);
+    });
+
+    it('revertir 0030 quita las columnas, el índice, el parámetro y las plantillas', async () => {
+      await db.migrate.down({ name: '0030_correos_vecino.js' });
+      try {
+        const columnas = await db('information_schema.columns')
+          .where({ table_schema: 'public', table_name: 'tickets' })
+          .whereIn('column_name', ['aviso_comentario_en', 'avisos_comentario_pendientes'])
+          .select('column_name');
+        expect(columnas).toEqual([]);
+        expect(
+          await db('pg_indexes').where({ tablename: 'tickets', indexname: 'tickets_avisos_comentario_pendientes_idx' }).select('indexname'),
+        ).toEqual([]);
+        expect(await db('parametros').where({ clave: 'aviso_comentarios_ventana_minutos' }).select('clave')).toEqual([]);
+        expect(await db('plantillas_notificacion').whereIn('clave', CLAVES_0030).select('clave')).toEqual([]);
       } finally {
         await db.migrate.latest();
       }

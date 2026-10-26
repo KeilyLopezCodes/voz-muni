@@ -18,7 +18,8 @@ import { ReglaDeNegocioError } from '../../../src/domain/errors/regla-de-negocio
 import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { type ResultadoTransicion, Ticket } from '../../../src/domain/ticket/ticket';
 import type { EstadoSolicitud } from '../../../src/domain/traslado/solicitud-traslado';
-import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { EnviadorEnMemoria, PlantillasEnMemoria, RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { notificadorDePrueba } from '../notificaciones/dobles-correo';
 import { SLA_VACIO } from '../sla/dobles-sla';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
@@ -148,6 +149,9 @@ function armar() {
     new TransaccionEnMemoria({ ticketsEscritura: tickets as unknown as TicketEscrituraRepository, traslados }),
     { listarDependenciasActivas: async () => [{ id: AGUA, nombre: 'Agua' }] } as unknown as CatalogoLecturaRepository,
     new RelojFalso(AHORA),
+    // El solicitante de estas pruebas no tiene correo: los avisos se prueban en tests/db/correos-vecino (SPEC 35).
+    notificadorDePrueba(new PlantillasEnMemoria(), new EnviadorEnMemoria(), () => {}),
+    'https://vozmuni.test',
   );
   return { tickets, traslados, servicio };
 }

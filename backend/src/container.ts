@@ -5,6 +5,7 @@ import { AsignacionService } from './application/services/asignacion.service';
 import { AtencionService } from './application/services/atencion.service';
 import { AuthService } from './application/services/auth.service';
 import { AutorizacionService } from './application/services/autorizacion.service';
+import { AvisosComentariosService } from './application/services/avisos-comentarios.service';
 import { CamposExtraService } from './application/services/campos-extra.service';
 import { CatalogosService } from './application/services/catalogos.service';
 import { CierreAutomaticoService } from './application/services/cierre-automatico.service';
@@ -107,6 +108,8 @@ export interface Container {
   // Bandeja de salida (SPEC 34): el job de correos llama al despacho; las pruebas usan los dos.
   notificadorCorreo: NotificadorCorreo;
   despachoCorreosService: DespachoCorreosService;
+  // Primer paso del job de correos (SPEC 35).
+  avisosComentariosService: AvisosComentariosService;
   // SLA_JOB_ACTIVO. server.ts programa el job de SLA después de listen; devuelve la función que lo detiene.
   slaJobActivo: boolean;
   iniciarJobSla(): () => void;
@@ -174,6 +177,14 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     // En las pruebas el primer intento se espera, para comprobar el enviador falso sin depender de tiempos.
     { despachoSincronico: opciones.despachoSincronico ?? env.NODE_ENV === 'test' },
   );
+  // Avisos de comentarios públicos al vecino (SPEC 35): los usa la creación de comentarios y el job de correos.
+  const avisosComentarios = new AvisosComentariosService(
+    transaccion,
+    new KnexParametroRepository(db),
+    correo,
+    env.APP_URL,
+    (mensaje) => console.error(mensaje),
+  );
   const cierre = new CierreAutomaticoService(
     transaccion,
     new KnexCierreAutomaticoRepository(db),
@@ -217,8 +228,8 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     camposExtraService: new CamposExtraService(transaccion),
     parametrosService: parametros,
     triageService: new TriageService(transaccion, new KnexTriageLecturaRepository(db), correo, clock, env.APP_URL, sla),
-    asignacionService: new AsignacionService(transaccion, new KnexPorAsignarLecturaRepository(db), clock),
-    trasladosService: new TrasladosService(transaccion, catalogo, clock),
+    asignacionService: new AsignacionService(transaccion, new KnexPorAsignarLecturaRepository(db), clock, correo, env.APP_URL),
+    trasladosService: new TrasladosService(transaccion, catalogo, clock, correo, env.APP_URL),
     atencionService: new AtencionService(
       transaccion,
       new KnexAtencionLecturaRepository(db),
@@ -229,7 +240,14 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
       env.APP_URL,
     ),
     confirmacionService: new ConfirmacionService(transaccion, plazosConfirmacion, correo, clock, env.APP_URL, sla),
-    comentariosService: new ComentariosService(transaccion, new KnexTicketLecturaRepository(db), clock, sla),
+    comentariosService: new ComentariosService(
+      transaccion,
+      new KnexTicketLecturaRepository(db),
+      clock,
+      sla,
+      avisosComentarios,
+      correo,
+    ),
     adjuntosService: new AdjuntosService(
       transaccion,
       new KnexTicketLecturaRepository(db),
@@ -247,11 +265,13 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     cierreAutomaticoService: cierre,
     notificadorCorreo: correo,
     despachoCorreosService: despachoCorreos,
+    avisosComentariosService: avisosComentarios,
     slaJobActivo: env.SLA_JOB_ACTIVO,
     iniciarJobSla: () =>
       iniciarJobSla({ alertas: alertasSla, escalamiento, cierre }, { cron: env.SLA_JOB_CRON }, clock),
     correosJobActivo: env.CORREOS_JOB_ACTIVO,
-    iniciarJobCorreos: () => iniciarJobCorreos(despachoCorreos, { cron: env.CORREOS_JOB_CRON }, clock),
+    iniciarJobCorreos: () =>
+      iniciarJobCorreos({ avisos: avisosComentarios, despacho: despachoCorreos }, { cron: env.CORREOS_JOB_CRON }, clock),
     prepararAlmacen: () => almacen.preparar(),
     dispose: () => db.destroy(),
   };

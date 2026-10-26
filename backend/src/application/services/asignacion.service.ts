@@ -2,6 +2,8 @@ import { validarAsignacion } from '../../domain/asignacion/asignacion-tecnico';
 import { filtroTicketsParaAccion } from '../../domain/autorizacion/alcance-tickets';
 import type { Clock } from '../../domain/health/clock';
 import type { TecnicoConCarga } from '../../domain/repositories/asignacion-repository';
+import type { CorreoSalienteRepository } from '../../domain/repositories/correo-saliente-repository';
+import type { TicketParaTransicion } from '../../domain/repositories/ticket-escritura-repository';
 import type {
   PorAsignarLecturaRepository,
   VistaPorAsignar,
@@ -12,20 +14,24 @@ import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { AsignacionHechaDto, DatosAsignacion, TicketPorAsignarDto } from '../dto/asignacion.dto';
 import { aSlaDto } from '../dto/sla.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import type { NotificadorCorreo } from './notificador-correo.service';
 
 // Asignación y reasignación de técnico (RF-14, SPEC 20). El coordinador actúa en su dependencia y el supervisor
-// en todas, según el alcance de tickets.asignar (SPEC 11).
+// en todas, según el alcance de tickets.asignar (SPEC 11). La primera asignación (también la primera después de un
+// traslado) avisa al vecino con tecnico_asignado; una reasignación no (SPEC 35).
 export class AsignacionService {
   constructor(
     private readonly transaccion: Transaccion,
     private readonly bandeja: PorAsignarLecturaRepository,
     private readonly clock: Clock,
+    private readonly correo: NotificadorCorreo,
+    private readonly appUrl: string, // APP_URL, sin barra final
   ) {}
 
-  asignar(usuario: UsuarioAutenticado, id: number, datos: DatosAsignacion): Promise<AsignacionHechaDto> {
+  async asignar(usuario: UsuarioAutenticado, id: number, datos: DatosAsignacion): Promise<AsignacionHechaDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.asignar');
-    return conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura, asignaciones }) => {
+    const { hecha, correoId } = await conReglasDeNegocio(() =>
+      this.transaccion.ejecutar(async ({ ticketsEscritura, asignaciones, correosSalientes }) => {
         // FOR UPDATE: dos asignaciones simultáneas se aplican una después de la otra.
         const actual = await ticketsEscritura.obtenerParaActualizar(id, filtro);
         if (!actual) {
@@ -53,8 +59,38 @@ export class AsignacionService {
           motivo,
           creadoEn: this.clock.now(),
         });
-        return { id: ticket.id, numero: ticket.numero, estado: ticket.estado, asignadoA: candidato.id, tecnicoAnterior };
+        // Sin el nombre del técnico, como en el detalle del vecino (SPEC 25).
+        const correoId =
+          tecnicoAnterior === null && ticket.dependenciaId !== null
+            ? await this.encolarAsignado(actual, await asignaciones.nombreDependencia(ticket.dependenciaId), correosSalientes)
+            : null;
+        const hecha = { id: ticket.id, numero: ticket.numero, estado: ticket.estado, asignadoA: candidato.id, tecnicoAnterior };
+        return { hecha, correoId };
       }),
+    );
+    await this.correo.despachar([correoId]);
+    return hecha;
+  }
+
+  private encolarAsignado(
+    { ticket, titulo, solicitante }: TicketParaTransicion,
+    dependencia: string | null,
+    correos: CorreoSalienteRepository,
+  ): Promise<number | null> {
+    if (!solicitante.email || dependencia === null) {
+      return Promise.resolve(null);
+    }
+    return this.correo.encolar(
+      'tecnico_asignado',
+      {
+        nombre: solicitante.nombre,
+        numero: ticket.numero,
+        titulo,
+        dependencia,
+        enlace: `${this.appUrl}/consulta?numero=${ticket.numero}`,
+      },
+      { para: solicitante.email, usuarioId: solicitante.id, ticketId: ticket.id },
+      correos,
     );
   }
 

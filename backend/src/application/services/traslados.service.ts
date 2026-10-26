@@ -6,6 +6,8 @@ import type {
   CatalogoLecturaRepository,
   DependenciaActiva,
 } from '../../domain/repositories/catalogo-lectura-repository';
+import type { CorreoSalienteRepository } from '../../domain/repositories/correo-saliente-repository';
+import type { TicketParaTransicion } from '../../domain/repositories/ticket-escritura-repository';
 import type { Pagina } from '../../domain/repositories/ticket-lectura-repository';
 import type { SolicitudTraslado } from '../../domain/repositories/traslado-repository';
 import type { ReposTransaccionales, Transaccion } from '../../domain/repositories/transaccion';
@@ -19,6 +21,7 @@ import {
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { DatosSolicitudTraslado, ResultadoTrasladoDto, SolicitudTrasladoDto } from '../dto/traslados.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import type { NotificadorCorreo } from './notificador-correo.service';
 
 const aDto = (s: SolicitudTraslado): SolicitudTrasladoDto => ({
   ...s,
@@ -28,23 +31,25 @@ const aDto = (s: SolicitudTraslado): SolicitudTrasladoDto => ({
 
 // Traslados entre dependencias (RF-15, SPEC 21). El técnico y el coordinador solicitan (alcance `solicitar`);
 // el supervisor (alcance `todas`) aprueba, rechaza o traslada directo. Aprobar aplica Ticket.trasladar (SPEC 04):
-// la queja vuelve a en_revision sin dependencia ni técnico.
+// la queja vuelve a en_revision sin dependencia ni técnico, y el vecino recibe queja_trasladada (SPEC 35).
 export class TrasladosService {
   constructor(
     private readonly transaccion: Transaccion,
     private readonly catalogo: CatalogoLecturaRepository,
     private readonly clock: Clock,
+    private readonly correo: NotificadorCorreo,
+    private readonly appUrl: string, // APP_URL, sin barra final
   ) {}
 
-  solicitar(
+  async solicitar(
     usuario: UsuarioAutenticado,
     alcance: Alcance,
     ticketId: number,
     datos: DatosSolicitudTraslado,
   ): Promise<ResultadoTrasladoDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.trasladar');
-    return conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura, traslados }) => {
+    const { resultado, correoId } = await conReglasDeNegocio(() =>
+      this.transaccion.ejecutar(async ({ ticketsEscritura, traslados, correosSalientes }) => {
         // FOR UPDATE sobre el ticket, con el alcance: el técnico ve sus asignadas, el coordinador su dependencia.
         const actual = await ticketsEscritura.obtenerParaActualizar(ticketId, filtro);
         if (!actual) {
@@ -73,7 +78,8 @@ export class TrasladosService {
 
         if (alcance !== 'todas') {
           const id = await traslados.crear({ ...nueva, resolucion: null });
-          return { solicitud: aDto((await traslados.obtener(id))!) };
+          // Una solicitud pendiente no cambia la queja: el vecino no recibe nada.
+          return { resultado: { solicitud: aDto((await traslados.obtener(id))!) }, correoId: null };
         }
         // El supervisor traslada en el momento, y queda registrado como solicitud aprobada por él mismo.
         const ahora = this.clock.now();
@@ -84,17 +90,22 @@ export class TrasladosService {
           resolucion: { estado: 'aprobada', resueltoPor: usuario.id, resueltoEn: ahora },
         });
         return {
-          solicitud: aDto((await traslados.obtener(id))!),
-          ticket: { id: ticket.id, numero: ticket.numero, estado: 'en_revision' as const },
+          resultado: {
+            solicitud: aDto((await traslados.obtener(id))!),
+            ticket: { id: ticket.id, numero: ticket.numero, estado: 'en_revision' as const },
+          },
+          correoId: await this.encolarTrasladada(actual, correosSalientes),
         };
       }),
     );
+    await this.correo.despachar([correoId]);
+    return resultado;
   }
 
   async aprobar(usuario: UsuarioAutenticado, id: number): Promise<ResultadoTrasladoDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.trasladar');
     const resultado = await conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura, traslados }) => {
+      this.transaccion.ejecutar(async ({ ticketsEscritura, traslados, correosSalientes }) => {
         const solicitud = await this.pendiente(traslados, id);
         const actual = await ticketsEscritura.obtenerParaActualizar(solicitud.ticketId, filtro);
         if (!actual) {
@@ -123,13 +134,16 @@ export class TrasladosService {
         return {
           solicitud: aDto((await traslados.obtener(id))!),
           ticket: { id: actual.ticket.id, numero: actual.ticket.numero, estado: 'en_revision' as const },
+          correoId: await this.encolarTrasladada(actual, correosSalientes),
         };
       }),
     );
     if (!resultado) {
       throw new ErrorDeAplicacion('TRASLADO_SIN_EFECTO', 'La queja ya no está en asignada ni en_proceso');
     }
-    return resultado;
+    const { correoId, ...respuesta } = resultado;
+    await this.correo.despachar([correoId]);
+    return respuesta;
   }
 
   rechazar(usuario: UsuarioAutenticado, id: number, motivo: string): Promise<ResultadoTrasladoDto> {
@@ -181,6 +195,23 @@ export class TrasladosService {
 
   dependencias(): Promise<DependenciaActiva[]> {
     return this.catalogo.listarDependenciasActivas();
+  }
+
+  // Sin el motivo ni las dependencias: el motivo del traslado es interno (SPEC 28). Se encola en la transacción y se
+  // despacha después del commit (SPEC 34).
+  private encolarTrasladada(
+    { ticket, titulo, solicitante }: TicketParaTransicion,
+    correos: CorreoSalienteRepository,
+  ): Promise<number | null> {
+    if (!solicitante.email) {
+      return Promise.resolve(null);
+    }
+    return this.correo.encolar(
+      'queja_trasladada',
+      { nombre: solicitante.nombre, numero: ticket.numero, titulo, enlace: `${this.appUrl}/consulta?numero=${ticket.numero}` },
+      { para: solicitante.email, usuarioId: solicitante.id, ticketId: ticket.id },
+      correos,
+    );
   }
 
   private async pendiente(traslados: ReposTransaccionales['traslados'], id: number) {
