@@ -65,18 +65,29 @@ const STATUS_POR_CODIGO: Record<CodigoError, number> = {
   SESION_INVALIDA: 401,
   PERMISO_DENEGADO: 403,
   NO_ENCONTRADO: 404,
+  CONSULTA_NO_ENCONTRADA: 404,
   CUENTA_BLOQUEADA: 423,
   DEMASIADAS_PETICIONES: 429,
   ERROR_INTERNO: 500,
 };
 
+// La query de /api/v1/public lleva el contacto del solicitante (SPEC 37): no se escribe en logs ni mensajes.
+const RUTAS_PUBLICAS = '/api/v1/public';
+
+export function esRutaPublica(url: string): boolean {
+  return url === RUTAS_PUBLICAS || url.startsWith(`${RUTAS_PUBLICAS}/`) || url.startsWith(`${RUTAS_PUBLICAS}?`);
+}
+
+// La URL sin la query cuando es pública.
+const urlParaMostrar = (url: string) => (esRutaPublica(url) ? url.split('?')[0] : url);
+
 // Ruta desconocida bajo /api/v1: se monta después de todas las rutas de la API.
 export const rutaNoEncontrada: RequestHandler = (req, _res, next) => {
-  next(new ErrorDeAplicacion('NO_ENCONTRADO', `No existe ${req.method} ${req.originalUrl}`));
+  next(new ErrorDeAplicacion('NO_ENCONTRADO', `No existe ${req.method} ${urlParaMostrar(req.originalUrl)}`));
 };
 
 // Último middleware de app.ts. Todo error sale como { codigo, mensaje }, el formato que lee el cliente HTTP.
-export const manejadorErrores: ErrorRequestHandler = (error, _req, res, _next) => {
+export const manejadorErrores: ErrorRequestHandler = (error, req, res, _next) => {
   if (error instanceof ErrorDeAplicacion) {
     // `detalles` solo aparece en los errores que lo traen (SPEC 14); el resto conserva { codigo, mensaje }.
     const detalles = error.detalles ? { detalles: error.detalles } : {};
@@ -122,7 +133,12 @@ export const manejadorErrores: ErrorRequestHandler = (error, _req, res, _next) =
     return;
   }
 
-  // La traza queda en el log del servidor, nunca en la respuesta.
-  console.error(error);
+  // La traza queda en el log del servidor, nunca en la respuesta. En las rutas públicas ni siquiera el mensaje: puede
+  // traer el contacto (por ejemplo, un error de la base con los valores de la consulta). Solo el tipo y la ruta.
+  if (esRutaPublica(req.originalUrl)) {
+    console.error(`Error interno en ${req.method} ${urlParaMostrar(req.originalUrl)}: ${error?.name ?? 'Error'}`);
+  } else {
+    console.error(error);
+  }
   res.status(500).json({ codigo: 'ERROR_INTERNO', mensaje: 'Error interno' });
 };

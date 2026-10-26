@@ -1,6 +1,6 @@
 # SPEC 37 — Consulta pública del estado de una queja
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 06, SPEC 08, SPEC 12, SPEC 13, SPEC 17, SPEC 23, SPEC 26, SPEC 27, SPEC 28, SPEC 33
 > **Fecha:** 2026-10-23
 > **Objetivo:** Permitir que cualquier persona, sin iniciar sesión, consulte en `/consulta` el estado, la solución, el plazo, la línea de tiempo pública y los comentarios públicos de una queja con su número y el correo o teléfono registrado, mediante `GET /api/v1/public/tickets/:numero?contacto=`, sin exponer datos personales y con un límite por IP.

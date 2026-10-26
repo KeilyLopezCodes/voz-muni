@@ -5,6 +5,7 @@ import { AsignacionController } from './presentation/controllers/asignacion.cont
 import { AuthController } from './presentation/controllers/auth.controller';
 import { CamposExtraController } from './presentation/controllers/campos-extra.controller';
 import { CatalogosController } from './presentation/controllers/catalogos.controller';
+import { ConsultaPublicaController } from './presentation/controllers/consulta-publica.controller';
 import { ComentariosController } from './presentation/controllers/comentarios.controller';
 import { EscaladasController } from './presentation/controllers/escaladas.controller';
 import { NotificacionesController } from './presentation/controllers/notificaciones.controller';
@@ -21,6 +22,7 @@ import { UsuariosController } from './presentation/controllers/usuarios.controll
 import { VecinosController } from './presentation/controllers/vecinos.controller';
 import { autenticar } from './presentation/middlewares/autenticar';
 import { limiteLogin } from './presentation/middlewares/limite-login';
+import { limitePorIp } from './presentation/middlewares/limite-por-ip';
 import { limiteRecuperacion } from './presentation/middlewares/limite-recuperacion';
 import { manejadorErrores, rutaNoEncontrada } from './presentation/middlewares/manejador-errores';
 import { adjuntosRoutes } from './presentation/routes/adjuntos.routes';
@@ -37,6 +39,7 @@ import { healthRoutes } from './presentation/routes/health.routes';
 import { recuperacionRoutes } from './presentation/routes/recuperacion.routes';
 import { registroRoutes } from './presentation/routes/registro.routes';
 import { ticketsRoutes } from './presentation/routes/tickets.routes';
+import { consultaPublicaRoutes } from './presentation/routes/consulta-publica.routes';
 import { transicionesRoutes } from './presentation/routes/transiciones.routes';
 import { trasladosRoutes } from './presentation/routes/traslados.routes';
 import { usuariosRoutes } from './presentation/routes/usuarios.routes';
@@ -62,6 +65,14 @@ export function createApp(container: Container): Express {
     ),
   );
   app.use('/api/v1/auth', registroRoutes(new RegistroController(container.registroVecinosService)));
+  // Consulta pública sin sesión (SPEC 37), con su propio límite por IP.
+  app.use(
+    '/api/v1/public',
+    consultaPublicaRoutes(
+      new ConsultaPublicaController(container.consultaPublicaService),
+      limitePorIp(container.consultaLimitePorVentana, 'Hiciste demasiadas consultas; espera unos minutos'),
+    ),
+  );
   app.use(
     '/api/v1/admin/usuarios',
     usuariosRoutes(new UsuariosController(container.usuariosService), autenticar(container.autorizacionService)),
