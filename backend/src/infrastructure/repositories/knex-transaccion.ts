@@ -8,6 +8,7 @@ import { KnexCategoriaAdminRepository } from './knex-categoria-admin-repository'
 import { KnexCierreAutomaticoRepository } from './knex-cierre-automatico-repository';
 import { KnexComentarioRepository } from './knex-comentario-repository';
 import { KnexCorreoSalienteRepository } from './knex-correo-saliente-repository';
+import { KnexDestinatariosRepository } from './knex-destinatarios-repository';
 import { KnexEscalamientoRepository } from './knex-escalamiento-repository';
 import { KnexNotificacionRepository } from './knex-notificacion-repository';
 import { KnexPoliticaSlaRepository } from './knex-politica-sla-repository';
@@ -46,6 +47,7 @@ export class KnexTransaccion implements Transaccion {
         cierreAutomatico: new KnexCierreAutomaticoRepository(trx),
         correosSalientes: new KnexCorreoSalienteRepository(trx),
         avisosComentarios: new KnexAvisosComentariosRepository(trx),
+        destinatarios: new KnexDestinatariosRepository(trx),
       }),
     );
   }

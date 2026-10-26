@@ -4,6 +4,7 @@ import type {
   AlertasSlaRepository,
   PlazoAlerta,
 } from '../../../src/domain/repositories/alertas-sla-repository';
+import type { DestinatariosRepository, UsuarioDestino } from '../../../src/domain/repositories/destinatarios-repository';
 import type { NotificacionRepository, NuevaNotificacion } from '../../../src/domain/repositories/notificacion-repository';
 import type { ParametroRepository } from '../../../src/domain/repositories/parametro-repository';
 import type { ReposTransaccionales, Transaccion } from '../../../src/domain/repositories/transaccion';
@@ -15,10 +16,7 @@ class AlertasEnMemoria implements AlertasSlaRepository {
   readonly marcadas: [number, PlazoAlerta][] = [];
   readonly limites: number[] = [];
 
-  constructor(
-    private pendientes: AlertaPendiente[],
-    private readonly porDependencia: Record<number, number[]> = { 1: [20] },
-  ) {}
+  constructor(private pendientes: AlertaPendiente[]) {}
 
   async reclamarPendientes(_ahora: Date, limite: number): Promise<AlertaPendiente[]> {
     this.limites.push(limite);
@@ -31,9 +29,18 @@ class AlertasEnMemoria implements AlertasSlaRepository {
     this.marcadas.push([ticketId, plazo]);
   }
 
-  async destinatarios(alerta: AlertaPendiente): Promise<number[]> {
-    const coordinadores = this.porDependencia[alerta.dependenciaId] ?? [];
-    return alerta.asignadoA === null ? coordinadores : [alerta.asignadoA, ...coordinadores];
+}
+
+// Los grupos de destinatarios (SPEC 36): coordinadores por dependencia y todos los usuarios activos.
+class DestinatariosEnMemoria implements Pick<DestinatariosRepository, 'coordinadores' | 'usuarios'> {
+  constructor(private readonly porDependencia: Record<number, number[]>) {}
+
+  async coordinadores(dependenciaId: number): Promise<number[]> {
+    return [...(this.porDependencia[dependenciaId] ?? [])];
+  }
+
+  async usuarios(ids: readonly number[]): Promise<UsuarioDestino[]> {
+    return ids.map((id) => ({ id, activo: true, dependenciaId: null, permisos: {} }));
   }
 }
 
@@ -51,13 +58,14 @@ const parametros = (umbral: unknown): ParametroRepository => ({
 });
 
 function montar(pendientes: AlertaPendiente[], umbral: unknown = 80, porDependencia?: Record<number, number[]>) {
-  const alertas = new AlertasEnMemoria(pendientes, porDependencia);
+  const alertas = new AlertasEnMemoria(pendientes);
+  const destinatarios = new DestinatariosEnMemoria(porDependencia ?? { 1: [20] });
   const notificaciones = new NotificacionesEnMemoria();
   const transacciones: number[] = [];
   const transaccion: Transaccion = {
     ejecutar: (trabajo) => {
       transacciones.push(transacciones.length + 1);
-      return trabajo({ alertasSla: alertas, notificaciones } as unknown as ReposTransaccionales);
+      return trabajo({ alertasSla: alertas, notificaciones, destinatarios } as unknown as ReposTransaccionales);
     },
   };
   const logs: string[] = [];

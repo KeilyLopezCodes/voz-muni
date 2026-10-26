@@ -24,6 +24,7 @@ export interface Env extends DatabaseEnv {
   SLA_JOB_CRON: string;
   CORREOS_JOB_ACTIVO: boolean;
   CORREOS_JOB_CRON: string;
+  NOTIFICACIONES_PURGA_CRON: string;
 }
 
 const OBLIGATORIA = { error: 'es obligatoria' };
@@ -78,15 +79,26 @@ const envSchema = databaseEnvSchema.extend({
   // Job de correos: reintentos de la bandeja de salida (SPEC 34). Sin valor, corre cada minuto salvo en NODE_ENV=test.
   CORREOS_JOB_ACTIVO: activoOpcional,
   CORREOS_JOB_CRON: cronOpcional,
+  // Purga diaria de las notificaciones leídas (SPEC 36), en America/Guatemala. Se activa con CORREOS_JOB_ACTIVO.
+  NOTIFICACIONES_PURGA_CRON: cronOpcional,
 });
 
 const CRON_POR_DEFECTO = '*/5 * * * *';
 const CRON_CORREOS_POR_DEFECTO = '* * * * *';
+const CRON_PURGA_POR_DEFECTO = '0 3 * * *';
 
 // Lo que depende de otras variables se resuelve después de validarlas.
 const envCompletoSchema = envSchema.transform((env): Env => {
-  const { SLA_ALERTAS_ACTIVO, SLA_ALERTAS_CRON, SLA_JOB_ACTIVO, SLA_JOB_CRON, CORREOS_JOB_ACTIVO, CORREOS_JOB_CRON, ...resto } =
-    env;
+  const {
+    SLA_ALERTAS_ACTIVO,
+    SLA_ALERTAS_CRON,
+    SLA_JOB_ACTIVO,
+    SLA_JOB_CRON,
+    CORREOS_JOB_ACTIVO,
+    CORREOS_JOB_CRON,
+    NOTIFICACIONES_PURGA_CRON,
+    ...resto
+  } = env;
   if (SLA_ALERTAS_ACTIVO !== undefined || SLA_ALERTAS_CRON !== undefined) {
     console.warn('SLA_ALERTAS_ACTIVO y SLA_ALERTAS_CRON están obsoletas: usa SLA_JOB_ACTIVO y SLA_JOB_CRON (SPEC 32)');
   }
@@ -96,6 +108,7 @@ const envCompletoSchema = envSchema.transform((env): Env => {
     SLA_JOB_CRON: SLA_JOB_CRON ?? SLA_ALERTAS_CRON ?? CRON_POR_DEFECTO,
     CORREOS_JOB_ACTIVO: CORREOS_JOB_ACTIVO ?? env.NODE_ENV !== 'test',
     CORREOS_JOB_CRON: CORREOS_JOB_CRON ?? CRON_CORREOS_POR_DEFECTO,
+    NOTIFICACIONES_PURGA_CRON: NOTIFICACIONES_PURGA_CRON ?? CRON_PURGA_POR_DEFECTO,
   };
 });
 

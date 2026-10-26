@@ -1,6 +1,5 @@
 import type { Knex } from 'knex';
 import {
-  ALCANCE_COORDINACION,
   type AlertaPendiente,
   type AlertasSlaRepository,
   type PlazoAlerta,
@@ -35,22 +34,6 @@ export class KnexAlertasSlaRepository implements AlertasSlaRepository {
     await this.db('tickets').where({ id: ticketId }).update({ [COLUMNAS[plazo].enviada]: ahora });
   }
 
-  async destinatarios(alerta: AlertaPendiente): Promise<number[]> {
-    const coordinadores: { id: string }[] = await this.db('usuarios as u')
-      .join('roles as r', 'r.id', 'u.rol_id')
-      .where({ 'u.activo': true, 'u.dependencia_id': alerta.dependenciaId })
-      .whereRaw(`r.permisos ->> 'tickets.ver' = ?`, [ALCANCE_COORDINACION])
-      .orderBy('u.id')
-      .select('u.id');
-    const ids = coordinadores.map((fila) => Number(fila.id));
-    if (alerta.asignadoA !== null && !ids.includes(alerta.asignadoA)) {
-      const tecnico = await this.db('usuarios').where({ id: alerta.asignadoA, activo: true }).first('id');
-      if (tecnico) {
-        ids.unshift(alerta.asignadoA);
-      }
-    }
-    return ids;
-  }
 
   private async reclamar(plazo: PlazoAlerta, ahora: Date, limite: number): Promise<AlertaPendiente[]> {
     const columnas = COLUMNAS[plazo];

@@ -104,6 +104,37 @@ describe('CampanaNotificaciones', () => {
     expect(screen.getByRole('menuitem')).toHaveTextContent(/La queja Q-2026-000001 se escaló por vencer el plazo de respuesta el .*9:00/)
   })
 
+  it.each<[string, Record<string, unknown>, string]>([
+    ['asignacion_recibida', {}, 'Te asignaron la queja Q-2026-000001'],
+    ['asignacion_retirada', {}, 'La queja Q-2026-000001 se asignó a otro técnico'],
+    ['comentario_nuevo', { cantidad: 1, incluyeInternas: false }, '1 comentario nuevo en Q-2026-000001'],
+    ['comentario_nuevo', { cantidad: 3, incluyeInternas: false }, '3 comentarios nuevos en Q-2026-000001'],
+    ['comentario_nuevo', { cantidad: 2, incluyeInternas: true }, '2 comentarios nuevos en Q-2026-000001 (incluye notas internas)'],
+    ['respuesta_vecino', {}, 'El vecino respondió en Q-2026-000001. La queja volvió a En proceso'],
+    ['queja_reabierta', {}, 'Se reabrió la queja Q-2026-000001'],
+    ['traslado_solicitado', { solicitudId: 5 }, 'Se solicitó trasladar la queja Q-2026-000001'],
+    ['traslado_resuelto', { solicitudId: 5, resultado: 'aprobada' }, 'Se aprobó el traslado de Q-2026-000001'],
+    ['traslado_resuelto', { solicitudId: 5, resultado: 'rechazada' }, 'Se rechazó el traslado de Q-2026-000001'],
+    ['traslado_resuelto', { solicitudId: 5, resultado: 'sin_efecto' }, 'El traslado de Q-2026-000001 quedó sin efecto'],
+  ])('%s con %j muestra su texto y abre /tickets/:id (SPEC 36)', async (tipo, datos, texto) => {
+    simularBackend([notificacion(1, { tipo, datos })])
+    const router = montar()
+    fireEvent.click(await screen.findByRole('button', { name: 'Notificaciones, 1 sin leer' }))
+
+    const item = screen.getByRole('menuitem')
+    expect(item).toHaveTextContent(texto)
+    fireEvent.click(item)
+    expect(await screen.findByText('detalle-de-la-queja')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/tickets/41')
+  })
+
+  it('un traslado_resuelto con un resultado desconocido muestra el texto genérico', async () => {
+    simularBackend([notificacion(1, { tipo: 'traslado_resuelto', datos: { resultado: 'otro' } })])
+    montar()
+    fireEvent.click(await screen.findByRole('button', { name: 'Notificaciones, 1 sin leer' }))
+    expect(screen.getByRole('menuitem')).toHaveTextContent(textos.tipos.desconocido)
+  })
+
   it('un tipo desconocido muestra el texto genérico', async () => {
     simularBackend([notificacion(1, { tipo: 'algo_nuevo' })])
     montar()

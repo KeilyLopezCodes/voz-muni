@@ -10,6 +10,7 @@ import type { CorreoSalienteRepository } from '../../domain/repositories/correo-
 import type { TicketParaTransicion } from '../../domain/repositories/ticket-escritura-repository';
 import type { Pagina } from '../../domain/repositories/ticket-lectura-repository';
 import type { SolicitudTraslado } from '../../domain/repositories/traslado-repository';
+import type { ResultadoTraslado } from '../../domain/notificaciones/tipos-notificacion';
 import type { ReposTransaccionales, Transaccion } from '../../domain/repositories/transaccion';
 import {
   type EstadoSolicitud,
@@ -22,6 +23,7 @@ import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { DatosSolicitudTraslado, ResultadoTrasladoDto, SolicitudTrasladoDto } from '../dto/traslados.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 import type { NotificadorCorreo } from './notificador-correo.service';
+import type { NotificacionesInternasService } from './notificaciones-internas.service';
 
 const aDto = (s: SolicitudTraslado): SolicitudTrasladoDto => ({
   ...s,
@@ -39,6 +41,7 @@ export class TrasladosService {
     private readonly clock: Clock,
     private readonly correo: NotificadorCorreo,
     private readonly appUrl: string, // APP_URL, sin barra final
+    private readonly notificaciones: Pick<NotificacionesInternasService, 'notificar'>, // SPEC 36
   ) {}
 
   async solicitar(
@@ -49,7 +52,8 @@ export class TrasladosService {
   ): Promise<ResultadoTrasladoDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.trasladar');
     const { resultado, correoId } = await conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura, traslados, correosSalientes }) => {
+      this.transaccion.ejecutar(async (repos) => {
+        const { ticketsEscritura, traslados, correosSalientes } = repos;
         // FOR UPDATE sobre el ticket, con el alcance: el técnico ve sus asignadas, el coordinador su dependencia.
         const actual = await ticketsEscritura.obtenerParaActualizar(ticketId, filtro);
         if (!actual) {
@@ -78,17 +82,25 @@ export class TrasladosService {
 
         if (alcance !== 'todas') {
           const id = await traslados.crear({ ...nueva, resolucion: null });
+          // Decide el supervisor (SPEC 36).
+          await this.notificaciones.notificar(
+            repos,
+            { tipo: 'traslado_solicitado', ticketId: ticket.id, autorId: usuario.id, candidatos: { supervisores: true }, datos: { solicitudId: id } },
+            this.clock.now(),
+          );
           // Una solicitud pendiente no cambia la queja: el vecino no recibe nada.
           return { resultado: { solicitud: aDto((await traslados.obtener(id))!) }, correoId: null };
         }
         // El supervisor traslada en el momento, y queda registrado como solicitud aprobada por él mismo.
         const ahora = this.clock.now();
         const resultado = ticket.trasladar({ actorId: usuario.id, ahora }, motivo);
-        await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id);
         const id = await traslados.crear({
           ...nueva,
           resolucion: { estado: 'aprobada', resueltoPor: usuario.id, resueltoEn: ahora },
         });
+        // El técnico pierde la queja: se le avisa antes de guardar el traslado (SPEC 36).
+        await this.notificarResuelto(repos, ticket.id, usuario.id, [ticket.asignadoA], id, 'aprobada', ahora);
+        await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id);
         return {
           resultado: {
             solicitud: aDto((await traslados.obtener(id))!),
@@ -105,7 +117,8 @@ export class TrasladosService {
   async aprobar(usuario: UsuarioAutenticado, id: number): Promise<ResultadoTrasladoDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.trasladar');
     const resultado = await conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura, traslados, correosSalientes }) => {
+      this.transaccion.ejecutar(async (repos) => {
+        const { ticketsEscritura, traslados, correosSalientes } = repos;
         const solicitud = await this.pendiente(traslados, id);
         const actual = await ticketsEscritura.obtenerParaActualizar(solicitud.ticketId, filtro);
         if (!actual) {
@@ -121,9 +134,20 @@ export class TrasladosService {
             motivoResolucion: null,
             resueltoEn: ahora,
           });
+          await this.notificarResuelto(repos, actual.ticket.id, usuario.id, [solicitud.solicitadoPor], id, 'sin_efecto', ahora);
           return null;
         }
         const transicion = actual.ticket.trasladar({ actorId: usuario.id, ahora }, solicitud.motivo);
+        // Antes de guardar: el solicitante y el técnico pierden la queja con el traslado (SPEC 36).
+        await this.notificarResuelto(
+          repos,
+          actual.ticket.id,
+          usuario.id,
+          [solicitud.solicitadoPor, actual.ticket.asignadoA],
+          id,
+          'aprobada',
+          ahora,
+        );
         await ticketsEscritura.guardarTransicion(transicion, actual.categoria.id);
         await traslados.resolver(id, {
           estado: 'aprobada',
@@ -155,14 +179,18 @@ export class TrasladosService {
       );
     }
     return conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ traslados }) => {
-        await this.pendiente(traslados, id);
+      this.transaccion.ejecutar(async (repos) => {
+        const { traslados } = repos;
+        const solicitud = await this.pendiente(traslados, id);
+        const ahora = this.clock.now();
         await traslados.resolver(id, {
           estado: 'rechazada',
           resueltoPor: usuario.id,
           motivoResolucion: recortado,
-          resueltoEn: this.clock.now(),
+          resueltoEn: ahora,
         });
+        // La queja no cambia: solo se avisa a quien lo pidió, sin el motivo (SPEC 36).
+        await this.notificarResuelto(repos, solicitud.ticketId, usuario.id, [solicitud.solicitadoPor], id, 'rechazada', ahora);
         return { solicitud: aDto((await traslados.obtener(id))!) };
       }),
     );
@@ -211,6 +239,22 @@ export class TrasladosService {
       { nombre: solicitante.nombre, numero: ticket.numero, titulo, enlace: `${this.appUrl}/consulta?numero=${ticket.numero}` },
       { para: solicitante.email, usuarioId: solicitante.id, ticketId: ticket.id },
       correos,
+    );
+  }
+
+  private notificarResuelto(
+    repos: ReposTransaccionales,
+    ticketId: number,
+    autorId: number,
+    usuarios: (number | null)[],
+    solicitudId: number,
+    resultado: ResultadoTraslado,
+    ahora: Date,
+  ): Promise<number> {
+    return this.notificaciones.notificar(
+      repos,
+      { tipo: 'traslado_resuelto', ticketId, autorId, candidatos: { usuarios }, datos: { solicitudId, resultado } },
+      ahora,
     );
   }
 

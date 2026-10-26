@@ -1,6 +1,5 @@
 import type { Knex } from 'knex';
 import {
-  ACCION_ESCALAMIENTO,
   type EscalamientoPendiente,
   type EscalamientoRepository,
 } from '../../domain/repositories/escalamiento-repository';
@@ -43,13 +42,4 @@ export class KnexEscalamientoRepository implements EscalamientoRepository {
     return rows.map((fila) => ({ ticketId: Number(fila.id), plazo: fila.plazo, vence: fila.vence }));
   }
 
-  async supervisores(): Promise<number[]> {
-    const filas: { id: string }[] = await this.db('usuarios as u')
-      .join('roles as r', 'r.id', 'u.rol_id')
-      .where('u.activo', true)
-      .whereRaw('(r.permisos ->> ?) IS NOT NULL', [ACCION_ESCALAMIENTO])
-      .orderBy('u.id')
-      .select('u.id');
-    return filas.map((fila) => Number(fila.id));
-  }
 }

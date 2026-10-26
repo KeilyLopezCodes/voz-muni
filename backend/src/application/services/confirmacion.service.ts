@@ -12,6 +12,7 @@ import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { ComandoConfirmacion, ConfirmacionHechaDto } from '../dto/confirmacion.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 import type { NotificadorCorreo } from './notificador-correo.service';
+import type { NotificacionesInternasService } from './notificaciones-internas.service';
 import type { PlazosConfirmacionService } from './plazos-confirmacion.service';
 import type { SlaService } from './sla.service';
 
@@ -32,6 +33,7 @@ export class ConfirmacionService {
     private readonly clock: Clock,
     private readonly appUrl: string, // APP_URL, sin barra final
     private readonly sla: Pick<SlaService, 'alReabrir'>,
+    private readonly notificaciones: Pick<NotificacionesInternasService, 'notificar'>, // SPEC 36
   ) {}
 
   async transicionar(
@@ -46,7 +48,7 @@ export class ConfirmacionService {
     }
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.cambiar_estado');
     const hecha = await conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura, correosSalientes }) => {
+      this.transaccion.ejecutar(async ({ ticketsEscritura, correosSalientes, destinatarios, notificaciones }) => {
         // FOR UPDATE, como en SPEC 19 y 22: una segunda acción simultánea ve el estado nuevo y recibe 409.
         const actual = await ticketsEscritura.obtenerParaActualizar(id, filtro);
         if (!actual) {
@@ -76,6 +78,20 @@ export class ConfirmacionService {
               )
             : {};
         await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
+        // La solución no convenció: el técnico asignado y los coordinadores de la dependencia (SPEC 36).
+        if (comando.accion === 'reabrir') {
+          await this.notificaciones.notificar(
+            { destinatarios, notificaciones },
+            {
+              tipo: 'queja_reabierta',
+              ticketId: ticket.id,
+              autorId: usuario.id,
+              candidatos: { usuarios: [resultado.ticket.asignadoA], coordinadoresDe: resultado.ticket.dependenciaId },
+              datos: {},
+            },
+            ctx.ahora,
+          );
+        }
         // El aviso se encola en la misma transacción (SPEC 34): si se revierte, no queda correo.
         const hecha: ConfirmacionHecha = { actual, resultado };
         return { ...hecha, correoId: await this.encolarAviso(comando, hecha, correosSalientes) };

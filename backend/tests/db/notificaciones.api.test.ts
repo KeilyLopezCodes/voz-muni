@@ -139,6 +139,54 @@ describe('API de notificaciones (SPEC 31)', () => {
     expect((await como('coordinador').get('/notificaciones')).body.noLeidas).toBe(2);
   });
 
+  it('marcar como leída fija leida_en una sola vez; marcar-leidas también (SPEC 36)', async () => {
+    const [una, otra] = await notificar(ids.tecnico, 2);
+    const antes = Date.now();
+
+    await como('tecnico').patch(`/notificaciones/${una}`, { leida: true });
+    const { leida_en: primera } = await db('notificaciones').where({ id: una }).first('leida_en');
+    expect(primera.getTime()).toBeGreaterThanOrEqual(antes - 1000);
+    await como('tecnico').patch(`/notificaciones/${una}`, { leida: true });
+    expect(await db('notificaciones').where({ id: una }).first('leida_en')).toEqual({ leida_en: primera });
+
+    await como('tecnico').post('/notificaciones/marcar-leidas');
+    expect((await db('notificaciones').where({ id: otra }).first('leida_en')).leida_en).toBeInstanceOf(Date);
+  });
+
+  describe('purga de las leídas (SPEC 36)', () => {
+    const AHORA = new Date('2026-12-15T09:00:00.000Z');
+    const haceDias = (dias: number) => new Date(AHORA.getTime() - dias * 24 * 60 * 60 * 1000);
+
+    afterEach(async () => {
+      jest.restoreAllMocks();
+      await db('parametros').where({ clave: 'notificaciones_retencion_dias' }).update({ valor: JSON.stringify(30) });
+    });
+
+    it('borra las leídas con leida_en de hace más de 30 días y conserva las recientes y todas las no leídas', async () => {
+      const [vieja, reciente, borde, noLeidaVieja] = await notificar(ids.tecnico, 4, haceDias(90).getTime());
+      await db('notificaciones').where({ id: vieja }).update({ leida: true, leida_en: haceDias(31) });
+      await db('notificaciones').where({ id: reciente }).update({ leida: true, leida_en: haceDias(2) });
+      await db('notificaciones').where({ id: borde }).update({ leida: true, leida_en: haceDias(30) });
+
+      expect(await container.notificacionesService.purgarLeidas(AHORA)).toBe(1);
+
+      const quedan = (await db('notificaciones').orderBy('id').select('id')).map((f: { id: string }) => Number(f.id));
+      expect(quedan).toEqual([reciente, borde, noLeidaVieja]);
+    });
+
+    it('con el parámetro inválido no borra nada y registra el error', async () => {
+      const errores = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const [vieja] = await notificar(ids.tecnico, 1);
+      await db('notificaciones').where({ id: vieja }).update({ leida: true, leida_en: haceDias(400) });
+      await db('parametros').where({ clave: 'notificaciones_retencion_dias' }).update({ valor: JSON.stringify(0) });
+
+      expect(await container.notificacionesService.purgarLeidas(AHORA)).toBe(0);
+
+      expect(await db('notificaciones').where({ id: vieja }).first('id')).toBeDefined();
+      expect(errores).toHaveBeenCalledWith(expect.stringContaining('notificaciones_retencion_dias'));
+    });
+  });
+
   it('sin sesión → 401 en las tres rutas', async () => {
     expect((await request(app).get('/api/v1/notificaciones')).status).toBe(401);
     expect((await request(app).patch('/api/v1/notificaciones/1').send({ leida: true })).status).toBe(401);

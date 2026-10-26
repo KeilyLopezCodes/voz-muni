@@ -36,6 +36,7 @@ export function envDePrueba(cambios: Partial<Env> = {}): Env {
     // Ni el de correos: el primer envío es sincrónico y los reintentos se prueban llamando a procesar (SPEC 34).
     CORREOS_JOB_ACTIVO: false,
     CORREOS_JOB_CRON: '* * * * *',
+    NOTIFICACIONES_PURGA_CRON: '0 3 * * *',
     ...cambios,
   };
 }

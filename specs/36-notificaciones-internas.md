@@ -1,6 +1,6 @@
 # SPEC 36 — Notificaciones en la aplicación para usuarios internos
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** SPEC 11, SPEC 15, SPEC 20, SPEC 21, SPEC 23, SPEC 27, SPEC 31, SPEC 32, SPEC 34
 > **Fecha:** 2026-10-23
 > **Objetivo:** Notificar en la campana de SPEC 31 a los usuarios internos que corresponde sobre asignaciones, comentarios (agrupados por queja), respuestas del vecino, reaperturas y traslados, escribiendo en `notificaciones` dentro de la transacción de cada caso de uso, y purgar las leídas después de un plazo configurable.

@@ -15,6 +15,7 @@ import type { AsignacionHechaDto, DatosAsignacion, TicketPorAsignarDto } from '.
 import { aSlaDto } from '../dto/sla.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 import type { NotificadorCorreo } from './notificador-correo.service';
+import type { NotificacionesInternasService } from './notificaciones-internas.service';
 
 // Asignación y reasignación de técnico (RF-14, SPEC 20). El coordinador actúa en su dependencia y el supervisor
 // en todas, según el alcance de tickets.asignar (SPEC 11). La primera asignación (también la primera después de un
@@ -26,12 +27,13 @@ export class AsignacionService {
     private readonly clock: Clock,
     private readonly correo: NotificadorCorreo,
     private readonly appUrl: string, // APP_URL, sin barra final
+    private readonly notificaciones: Pick<NotificacionesInternasService, 'notificar'>, // SPEC 36
   ) {}
 
   async asignar(usuario: UsuarioAutenticado, id: number, datos: DatosAsignacion): Promise<AsignacionHechaDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.asignar');
     const { hecha, correoId } = await conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura, asignaciones, correosSalientes }) => {
+      this.transaccion.ejecutar(async ({ ticketsEscritura, asignaciones, correosSalientes, destinatarios, notificaciones }) => {
         // FOR UPDATE: dos asignaciones simultáneas se aplican una después de la otra.
         const actual = await ticketsEscritura.obtenerParaActualizar(id, filtro);
         if (!actual) {
@@ -50,14 +52,29 @@ export class AsignacionService {
         });
         // SPEC 04: solo en asignada o en_proceso (OPERACION_NO_PERMITIDA); el estado no cambia.
         const ticket = actual.ticket.asignarTecnico(candidato.id);
+        const ahora = this.clock.now();
+        const repos = { destinatarios, notificaciones };
+        // El técnico anterior pierde la queja: se le avisa antes del cambio, mientras aún la tiene en su alcance.
+        if (tecnicoAnterior !== null) {
+          await this.notificaciones.notificar(
+            repos,
+            { tipo: 'asignacion_retirada', ticketId: ticket.id, autorId: usuario.id, candidatos: { usuarios: [tecnicoAnterior] }, datos: {} },
+            ahora,
+          );
+        }
         await ticketsEscritura.guardarTecnico(ticket);
+        await this.notificaciones.notificar(
+          repos,
+          { tipo: 'asignacion_recibida', ticketId: ticket.id, autorId: usuario.id, candidatos: { usuarios: [candidato.id] }, datos: {} },
+          ahora,
+        );
         await asignaciones.registrar({
           ticketId: ticket.id,
           tecnicoAnterior,
           tecnicoNuevo: candidato.id,
           asignadoPor: usuario.id,
           motivo,
-          creadoEn: this.clock.now(),
+          creadoEn: ahora,
         });
         // Sin el nombre del técnico, como en el detalle del vecino (SPEC 25).
         const correoId =

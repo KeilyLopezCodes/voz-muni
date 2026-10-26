@@ -21,6 +21,7 @@ import type { EstadoSolicitud } from '../../../src/domain/traslado/solicitud-tra
 import { EnviadorEnMemoria, PlantillasEnMemoria, RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
 import { notificadorDePrueba } from '../notificaciones/dobles-correo';
 import { SLA_VACIO } from '../sla/dobles-sla';
+import { NotificacionesInternasFalsas } from '../notificaciones/dobles-notificaciones';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
 const OBRAS = 4;
@@ -145,6 +146,7 @@ class TrasladosEnMemoria implements TrasladoRepository {
 function armar() {
   const tickets = new TicketsEnMemoria();
   const traslados = new TrasladosEnMemoria();
+  const internas = new NotificacionesInternasFalsas();
   const servicio = new TrasladosService(
     new TransaccionEnMemoria({ ticketsEscritura: tickets as unknown as TicketEscrituraRepository, traslados }),
     { listarDependenciasActivas: async () => [{ id: AGUA, nombre: 'Agua' }] } as unknown as CatalogoLecturaRepository,
@@ -152,8 +154,9 @@ function armar() {
     // El solicitante de estas pruebas no tiene correo: los avisos se prueban en tests/db/correos-vecino (SPEC 35).
     notificadorDePrueba(new PlantillasEnMemoria(), new EnviadorEnMemoria(), () => {}),
     'https://vozmuni.test',
+    internas,
   );
-  return { tickets, traslados, servicio };
+  return { tickets, traslados, servicio, internas };
 }
 
 function capturar(promesa: Promise<unknown>): Promise<unknown> {
