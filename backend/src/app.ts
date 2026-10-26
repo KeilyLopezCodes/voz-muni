@@ -7,6 +7,7 @@ import { CamposExtraController } from './presentation/controllers/campos-extra.c
 import { CatalogosController } from './presentation/controllers/catalogos.controller';
 import { ComentariosController } from './presentation/controllers/comentarios.controller';
 import { ParametrosController } from './presentation/controllers/parametros.controller';
+import { PoliticasSlaController } from './presentation/controllers/politicas-sla.controller';
 import { HealthController } from './presentation/controllers/health.controller';
 import { LineaTiempoController } from './presentation/controllers/linea-tiempo.controller';
 import { RecuperacionController } from './presentation/controllers/recuperacion.controller';
@@ -27,6 +28,7 @@ import { camposExtraRoutes } from './presentation/routes/campos-extra.routes';
 import { catalogosRoutes } from './presentation/routes/catalogos.routes';
 import { comentariosRoutes } from './presentation/routes/comentarios.routes';
 import { parametrosRoutes } from './presentation/routes/parametros.routes';
+import { politicasSlaRoutes } from './presentation/routes/politicas-sla.routes';
 import { healthRoutes } from './presentation/routes/health.routes';
 import { recuperacionRoutes } from './presentation/routes/recuperacion.routes';
 import { registroRoutes } from './presentation/routes/registro.routes';
@@ -100,6 +102,10 @@ export function createApp(container: Container): Express {
   app.use(
     '/api/v1/admin/categorias',
     camposExtraRoutes(new CamposExtraController(container.camposExtraService), autenticar(container.autorizacionService)),
+  );
+  app.use(
+    '/api/v1/admin',
+    politicasSlaRoutes(new PoliticasSlaController(container.politicasSlaService), autenticar(container.autorizacionService)),
   );
   app.use(
     '/api/v1',

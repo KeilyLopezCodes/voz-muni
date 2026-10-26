@@ -27,7 +27,7 @@ function detallesDe(datos: unknown, campos: CampoExtra[] = CAMPOS): DetalleProbl
   } catch (error) {
     expect(error).toBeInstanceOf(ReglaDeNegocioError);
     expect((error as ReglaDeNegocioError).codigo).toBe('DATOS_EXTRA_INVALIDOS');
-    return (error as ReglaDeNegocioError).detalles ?? [];
+    return ((error as ReglaDeNegocioError).detalles ?? []) as DetalleProblema[];
   }
   throw new Error('se esperaba DATOS_EXTRA_INVALIDOS');
 }

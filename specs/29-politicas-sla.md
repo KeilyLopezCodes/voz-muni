@@ -1,6 +1,6 @@
 # SPEC 29 — Administración de las políticas de SLA por categoría y prioridad
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 03, SPEC 05, SPEC 06, SPEC 08, SPEC 14, SPEC 17
 > **Fecha:** 2026-10-23
 > **Objetivo:** Permitir que el administrador consulte y reemplace, completa y validada, la matriz de plazos de primera respuesta y de resolución (en horas hábiles) de cada categoría para las 4 prioridades, mediante `GET /api/v1/admin/politicas-sla`, `PUT /api/v1/admin/categorias/:id/politicas-sla` y la pantalla `/admin/sla`.

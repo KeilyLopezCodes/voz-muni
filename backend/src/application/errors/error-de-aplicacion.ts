@@ -1,4 +1,4 @@
-import { type DetalleProblema, ReglaDeNegocioError } from '../../domain/errors/regla-de-negocio-error';
+import { type Detalle, ReglaDeNegocioError } from '../../domain/errors/regla-de-negocio-error';
 
 // Códigos de error de la API. presentation/ los traduce a status HTTP.
 export type CodigoError =
@@ -53,6 +53,7 @@ export type CodigoError =
   | 'PLAZO_NO_DEFINIDO'
   | 'PLAZO_CONFIRMACION_VENCIDO'
   | 'LIMITE_REAPERTURAS'
+  | 'MATRIZ_SLA_INVALIDA'
   | 'NO_AUTENTICADO'
   | 'TOKEN_INVALIDO'
   | 'CREDENCIALES_INVALIDAS'
@@ -102,15 +103,16 @@ const CODIGOS_DE_REGLA: readonly CodigoError[] = [
   'CALENDARIO_INCOMPLETO',
   'PLAZO_CONFIRMACION_VENCIDO',
   'LIMITE_REAPERTURAS',
+  'MATRIZ_SLA_INVALIDA',
 ];
 
 // Error esperado de un caso de uso. El mensaje es para desarrolladores, no para la UI.
 // `detalles` lista todos los problemas de un formulario a la vez (SPEC 14).
 export class ErrorDeAplicacion extends Error {
   readonly codigo: CodigoError;
-  readonly detalles?: DetalleProblema[];
+  readonly detalles?: Detalle[];
 
-  constructor(codigo: CodigoError, mensaje: string = codigo, detalles?: DetalleProblema[]) {
+  constructor(codigo: CodigoError, mensaje: string = codigo, detalles?: Detalle[]) {
     super(mensaje);
     this.name = 'ErrorDeAplicacion';
     this.codigo = codigo;

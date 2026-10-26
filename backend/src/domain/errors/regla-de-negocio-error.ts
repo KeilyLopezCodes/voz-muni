@@ -6,12 +6,22 @@ export interface DetalleProblema {
   problema: string;
 }
 
+// Un problema en una fila de una matriz (SPEC 29): además del campo, la fila donde ocurre. `campo` es null si el
+// problema es de la fila entera.
+export interface DetalleDeFila {
+  prioridad: string;
+  campo: string | null;
+  problema: string;
+}
+
+export type Detalle = DetalleProblema | DetalleDeFila;
+
 // Falta un dato o no se cumple una condición; el `codigo` identifica cuál (SPEC 04).
 // `detalles` lista todos los problemas cuando la regla revisa varios campos juntos.
 export class ReglaDeNegocioError extends DomainError {
-  readonly detalles?: DetalleProblema[];
+  readonly detalles?: Detalle[];
 
-  constructor(codigo: string, mensaje: string, detalles?: DetalleProblema[]) {
+  constructor(codigo: string, mensaje: string, detalles?: Detalle[]) {
     super(codigo, mensaje);
     if (detalles) {
       this.detalles = detalles;

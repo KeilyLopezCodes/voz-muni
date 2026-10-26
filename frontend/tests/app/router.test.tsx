@@ -26,6 +26,7 @@ const ACCESO: Record<string, { roles: readonly Rol[]; titulo: string; tituloPorR
     titulo: reportes.titulo,
   },
   '/admin': { roles: ['administrador'], titulo: admin.titulo },
+  '/admin/sla': { roles: ['administrador'], titulo: admin.sla.titulo },
 }
 
 // /login consulta /health; las pruebas del router no dependen de su respuesta.

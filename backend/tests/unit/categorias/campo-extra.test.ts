@@ -42,7 +42,7 @@ function detallesDe(campos: unknown): DetalleProblema[] {
   } catch (error) {
     expect(error).toBeInstanceOf(ReglaDeNegocioError);
     expect((error as ReglaDeNegocioError).codigo).toBe('DEFINICION_INVALIDA');
-    return (error as ReglaDeNegocioError).detalles ?? [];
+    return ((error as ReglaDeNegocioError).detalles ?? []) as DetalleProblema[];
   }
   throw new Error('se esperaba DEFINICION_INVALIDA');
 }
