@@ -3,7 +3,7 @@ import { PoliticasSlaService } from '../../../src/application/services/politicas
 import type { CategoriaConSla, PoliticaSlaRepository } from '../../../src/domain/repositories/politica-sla-repository';
 import type { ReposTransaccionales, Transaccion } from '../../../src/domain/repositories/transaccion';
 import type { MatrizSla, PlazoSla } from '../../../src/domain/sla/politica-sla';
-import { RelojFalso } from '../auth/dobles';
+import { AuditoriaEnMemoria, RelojFalso } from '../auth/dobles';
 
 const AHORA = new Date('2026-10-25T18:00:00.000Z');
 
@@ -63,8 +63,9 @@ class PoliticasEnMemoria implements PoliticaSlaRepository {
 }
 
 function servicio(repo: PoliticasEnMemoria): PoliticasSlaService {
+  const auditoria = new AuditoriaEnMemoria();
   const transaccion: Transaccion = {
-    ejecutar: (trabajo) => trabajo({ politicasSla: repo } as unknown as ReposTransaccionales),
+    ejecutar: (trabajo) => trabajo({ politicasSla: repo, auditoria } as unknown as ReposTransaccionales),
   };
   return new PoliticasSlaService(repo, transaccion, new RelojFalso(AHORA));
 }

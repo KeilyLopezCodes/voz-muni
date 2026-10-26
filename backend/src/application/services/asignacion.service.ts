@@ -14,6 +14,7 @@ import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { AsignacionHechaDto, DatosAsignacion, TicketPorAsignarDto } from '../dto/asignacion.dto';
 import { aSlaDto } from '../dto/sla.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import { eventoTicket } from './auditoria-tickets';
 import type { NotificadorCorreo } from './notificador-correo.service';
 import type { NotificacionesInternasService } from './notificaciones-internas.service';
 
@@ -33,7 +34,7 @@ export class AsignacionService {
   async asignar(usuario: UsuarioAutenticado, id: number, datos: DatosAsignacion): Promise<AsignacionHechaDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.asignar');
     const { hecha, correoId } = await conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura, asignaciones, correosSalientes, destinatarios, notificaciones }) => {
+      this.transaccion.ejecutar(async ({ ticketsEscritura, asignaciones, correosSalientes, destinatarios, notificaciones, auditoria }) => {
         // FOR UPDATE: dos asignaciones simultáneas se aplican una después de la otra.
         const actual = await ticketsEscritura.obtenerParaActualizar(id, filtro);
         if (!actual) {
@@ -63,6 +64,9 @@ export class AsignacionService {
           );
         }
         await ticketsEscritura.guardarTecnico(ticket);
+        await auditoria.registrar(
+          eventoTicket('ticket.asignar', actual.ticket, ticket, usuario.id, { tecnicoAnterior, tecnicoNuevo: candidato.id, motivo }),
+        );
         await this.notificaciones.notificar(
           repos,
           { tipo: 'asignacion_recibida', ticketId: ticket.id, autorId: usuario.id, candidatos: { usuarios: [candidato.id] }, datos: {} },

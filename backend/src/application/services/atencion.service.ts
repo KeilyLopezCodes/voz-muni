@@ -12,6 +12,7 @@ import type { AtencionHechaDto, ComandoAtencion, TicketAtencionDto } from '../dt
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import { aSlaDto } from '../dto/sla.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import { eventoTicket } from './auditoria-tickets';
 import type { NotificadorCorreo } from './notificador-correo.service';
 import { fechaHoraParaCorreo } from './formato-fecha';
 import type { SlaService, TicketConPolitica } from './sla.service';
@@ -57,7 +58,7 @@ export class AtencionService {
 
   async transicionar(usuario: UsuarioAutenticado, id: number, comando: ComandoAtencion): Promise<AtencionHechaDto> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.cambiar_estado');
-    const { ticket, correoId } = await this.transaccion.ejecutar(async ({ ticketsEscritura, correosSalientes }) => {
+    const { ticket, correoId } = await this.transaccion.ejecutar(async ({ ticketsEscritura, correosSalientes, auditoria }) => {
       // FOR UPDATE, como en SPEC 19: una segunda transición simultánea ve el estado nuevo y recibe 409.
       const actual = await ticketsEscritura.obtenerParaActualizar(id, filtro);
       if (!actual) {
@@ -74,6 +75,12 @@ export class AtencionService {
         ahora,
       );
       await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
+      await auditoria.registrar(
+        eventoTicket(`ticket.${comando.accion}`, actual.ticket, resultado.ticket, usuario.id, {
+          ...(comando.accion === 'poner_en_espera' ? { motivo: comando.motivo } : {}),
+          ...(comando.accion === 'resolver' ? { descripcion: comando.descripcion } : {}),
+        }),
+      );
       // El aviso se encola en la misma transacción (SPEC 34): si se revierte, no queda correo.
       const correoId = await this.encolarAviso(comando, actual, resultado.ticket, correosSalientes);
       return { ticket: resultado.ticket, correoId };

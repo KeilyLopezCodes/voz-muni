@@ -10,6 +10,7 @@ import { RecuperarPage } from '../features/auth/pages/RecuperarPage'
 import { RegistroPage } from '../features/auth/pages/RegistroPage'
 import { RestablecerPage } from '../features/auth/pages/RestablecerPage'
 import { VerificarPage } from '../features/auth/pages/VerificarPage'
+import { BitacoraPage } from '../features/reportes/bitacora/BitacoraPage'
 import { ReportesPage } from '../features/reportes/pages/ReportesPage'
 import { ConsultaPage } from '../features/tickets/pages/ConsultaPage'
 import { DetalleTicketPage } from '../features/tickets/pages/DetalleTicketPage'
@@ -40,6 +41,7 @@ const PAGINAS: Record<string, ComponentType> = {
   '/traslados': TrasladosPage,
   '/escaladas': EscaladasPage,
   '/reportes': ReportesPage,
+  '/bitacora': BitacoraPage,
   '/admin': AdminPage,
   '/admin/sla': PoliticasSlaPage,
   '/admin/dependencias': DependenciasPage,

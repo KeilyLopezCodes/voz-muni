@@ -1,3 +1,4 @@
+import type { Auditoria } from '../auditoria/auditoria';
 import type { CampoExtra } from '../categorias/campo-extra';
 import type { DatosExtra } from '../categorias/datos-extra';
 import type { TicketRegistrado } from '../ticket/ticket';
@@ -13,7 +14,11 @@ export interface TicketCreado {
 export type PrepararDatosExtra = (campos: CampoExtra[]) => DatosExtra;
 
 // Lo que el caso de uso hace con el ticket ya insertado, en la misma transacción: encolar el aviso (SPEC 34).
-export type AlRegistrar = (creado: TicketCreado, correos: CorreoSalienteRepository) => Promise<void>;
+// También registra la bitácora en esa transacción (SPEC 41).
+export type AlRegistrar = (
+  creado: TicketCreado,
+  repos: { correos: CorreoSalienteRepository; auditoria: Auditoria },
+) => Promise<void>;
 
 export interface RegistroTicketRepository {
   // En una sola transacción:
@@ -21,7 +26,7 @@ export interface RegistroTicketRepository {
   //     `prepararDatosExtra`; si lanza, no se escribe nada ni se consume un número;
   //  2. toma el siguiente correlativo del año en Guatemala;
   //  3. inserta el ticket con sus datos adicionales y su historial;
-  //  4. llama a `alRegistrar` con la bandeja de salida de esa transacción.
+  //  4. llama a `alRegistrar` con la bandeja de salida y la bitácora de esa transacción.
   // Lanza ReglaDeNegocioError CORRELATIVO_AGOTADO si el año ya usó los 999999 números.
   registrar(
     registro: TicketRegistrado,

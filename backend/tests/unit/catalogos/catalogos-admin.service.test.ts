@@ -123,39 +123,39 @@ const codigo = (promesa: Promise<unknown>) => promesa.then(() => null, (e: { cod
 describe('CatalogosAdminService', () => {
   it('normaliza los nombres al crear y al renombrar', async () => {
     const { servicio } = armar();
-    expect((await servicio.crearDependencia('  Dirección   de Parques ')).nombre).toBe('Dirección de Parques');
-    expect((await servicio.editarZona(20, { nombre: ' Zona   Uno ' })).nombre).toBe('Zona Uno');
-    expect(await codigo(servicio.crearZona('  ', 'zona'))).toBe('NOMBRE_INVALIDO');
+    expect((await servicio.crearDependencia(1, '  Dirección   de Parques ')).nombre).toBe('Dirección de Parques');
+    expect((await servicio.editarZona(1, 20, { nombre: ' Zona   Uno ' })).nombre).toBe('Zona Uno');
+    expect(await codigo(servicio.crearZona(1, '  ', 'zona'))).toBe('NOMBRE_INVALIDO');
   });
 
   it('desactivar una dependencia bloquea sus categorías activas y responde DEPENDENCIA_EN_USO si las hay', async () => {
     const { repo, servicio } = armar();
-    expect(await codigo(servicio.editarDependencia(1, { activa: false }))).toBe('DEPENDENCIA_EN_USO');
+    expect(await codigo(servicio.editarDependencia(1, 1, { activa: false }))).toBe('DEPENDENCIA_EN_USO');
     expect(repo.bloqueos).toEqual(['dependencia:1', 'categorias:1']);
-    expect((await servicio.editarDependencia(2, { activa: false })).activa).toBe(false);
+    expect((await servicio.editarDependencia(1, 2, { activa: false })).activa).toBe(false);
   });
 
   it('una categoría nace inactiva; activar sin SLA → SLA_INCOMPLETO; con la dependencia inactiva → DEPENDENCIA_INACTIVA', async () => {
     const { repo, servicio } = armar();
-    expect((await servicio.crearCategoria('Fugas', 2)).activa).toBe(false);
-    expect(await codigo(servicio.crearCategoria('Otra', 3))).toBe('DEPENDENCIA_INACTIVA');
-    expect(await codigo(servicio.crearCategoria('Otra', 99))).toBe('DEPENDENCIA_INVALIDA');
-    expect(await codigo(servicio.editarCategoria(11, { activa: true }))).toBe('SLA_INCOMPLETO');
+    expect((await servicio.crearCategoria(1, 'Fugas', 2)).activa).toBe(false);
+    expect(await codigo(servicio.crearCategoria(1, 'Otra', 3))).toBe('DEPENDENCIA_INACTIVA');
+    expect(await codigo(servicio.crearCategoria(1, 'Otra', 99))).toBe('DEPENDENCIA_INVALIDA');
+    expect(await codigo(servicio.editarCategoria(1, 11, { activa: true }))).toBe('SLA_INCOMPLETO');
     repo.categorias[1].sla = true;
-    expect(await codigo(servicio.editarCategoria(11, { activa: true, dependenciaId: 3 }))).toBe('DEPENDENCIA_INACTIVA');
-    expect((await servicio.editarCategoria(11, { activa: true })).activa).toBe(true);
+    expect(await codigo(servicio.editarCategoria(1, 11, { activa: true, dependenciaId: 3 }))).toBe('DEPENDENCIA_INACTIVA');
+    expect((await servicio.editarCategoria(1, 11, { activa: true })).activa).toBe(true);
   });
 
   it('mover una categoría exige la dependencia nueva activa', async () => {
     const { servicio } = armar();
-    expect(await codigo(servicio.editarCategoria(10, { dependenciaId: 3 }))).toBe('DEPENDENCIA_INACTIVA');
-    expect((await servicio.editarCategoria(10, { dependenciaId: 2 })).dependencia.id).toBe(2);
+    expect(await codigo(servicio.editarCategoria(1, 10, { dependenciaId: 3 }))).toBe('DEPENDENCIA_INACTIVA');
+    expect((await servicio.editarCategoria(1, 10, { dependenciaId: 2 })).dependencia.id).toBe(2);
   });
 
   it('un id inexistente → NO_ENCONTRADO', async () => {
     const { servicio } = armar();
-    expect(await codigo(servicio.editarDependencia(99, { nombre: 'X' }))).toBe('NO_ENCONTRADO');
-    expect(await codigo(servicio.editarCategoria(99, { nombre: 'X' }))).toBe('NO_ENCONTRADO');
-    expect(await codigo(servicio.editarZona(99, { nombre: 'X' }))).toBe('NO_ENCONTRADO');
+    expect(await codigo(servicio.editarDependencia(1, 99, { nombre: 'X' }))).toBe('NO_ENCONTRADO');
+    expect(await codigo(servicio.editarCategoria(1, 99, { nombre: 'X' }))).toBe('NO_ENCONTRADO');
+    expect(await codigo(servicio.editarZona(1, 99, { nombre: 'X' }))).toBe('NO_ENCONTRADO');
   });
 });

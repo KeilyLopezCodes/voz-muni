@@ -5,7 +5,7 @@ import request from 'supertest';
 import { createApp } from '../../src/app';
 import { buildContainer, type Container } from '../../src/container';
 import type { EnviadorCorreo, MensajeCorreo } from '../../src/domain/notificaciones/enviador-correo';
-import { createTestKnex, envDePrueba, reiniciarEsquema } from './knex-test';
+import { createTestKnex, envDePrueba, reiniciarEsquema, vaciarBitacora } from './knex-test';
 
 const PASSWORD = 'Clave-de-prueba-1';
 const NUEVA = 'Clave-nueva-2026';
@@ -82,6 +82,7 @@ describe('API de administración de usuarios /api/v1/admin/usuarios', () => {
     await db('sesiones').delete();
     await db('restablecimientos').delete();
     await db('correos_salientes').delete(); // apunta a usuarios y tickets (SPEC 34)
+    await vaciarBitacora(db); // sus filas apuntan a usuarios (SPEC 41)
     await db('usuarios').delete();
     adminId = await crearUsuario('admin@vozmuni.test', 'administrador', { nombre: 'Admin Uno' });
     adminToken = await tokenDeAcceso('admin@vozmuni.test');

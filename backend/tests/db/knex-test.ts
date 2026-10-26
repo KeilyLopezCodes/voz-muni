@@ -42,6 +42,20 @@ export function envDePrueba(cambios: Partial<Env> = {}): Env {
   };
 }
 
+// Solo para las pruebas: la bitácora es de solo inserción (SPEC 03) y sus filas apuntan a usuarios y dependencias
+// con ON DELETE RESTRICT (SPEC 41). Para limpiar entre pruebas se desactivan sus triggers el tiempo justo de vaciarla.
+// La aplicación nunca hace esto.
+export async function vaciarBitacora(db: Knex): Promise<void> {
+  if (!(await db.schema.hasTable('bitacora'))) {
+    return;
+  }
+  await db.transaction(async (trx) => {
+    await trx.raw('ALTER TABLE bitacora DISABLE TRIGGER USER');
+    await trx('bitacora').delete();
+    await trx.raw('ALTER TABLE bitacora ENABLE TRIGGER USER');
+  });
+}
+
 // Deja la base sin esquema. Antes borra sesiones y usuarios, porque el down de 0006_roles
 // falla a propósito si algún usuario tiene uno de los 6 roles (ON DELETE RESTRICT).
 export async function reiniciarEsquema(db: Knex): Promise<void> {
@@ -50,7 +64,8 @@ export async function reiniciarEsquema(db: Knex): Promise<void> {
   if (await db.schema.hasTable('ticket_asignaciones')) {
     await db.migrate.down({ name: '0017_asignaciones.js' });
   }
-  // Primero las tablas que apuntan a usuarios. La bitácora no se puede vaciar: el rollback la elimina.
+  // Primero las tablas que apuntan a usuarios. La bitácora se vacía con sus triggers desactivados (SPEC 41).
+  await vaciarBitacora(db);
   const tablas = [
     'correos_salientes', // apunta a tickets y usuarios (SPEC 34)
     'solicitudes_traslado',

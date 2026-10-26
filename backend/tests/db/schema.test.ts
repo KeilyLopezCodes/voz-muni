@@ -966,6 +966,46 @@ describe('Esquema de base de datos', () => {
     });
   });
 
+  describe('bitácora de auditoría (0034)', () => {
+    it.each(['Ticket Aceptar', 'aceptar', 'ticket.Aceptar', 'ticket.aceptar.otra'])('rechaza la acción %p', (accion) =>
+      withRollback(async (trx) => {
+        await expect(trx('bitacora').insert({ accion, entidad: 'ticket' })).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }));
+
+    it('acepta entidad.verbo, y los triggers siguen impidiendo UPDATE, DELETE y TRUNCATE', () =>
+      withRollback(async (trx) => {
+        const [fila] = await trx('bitacora').insert({ accion: 'ticket.poner_en_espera', entidad: 'ticket' }).returning('id');
+        await trx.raw('SAVEPOINT cambios');
+        await expect(trx('bitacora').where({ id: fila.id }).update({ entidad: 'otra' })).rejects.toThrow('bitacora es solo de inserción');
+        await trx.raw('ROLLBACK TO SAVEPOINT cambios');
+        await expect(trx('bitacora').where({ id: fila.id }).delete()).rejects.toThrow('bitacora es solo de inserción');
+        await trx.raw('ROLLBACK TO SAVEPOINT cambios');
+        await expect(trx.raw('TRUNCATE bitacora')).rejects.toThrow('bitacora es solo de inserción');
+      }));
+
+    it('crea los índices de la consulta; revertir 0034 quita el CHECK y los 2 índices nuevos', async () => {
+      const indices = async () =>
+        (
+          await db('pg_indexes')
+            .where({ tablename: 'bitacora' })
+            .whereIn('indexname', ['bitacora_dependencia_creado_en_idx', 'bitacora_usuario_creado_idx', 'bitacora_accion_creado_idx'])
+            .orderBy('indexname')
+            .select('indexname')
+        ).map((f: { indexname: string }) => f.indexname);
+      expect(await indices()).toEqual(['bitacora_accion_creado_idx', 'bitacora_dependencia_creado_en_idx', 'bitacora_usuario_creado_idx']);
+
+      await db.migrate.down({ name: '0034_bitacora_alcance.js' });
+      try {
+        expect(await indices()).toEqual(['bitacora_dependencia_creado_en_idx']);
+        expect(
+          await db('information_schema.table_constraints').where({ constraint_name: 'bitacora_accion_formato' }).select('constraint_name'),
+        ).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
   describe('catálogos administrables (0033)', () => {
     it('zonas.activa vale true por defecto', () =>
       withRollback(async (trx) => {
@@ -1585,7 +1625,7 @@ describe('Esquema de base de datos', () => {
 
     async function insertBitacora(trx: Knex.Transaction): Promise<string> {
       const [fila] = await trx('bitacora')
-        .insert({ accion: 'crear', entidad: 'calendario_laboral', entidad_id: '2026-12-25', ip: '127.0.0.1' })
+        .insert({ accion: 'zona.crear', entidad: 'zona', entidad_id: '1', ip: '127.0.0.1' })
         .returning('id');
       return fila.id;
     }
@@ -1599,7 +1639,7 @@ describe('Esquema de base de datos', () => {
     it('rechaza UPDATE', () =>
       withRollback(async (trx) => {
         const id = await insertBitacora(trx);
-        await expect(trx('bitacora').where({ id }).update({ accion: 'editar' })).rejects.toThrow(SOLO_INSERCION);
+        await expect(trx('bitacora').where({ id }).update({ accion: 'zona.editar' })).rejects.toThrow(SOLO_INSERCION);
       }));
 
     it('rechaza DELETE', () =>
@@ -1612,7 +1652,7 @@ describe('Esquema de base de datos', () => {
       withRollback(async (trx) => {
         const [dependencia] = await trx('dependencias').insert({ nombre: 'Dependencia prueba' }).returning('id');
         const [fila] = await trx('bitacora')
-          .insert({ accion: 'crear', entidad: 'ticket', entidad_id: '1', dependencia_id: dependencia.id })
+          .insert({ accion: 'ticket.registrar', entidad: 'ticket', entidad_id: '1', dependencia_id: dependencia.id })
           .returning(['id', 'dependencia_id']);
         expect(fila.dependencia_id).toBe(dependencia.id);
         await expect(trx('bitacora').where({ id: fila.id }).update({ dependencia_id: null })).rejects.toThrow(

@@ -11,6 +11,7 @@ import type { RegistroTicketsService } from '../../../src/application/services/r
 import type { VecinosService } from '../../../src/application/services/vecinos.service';
 import type { CatalogosService } from '../../../src/application/services/catalogos.service';
 import type { CamposExtraService } from '../../../src/application/services/campos-extra.service';
+import type { BitacoraService } from '../../../src/application/services/bitacora.service';
 import type { CatalogosAdminService } from '../../../src/application/services/catalogos-admin.service';
 import type { ParametrosService } from '../../../src/application/services/parametros.service';
 import type { TriageService } from '../../../src/application/services/triage.service';
@@ -51,6 +52,8 @@ function buildTestContainer(): Container {
     consultaPublicaService: {} as ConsultaPublicaService,
     encuestasService: {} as EncuestasService,
     catalogosAdminService: {} as CatalogosAdminService,
+    contextoSolicitud: { ip: () => null, ejecutar: (_ip, trabajo) => trabajo() },
+    bitacoraService: {} as BitacoraService,
     healthService: new HealthService({ now: () => new Date() }, { isUp: async () => true }),
     // Estas pruebas fallan antes de llegar a los servicios de auth.
     authService: {} as AuthService,

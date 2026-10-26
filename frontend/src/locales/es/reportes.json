@@ -1,3 +1,110 @@
 {
-  "titulo": "Reportes"
+  "titulo": "Reportes",
+  "bitacora": {
+    "titulo": "Bitácora",
+    "descripcion": "Quién hizo qué y cuándo. Los datos personales aparecen enmascarados.",
+    "filtros": {
+      "titulo": "Filtros",
+      "desde": "Desde",
+      "hasta": "Hasta",
+      "acciones": "Acciones",
+      "todasLasAcciones": "Todas las acciones",
+      "accionesElegidas_one": "{{count}} acción",
+      "accionesElegidas_other": "{{count}} acciones",
+      "numero": "Número de queja",
+      "numeroAyuda": "Por ejemplo, Q-2026-000042",
+      "numeroInvalido": "Escribe el número completo, como Q-2026-000042",
+      "usuario": "Usuario: {{nombre}}",
+      "usuarioSinNombre": "Usuario #{{id}}",
+      "quitarUsuario": "Quitar el filtro de usuario",
+      "limpiar": "Limpiar filtros",
+      "rangoInvertido": "La fecha final no puede ser anterior a la inicial",
+      "rangoLargo": "El rango no puede pasar de {{dias}} días"
+    },
+    "cargando": "Cargando la bitácora",
+    "errorCarga": "No se pudo cargar la bitácora.",
+    "reintentar": "Reintentar",
+    "vacia": "No hay registros para estos filtros",
+    "verMas": "Ver más",
+    "registro": {
+      "sistema": "VozMuni",
+      "filtrarPorUsuario": "Ver solo los registros de {{nombre}}",
+      "sinDependencia": "Sin dependencia",
+      "verDetalle": "Ver detalle",
+      "ocultarDetalle": "Ocultar detalle",
+      "cambios": "Cambios",
+      "campo": "Campo",
+      "antes": "Antes",
+      "despues": "Después",
+      "datos": "Datos",
+      "ip": "IP: {{ip}}",
+      "sinIp": "Sin IP",
+      "sinDetalle": "Este registro no tiene detalle.",
+      "vacio": "—",
+      "entidadConId": "{{entidad}} #{{id}}",
+      "verQueja": "Ver la queja {{numero}}"
+    },
+    "entidades": {
+      "ticket": "Queja",
+      "traslado": "Traslado",
+      "encuesta": "Encuesta",
+      "usuario": "Usuario",
+      "dependencia": "Dependencia",
+      "categoria": "Categoría",
+      "zona": "Zona",
+      "parametro": "Parámetro"
+    },
+    "acciones": {
+      "ticket": {
+        "registrar": "Registró una queja",
+        "tomar": "Tomó una queja para revisión",
+        "aceptar": "Aceptó una queja",
+        "rechazar": "Rechazó una queja",
+        "asignar": "Asignó un técnico",
+        "iniciar": "Inició la atención",
+        "poner_en_espera": "Pidió información al vecino",
+        "reanudar": "Reanudó la atención",
+        "resolver": "Resolvió una queja",
+        "confirmar": "Confirmó la solución",
+        "reabrir": "Reabrió una queja",
+        "trasladar": "Trasladó una queja",
+        "escalar": "Escaló una queja",
+        "cerrar_automatico": "Cerró una queja por vencimiento"
+      },
+      "traslado": {
+        "solicitar": "Solicitó un traslado",
+        "rechazar": "Rechazó un traslado",
+        "retirar": "Retiró un traslado"
+      },
+      "encuesta": {
+        "registrar": "Respondió la encuesta"
+      },
+      "usuario": {
+        "crear": "Creó un usuario",
+        "editar": "Editó un usuario",
+        "activar": "Activó un usuario",
+        "desactivar": "Desactivó un usuario",
+        "desbloquear": "Desbloqueó un usuario"
+      },
+      "dependencia": {
+        "crear": "Creó una dependencia",
+        "editar": "Editó una dependencia"
+      },
+      "categoria": {
+        "crear": "Creó una categoría",
+        "editar": "Editó una categoría",
+        "campos_extra": "Cambió los campos extra"
+      },
+      "zona": {
+        "crear": "Creó una zona",
+        "editar": "Editó una zona"
+      },
+      "politica_sla": {
+        "reemplazar": "Cambió las políticas de SLA"
+      },
+      "parametro": {
+        "actualizar": "Cambió un parámetro"
+      }
+    }
+  }
 }

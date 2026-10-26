@@ -66,6 +66,13 @@ export const RUTAS_PROTEGIDAS: readonly RutaProtegida[] = [
     enMenu: true,
   },
   {
+    // Bitácora de auditoría (SPEC 41): quien tiene bitacora.ver.
+    path: '/bitacora',
+    roles: ['coordinador', 'supervisor', 'administrador'],
+    etiqueta: 'comun:menu.bitacora',
+    enMenu: true,
+  },
+  {
     path: '/admin',
     roles: ['administrador'],
     etiqueta: 'comun:menu.admin',

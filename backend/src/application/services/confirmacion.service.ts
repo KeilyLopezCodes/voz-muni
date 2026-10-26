@@ -11,6 +11,7 @@ import { puedeTransicionar } from '../../domain/ticket/transiciones';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { ComandoConfirmacion, ConfirmacionHechaDto } from '../dto/confirmacion.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import { eventoTicket } from './auditoria-tickets';
 import type { NotificadorCorreo } from './notificador-correo.service';
 import type { NotificacionesInternasService } from './notificaciones-internas.service';
 import type { PlazosConfirmacionService } from './plazos-confirmacion.service';
@@ -48,7 +49,7 @@ export class ConfirmacionService {
     }
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.cambiar_estado');
     const hecha = await conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura, correosSalientes, destinatarios, notificaciones }) => {
+      this.transaccion.ejecutar(async ({ ticketsEscritura, correosSalientes, destinatarios, notificaciones, auditoria }) => {
         // FOR UPDATE, como en SPEC 19 y 22: una segunda acción simultánea ve el estado nuevo y recibe 409.
         const actual = await ticketsEscritura.obtenerParaActualizar(id, filtro);
         if (!actual) {
@@ -78,6 +79,9 @@ export class ConfirmacionService {
               )
             : {};
         await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
+        await auditoria.registrar(
+          eventoTicket(`ticket.${comando.accion}`, ticket, resultado.ticket, usuario.id, { motivo: comando.motivo ?? null }),
+        );
         // La solución no convenció: el técnico asignado y los coordinadores de la dependencia (SPEC 36).
         if (comando.accion === 'reabrir') {
           await this.notificaciones.notificar(

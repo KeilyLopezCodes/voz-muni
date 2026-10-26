@@ -10,6 +10,6 @@ export class VecinosController {
   };
 
   crear = async (req: Request, res: Response): Promise<void> => {
-    res.status(201).json(await this.vecinosService.crear(altaVecinoSchema.parse(req.body)));
+    res.status(201).json(await this.vecinosService.crear(req.usuario!.id, altaVecinoSchema.parse(req.body)));
   };
 }

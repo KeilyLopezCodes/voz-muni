@@ -41,7 +41,7 @@ export class EncuestasService {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.ver');
 
     return conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ ticketsEscritura, encuestas, destinatarios, notificaciones }) => {
+      this.transaccion.ejecutar(async ({ ticketsEscritura, encuestas, destinatarios, notificaciones, auditoria }) => {
         // FOR UPDATE con el filtro de tickets.ver (SPEC 11): fuera de alcance responde lo mismo que una inexistente, y
         // dos envíos simultáneos se aplican uno después del otro.
         const actual = await ticketsEscritura.obtenerParaActualizar(ticketId, filtro);
@@ -56,6 +56,14 @@ export class EncuestasService {
         exigirCalificable(actual.ticket.estado, actual.ticket.cerradoEn, ahora, plazoDias);
         const encuesta = { ...validarEncuesta(datos.calificacion, datos.comentario), creadoEn: ahora };
         await encuestas.crear(ticketId, encuesta);
+        // Una encuesta por queja: su id en la bitácora es el de la queja (SPEC 41).
+        await auditoria.registrar({
+          accion: 'encuesta.registrar',
+          entidadId: ticketId,
+          usuarioId: usuario.id,
+          dependenciaId: actual.ticket.dependenciaId,
+          datos: { calificacion: encuesta.calificacion },
+        });
 
         // Con el umbral en 0 la alerta queda desactivada: ninguna calificación es menor o igual a 0.
         if (encuesta.calificacion <= umbral) {

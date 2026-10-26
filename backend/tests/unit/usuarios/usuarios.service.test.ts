@@ -60,7 +60,7 @@ const altaTecnico = {
 
 // Agrega un técnico ya creado, con una sesión activa.
 async function conTecnico(e: ReturnType<typeof crearEscenario>) {
-  const { usuario: tecnico } = await e.servicio.crear(altaTecnico);
+  const { usuario: tecnico } = await e.servicio.crear(ADMIN_ID, altaTecnico);
   await e.sesiones.crear({ usuarioId: tecnico.id, tokenHash: 'sha:previa', expiraEn: new Date('2026-10-29T00:00:00Z') });
   return tecnico;
 }
@@ -69,7 +69,7 @@ describe('UsuariosService.crear', () => {
   it('crea el usuario activo y sin contraseña, con un enlace de invitación de 24 h, y envía la invitación', async () => {
     const e = crearEscenario();
 
-    const resultado = await e.servicio.crear(altaTecnico);
+    const resultado = await e.servicio.crear(ADMIN_ID, altaTecnico);
 
     expect(resultado).toEqual({
       usuario: {
@@ -108,7 +108,7 @@ describe('UsuariosService.crear', () => {
     const e = crearEscenario();
     e.enviador.fallar = true;
 
-    const resultado = await e.servicio.crear(altaTecnico);
+    const resultado = await e.servicio.crear(ADMIN_ID, altaTecnico);
 
     expect(resultado.invitacionEnviada).toBe(false);
     expect(await e.usuariosAdmin.obtenerInterno(resultado.usuario.id)).not.toBeNull();
@@ -127,7 +127,7 @@ describe('UsuariosService.crear', () => {
   ])('rechaza %o con %s y no envía nada', async (cambios, codigo) => {
     const e = crearEscenario();
 
-    await expect(e.servicio.crear({ ...altaTecnico, ...cambios })).rejects.toMatchObject({ codigo });
+    await expect(e.servicio.crear(ADMIN_ID, { ...altaTecnico, ...cambios })).rejects.toMatchObject({ codigo });
     expect(e.enviador.enviados).toEqual([]);
     expect(e.restablecimientos.filas).toEqual([]);
   });
@@ -135,7 +135,7 @@ describe('UsuariosService.crear', () => {
   it('un DPI repetido responde DPI_DUPLICADO', async () => {
     const e = crearEscenario([admin({ dpi: '2547123450101' })]);
 
-    await expect(e.servicio.crear(altaTecnico)).rejects.toMatchObject({ codigo: 'DPI_DUPLICADO' });
+    await expect(e.servicio.crear(ADMIN_ID, altaTecnico)).rejects.toMatchObject({ codigo: 'DPI_DUPLICADO' });
   });
 });
 
@@ -272,8 +272,8 @@ describe('UsuariosService.desactivar / activar / desbloquear', () => {
     await correosPendientes();
     const enviados = e.enviador.enviados.length;
 
-    await expect(e.servicio.activar(tecnico.id)).resolves.toMatchObject({ activo: true });
-    await expect(e.servicio.activar(tecnico.id)).resolves.toMatchObject({ activo: true });
+    await expect(e.servicio.activar(ADMIN_ID, tecnico.id)).resolves.toMatchObject({ activo: true });
+    await expect(e.servicio.activar(ADMIN_ID, tecnico.id)).resolves.toMatchObject({ activo: true });
     await correosPendientes();
 
     expect(e.enviador.enviados).toHaveLength(enviados);
@@ -284,7 +284,7 @@ describe('UsuariosService.desactivar / activar / desbloquear', () => {
     const tecnico = await conTecnico(e);
     e.usuarios.filas[1].bloqueo = { intentosFallidos: 0, bloqueadoHasta: new Date('2026-10-22T15:10:00Z') };
 
-    const desbloqueado = await e.servicio.desbloquear(tecnico.id);
+    const desbloqueado = await e.servicio.desbloquear(ADMIN_ID, tecnico.id);
 
     expect(desbloqueado.bloqueadoHasta).toBeNull();
     expect(e.usuarios.filas[1].bloqueo).toEqual({ intentosFallidos: 0, bloqueadoHasta: null });

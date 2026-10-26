@@ -18,7 +18,8 @@
     "escaladas": "Escaladas",
     "adminDependencias": "Dependencias",
     "adminCategorias": "Categorías",
-    "adminZonas": "Zonas"
+    "adminZonas": "Zonas",
+    "bitacora": "Bitácora"
   },
   "errores": {
     "noAutorizado": {

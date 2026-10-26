@@ -6,6 +6,7 @@ import { AtencionService } from './application/services/atencion.service';
 import { AuthService } from './application/services/auth.service';
 import { AutorizacionService } from './application/services/autorizacion.service';
 import { AvisosComentariosService } from './application/services/avisos-comentarios.service';
+import { BitacoraService } from './application/services/bitacora.service';
 import { CatalogosAdminService } from './application/services/catalogos-admin.service';
 import { CamposExtraService } from './application/services/campos-extra.service';
 import { CatalogosService } from './application/services/catalogos.service';
@@ -34,10 +35,12 @@ import { TrasladosService } from './application/services/traslados.service';
 import { TriageService } from './application/services/triage.service';
 import { UsuariosService } from './application/services/usuarios.service';
 import { VecinosService } from './application/services/vecinos.service';
+import type { ContextoSolicitud } from './domain/auditoria/contexto-solicitud';
 import type { Clock } from './domain/health/clock';
 import type { EnviadorCorreo } from './domain/notificaciones/enviador-correo';
 import type { BitacoraLecturaRepository } from './domain/repositories/bitacora-lectura-repository';
 import type { ReporteLecturaRepository } from './domain/repositories/reporte-lectura-repository';
+import { ContextoSolicitudAls } from './infrastructure/auditoria/contexto-solicitud-als';
 import { BcryptPasswordHasher } from './infrastructure/auth/bcrypt-password-hasher';
 import { JwtTokenService } from './infrastructure/auth/jwt-token-service';
 import { SystemClock } from './infrastructure/clock/system-clock';
@@ -82,6 +85,8 @@ export interface Container {
   consultaPublicaService: ConsultaPublicaService;
   encuestasService: EncuestasService; // SPEC 39
   catalogosAdminService: CatalogosAdminService; // SPEC 40
+  contextoSolicitud: ContextoSolicitud; // SPEC 41
+  bitacoraService: BitacoraService;
   healthService: HealthService;
   authService: AuthService;
   autorizacionService: AutorizacionService;
@@ -157,10 +162,12 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
       pass: env.SMTP_PASS,
       from: env.MAIL_FROM,
     });
-  const transaccion = new KnexTransaccion(db);
+  // La IP de cada petición para la bitácora (SPEC 41): el middleware la pone, KnexAuditoria la lee.
+  const contextoSolicitud = new ContextoSolicitudAls();
+  const transaccion = new KnexTransaccion(db, contextoSolicitud);
   const vecinos = new KnexVecinoRepository(db);
   const catalogo = new KnexCatalogoLecturaRepository(db);
-  const parametros = new ParametrosService(new KnexParametroRepository(db));
+  const parametros = new ParametrosService(new KnexParametroRepository(db), transaccion);
   const plazosConfirmacion = new PlazosConfirmacionService(
     new KnexParametroRepository(db),
     new KnexCalendarioRepository(db),
@@ -222,6 +229,8 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     consultaLimitePorVentana: env.CONSULTA_LIMITE_POR_VENTANA,
     consultaPublicaService: new ConsultaPublicaService(new KnexConsultaPublicaRepository(db), clock),
     catalogosAdminService: new CatalogosAdminService(transaccion),
+    contextoSolicitud,
+    bitacoraService: new BitacoraService(new KnexBitacoraLecturaRepository(db), clock),
     encuestasService: new EncuestasService(transaccion, new KnexParametroRepository(db), clock, notificacionesInternas),
     healthService: new HealthService(clock, new KnexDatabaseHealthCheck(db)),
     authService: new AuthService(usuarios, sesiones, hasher, tokens, clock),
@@ -242,7 +251,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     reportesLectura: new KnexReporteLecturaRepository(db),
     bitacoraLectura: new KnexBitacoraLecturaRepository(db),
     registroTicketsService: new RegistroTicketsService(
-      new KnexRegistroTicketRepository(db),
+      new KnexRegistroTicketRepository(db, contextoSolicitud),
       catalogo,
       vecinos,
       correo,

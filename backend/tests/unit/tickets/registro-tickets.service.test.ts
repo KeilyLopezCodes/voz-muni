@@ -14,7 +14,7 @@ import type {
 import type { CriterioVecino, Vecino, VecinoRepository } from '../../../src/domain/repositories/vecino-repository';
 import { formatearNumero } from '../../../src/domain/ticket/numero-ticket';
 import type { TicketRegistrado } from '../../../src/domain/ticket/ticket';
-import { correosPendientes, EnviadorEnMemoria, PlantillasEnMemoria, RelojFalso } from '../auth/dobles';
+import { AuditoriaEnMemoria, correosPendientes, TransaccionEnMemoria, EnviadorEnMemoria, PlantillasEnMemoria, RelojFalso } from '../auth/dobles';
 import { CorreosEnMemoria, notificadorDePrueba } from '../notificaciones/dobles-correo';
 
 // Como el repositorio real: valida datosExtra con los campos de la categoría antes de tomar el número.
@@ -24,7 +24,8 @@ class RegistrosEnMemoria implements RegistroTicketRepository {
   readonly camposPorCategoria = new Map<number, CampoExtra[]>();
 
   // La bandeja de salida de la "transacción" del registro (SPEC 34).
-  readonly correos = new CorreosEnMemoria();
+  readonly correos = new CorreosEnMemoria()
+  readonly auditoria = new AuditoriaEnMemoria();
 
   async registrar(registro: TicketRegistrado, preparar: PrepararDatosExtra, alRegistrar?: AlRegistrar): Promise<TicketCreado> {
     const datosExtra = preparar(this.camposPorCategoria.get(registro.datos.categoriaId) ?? []);
@@ -32,7 +33,7 @@ class RegistrosEnMemoria implements RegistroTicketRepository {
     this.datosExtra.push(datosExtra);
     const id = this.registrados.length;
     const creado = { id, numero: formatearNumero(2026, id), creadoEn: registro.historial.creadoEn };
-    await alRegistrar?.(creado, this.correos);
+    await alRegistrar?.(creado, { correos: this.correos, auditoria: this.auditoria });
     return creado;
   }
 }
@@ -133,7 +134,7 @@ function crear() {
     notificadorDePrueba(new PlantillasEnMemoriaConQueja(), enviador, (mensaje) => errores.push(mensaje), {
       correos: registros.correos,
     }),
-    new ParametrosService(parametros),
+    new ParametrosService(parametros, new TransaccionEnMemoria({})),
     reloj,
     'http://localhost:5173',
   );

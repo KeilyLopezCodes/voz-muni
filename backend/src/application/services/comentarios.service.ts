@@ -13,6 +13,7 @@ import type { Transaccion } from '../../domain/repositories/transaccion';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { ComentarioCreadoDto, ComentarioDto, DatosComentario } from '../dto/comentarios.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import { eventoTicket } from './auditoria-tickets';
 import type { AvisosComentariosService } from './avisos-comentarios.service';
 import type { NotificadorCorreo } from './notificador-correo.service';
 import type { NotificacionesInternasService } from './notificaciones-internas.service';
@@ -69,6 +70,8 @@ export class ComentariosService {
             ahora,
           );
           await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
+          // El comentario en sí se registra con SPEC 42; aquí, el cambio de estado (SPEC 41).
+          await repos.auditoria.registrar(eventoTicket('ticket.reanudar', actual.ticket, resultado.ticket, usuario.id));
           estado = resultado.ticket.estado;
         }
 

@@ -105,10 +105,10 @@ async function crearFixture(db: Knex): Promise<Fixture> {
 
   // Bitácora: 2 filas de A, 1 de B y 1 sin dependencia. Sin usuario_id, para poder borrar los usuarios al terminar.
   await db('bitacora').insert([
-    { accion: 'asignar', entidad: 'ticket', entidad_id: String(tickets.T1), dependencia_id: A },
-    { accion: 'clasificar', entidad: 'ticket', entidad_id: String(tickets.T4), dependencia_id: A },
-    { accion: 'asignar', entidad: 'ticket', entidad_id: String(tickets.T2), dependencia_id: B },
-    { accion: 'crear', entidad: 'usuario', entidad_id: String(usuarios.TA.id), dependencia_id: null },
+    { accion: 'ticket.asignar', entidad: 'ticket', entidad_id: String(tickets.T1), dependencia_id: A },
+    { accion: 'ticket.aceptar', entidad: 'ticket', entidad_id: String(tickets.T4), dependencia_id: A },
+    { accion: 'ticket.asignar', entidad: 'ticket', entidad_id: String(tickets.T2), dependencia_id: B },
+    { accion: 'usuario.crear', entidad: 'usuario', entidad_id: String(usuarios.TA.id), dependencia_id: null },
   ]);
 
   return { usuarios, tickets, nombreDeTicket, dependencias: { A, B } };

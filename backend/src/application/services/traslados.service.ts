@@ -22,6 +22,7 @@ import {
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { DatosSolicitudTraslado, ResultadoTrasladoDto, SolicitudTrasladoDto } from '../dto/traslados.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import { eventoTicket } from './auditoria-tickets';
 import type { NotificadorCorreo } from './notificador-correo.service';
 import type { NotificacionesInternasService } from './notificaciones-internas.service';
 
@@ -82,6 +83,14 @@ export class TrasladosService {
 
         if (alcance !== 'todas') {
           const id = await traslados.crear({ ...nueva, resolucion: null });
+          await repos.auditoria.registrar({
+            accion: 'traslado.solicitar',
+            entidadId: id,
+            usuarioId: usuario.id,
+            dependenciaId: ticket.dependenciaId,
+            cambios: { estado: { antes: null, despues: 'pendiente' } },
+            datos: { ticketId: ticket.id, dependenciaSugeridaId, motivo },
+          });
           // Decide el supervisor (SPEC 36).
           await this.notificaciones.notificar(
             repos,
@@ -101,6 +110,9 @@ export class TrasladosService {
         // El técnico pierde la queja: se le avisa antes de guardar el traslado (SPEC 36).
         await this.notificarResuelto(repos, ticket.id, usuario.id, [ticket.asignadoA], id, 'aprobada', ahora);
         await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id);
+        await repos.auditoria.registrar(
+          eventoTicket('ticket.trasladar', ticket, resultado.ticket, usuario.id, { solicitudId: id, motivo, directo: true }),
+        );
         return {
           resultado: {
             solicitud: aDto((await traslados.obtener(id))!),
@@ -149,6 +161,9 @@ export class TrasladosService {
           ahora,
         );
         await ticketsEscritura.guardarTransicion(transicion, actual.categoria.id);
+        await repos.auditoria.registrar(
+          eventoTicket('ticket.trasladar', actual.ticket, transicion.ticket, usuario.id, { solicitudId: id, motivo: solicitud.motivo }),
+        );
         await traslados.resolver(id, {
           estado: 'aprobada',
           resueltoPor: usuario.id,
@@ -191,7 +206,9 @@ export class TrasladosService {
         });
         // La queja no cambia: solo se avisa a quien lo pidió, sin el motivo (SPEC 36).
         await this.notificarResuelto(repos, solicitud.ticketId, usuario.id, [solicitud.solicitadoPor], id, 'rechazada', ahora);
-        return { solicitud: aDto((await traslados.obtener(id))!) };
+        const rechazada = (await traslados.obtener(id))!;
+        await this.registrarResolucion(repos, 'traslado.rechazar', rechazada, usuario.id, { motivo: recortado });
+        return { solicitud: aDto(rechazada) };
       }),
     );
   }
@@ -199,7 +216,8 @@ export class TrasladosService {
   // Solo quien la solicitó: para cualquier otro usuario la solicitud no existe.
   retirar(usuario: UsuarioAutenticado, id: number): Promise<ResultadoTrasladoDto> {
     return conReglasDeNegocio(() =>
-      this.transaccion.ejecutar(async ({ traslados }) => {
+      this.transaccion.ejecutar(async (repos) => {
+        const { traslados } = repos;
         const solicitud = await traslados.obtenerParaActualizar(id);
         if (!solicitud || solicitud.solicitadoPor !== usuario.id) {
           throw new ErrorDeAplicacion('NO_ENCONTRADO', `No existe la solicitud ${id}`);
@@ -211,7 +229,9 @@ export class TrasladosService {
           motivoResolucion: null,
           resueltoEn: this.clock.now(),
         });
-        return { solicitud: aDto((await traslados.obtener(id))!) };
+        const retirada = (await traslados.obtener(id))!;
+        await this.registrarResolucion(repos, 'traslado.retirar', retirada, usuario.id);
+        return { solicitud: aDto(retirada) };
       }),
     );
   }
@@ -240,6 +260,24 @@ export class TrasladosService {
       { para: solicitante.email, usuarioId: solicitante.id, ticketId: ticket.id },
       correos,
     );
+  }
+
+  // Rechazar o retirar una solicitud no cambia la queja: se registra la solicitud, con su dependencia de origen.
+  private registrarResolucion(
+    repos: ReposTransaccionales,
+    accion: 'traslado.rechazar' | 'traslado.retirar',
+    solicitud: SolicitudTraslado,
+    usuarioId: number,
+    datos: Record<string, unknown> = {},
+  ): Promise<void> {
+    return repos.auditoria.registrar({
+      accion,
+      entidadId: solicitud.id,
+      usuarioId,
+      dependenciaId: solicitud.dependenciaOrigen.id,
+      cambios: { estado: { antes: 'pendiente', despues: solicitud.estado } },
+      datos: { ticketId: solicitud.ticket.id, ...datos },
+    });
   }
 
   private notificarResuelto(

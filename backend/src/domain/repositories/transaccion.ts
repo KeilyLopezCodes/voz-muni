@@ -1,3 +1,4 @@
+import type { Auditoria } from '../auditoria/auditoria';
 import type { AdjuntoRepository } from './adjunto-repository';
 import type { AlertasSlaRepository } from './alertas-sla-repository';
 import type { AsignacionRepository } from './asignacion-repository';
@@ -11,6 +12,7 @@ import type { DestinatariosRepository } from './destinatarios-repository';
 import type { EncuestaRepository } from './encuesta-repository';
 import type { EscalamientoRepository } from './escalamiento-repository';
 import type { NotificacionRepository } from './notificacion-repository';
+import type { ParametroRepository } from './parametro-repository';
 import type { PoliticaSlaRepository } from './politica-sla-repository';
 import type { RegistroVecinoRepository } from './registro-vecino-repository';
 import type { RestablecimientoRepository } from './restablecimiento-repository';
@@ -45,6 +47,8 @@ export interface ReposTransaccionales {
   destinatarios: DestinatariosRepository; // SPEC 36
   encuestas: EncuestaRepository; // SPEC 39
   catalogosAdmin: CatalogosAdminRepository; // SPEC 40
+  auditoria: Auditoria; // la bitácora, en la misma transacción (SPEC 41)
+  parametros: ParametroRepository; // SPEC 15, para registrar su cambio en la bitácora (SPEC 41)
 }
 
 // Puerto: ejecuta `trabajo` en una transacción; si lanza, no queda nada escrito.

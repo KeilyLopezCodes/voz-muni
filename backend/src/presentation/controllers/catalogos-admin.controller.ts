@@ -20,12 +20,12 @@ export class CatalogosAdminController {
 
   crearDependencia = async (req: Request, res: Response): Promise<void> => {
     const { nombre } = nuevaDependenciaSchema.parse(req.body);
-    res.status(201).json(await this.catalogos.crearDependencia(nombre));
+    res.status(201).json(await this.catalogos.crearDependencia(req.usuario!.id, nombre));
   };
 
   editarDependencia = async (req: Request, res: Response): Promise<void> => {
     const { id } = idCatalogoSchema.parse(req.params);
-    res.status(200).json(await this.catalogos.editarDependencia(id, cambiosDependenciaSchema.parse(req.body)));
+    res.status(200).json(await this.catalogos.editarDependencia(req.usuario!.id, id, cambiosDependenciaSchema.parse(req.body)));
   };
 
   listarCategorias = async (_req: Request, res: Response): Promise<void> => {
@@ -34,12 +34,12 @@ export class CatalogosAdminController {
 
   crearCategoria = async (req: Request, res: Response): Promise<void> => {
     const { nombre, dependenciaId } = nuevaCategoriaSchema.parse(req.body);
-    res.status(201).json(await this.catalogos.crearCategoria(nombre, dependenciaId));
+    res.status(201).json(await this.catalogos.crearCategoria(req.usuario!.id, nombre, dependenciaId));
   };
 
   editarCategoria = async (req: Request, res: Response): Promise<void> => {
     const { id } = idCatalogoSchema.parse(req.params);
-    res.status(200).json(await this.catalogos.editarCategoria(id, cambiosCategoriaSchema.parse(req.body)));
+    res.status(200).json(await this.catalogos.editarCategoria(req.usuario!.id, id, cambiosCategoriaSchema.parse(req.body)));
   };
 
   listarZonas = async (_req: Request, res: Response): Promise<void> => {
@@ -48,11 +48,11 @@ export class CatalogosAdminController {
 
   crearZona = async (req: Request, res: Response): Promise<void> => {
     const { nombre, tipo } = nuevaZonaSchema.parse(req.body);
-    res.status(201).json(await this.catalogos.crearZona(nombre, tipo));
+    res.status(201).json(await this.catalogos.crearZona(req.usuario!.id, nombre, tipo));
   };
 
   editarZona = async (req: Request, res: Response): Promise<void> => {
     const { id } = idCatalogoSchema.parse(req.params);
-    res.status(200).json(await this.catalogos.editarZona(id, cambiosZonaSchema.parse(req.body)));
+    res.status(200).json(await this.catalogos.editarZona(req.usuario!.id, id, cambiosZonaSchema.parse(req.body)));
   };
 }

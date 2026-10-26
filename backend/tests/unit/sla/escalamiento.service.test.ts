@@ -6,6 +6,7 @@ import type { TicketEscrituraRepository, TicketParaTransicion } from '../../../s
 import type { ReposTransaccionales, Transaccion } from '../../../src/domain/repositories/transaccion';
 import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { Ticket } from '../../../src/domain/ticket/ticket';
+import { AuditoriaEnMemoria } from '../auth/dobles';
 import { SLA_VACIO } from './dobles-sla';
 
 const AHORA = new Date('2026-11-02T20:00:00.000Z');
@@ -85,6 +86,7 @@ function montar(pendientes: EscalamientoPendiente[], supervisores?: number[]) {
   const tickets = new TicketsEnMemoria();
   const notificaciones = new NotificacionesEnMemoria();
   let transacciones = 0;
+  const auditoria = new AuditoriaEnMemoria();
   const transaccion: Transaccion = {
     ejecutar: (trabajo) => {
       transacciones++;
@@ -93,6 +95,7 @@ function montar(pendientes: EscalamientoPendiente[], supervisores?: number[]) {
         ticketsEscritura: tickets,
         notificaciones,
         destinatarios: escalamiento,
+        auditoria,
       } as unknown as ReposTransaccionales);
     },
   };
