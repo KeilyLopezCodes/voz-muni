@@ -10,6 +10,7 @@ import type { VecinosService } from '../../src/application/services/vecinos.serv
 import type { CatalogosService } from '../../src/application/services/catalogos.service';
 import type { CamposExtraService } from '../../src/application/services/campos-extra.service';
 import type { BitacoraService } from '../../src/application/services/bitacora.service';
+import type { ReportesService } from '../../src/application/services/reportes.service';
 import type { CatalogosAdminService } from '../../src/application/services/catalogos-admin.service';
 import type { ParametrosService } from '../../src/application/services/parametros.service';
 import type { TriageService } from '../../src/application/services/triage.service';
@@ -55,6 +56,7 @@ function buildTestContainer(databaseUp: boolean): Container {
     catalogosAdminService: {} as CatalogosAdminService,
     contextoSolicitud: { ip: () => null, ejecutar: (_ip, trabajo) => trabajo() },
     bitacoraService: {} as BitacoraService,
+    reportesService: {} as ReportesService,
     healthService: new HealthService(clock, databaseHealthCheck),
     // /health no los usa.
     authService: {} as AuthService,

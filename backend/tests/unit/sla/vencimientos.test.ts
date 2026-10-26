@@ -6,6 +6,7 @@ import {
   alPonerEnEspera,
   alReabrir,
   alReanudar,
+  alResolver,
   type EstadoSla,
   type PlazoHoras,
   type RelojHabil,
@@ -95,13 +96,27 @@ describe('vencimientos', () => {
     expect(respondida.alertaRespuestaEn).toBeNull();
   });
 
-  it('iniciar fija primeraRespuestaEn solo la primera vez y deja alertaRespuestaEn en null', () => {
+  it('iniciar fija primeraRespuestaEn y los minutos de respuesta solo la primera vez, y deja alertaRespuestaEn en null', async () => {
     const ahora = gt('2026-10-26', '11:00');
-    expect(alIniciar(estado({ alertaRespuestaEn: gt('2026-10-26', '16:24') }), ahora)).toEqual({
+    expect(await alIniciar(estado({ alertaRespuestaEn: gt('2026-10-26', '16:24') }), ahora, RELOJ)).toEqual({
       primeraRespuestaEn: ahora,
       alertaRespuestaEn: null,
+      minutosRespuesta: 60,
     });
-    expect(alIniciar(estado({ primeraRespuestaEn: gt('2026-10-26', '10:30') }), ahora)).toEqual({ alertaRespuestaEn: null });
+    expect(await alIniciar(estado({ primeraRespuestaEn: gt('2026-10-26', '10:30') }), ahora, RELOJ)).toEqual({
+      alertaRespuestaEn: null,
+    });
+  });
+
+  it('resolver mide el ciclo desde inicioResolucion sin la pausa (mínimo 0); sin inicio no mide', async () => {
+    const resueltoEn = gt('2026-10-27', '10:00'); // 6 h el lunes desde las 10:00 y 2 h el martes = 480
+    expect(await alResolver(estado({ inicioResolucion: gt('2026-10-26', '10:00'), pausaMinutos: 60 }), resueltoEn, RELOJ)).toEqual({
+      minutosResolucion: 420,
+    });
+    expect(await alResolver(estado({ inicioResolucion: gt('2026-10-27', '09:00'), pausaMinutos: 500 }), resueltoEn, RELOJ)).toEqual({
+      minutosResolucion: 0,
+    });
+    expect(await alResolver(estado(), resueltoEn, RELOJ)).toEqual({});
   });
 
   it('poner en espera congela el restante y deja venceResolucion y alertaResolucionEn en null', async () => {
@@ -174,6 +189,7 @@ describe('vencimientos', () => {
       venceResolucion: gt('2026-11-17', '09:00'),
       alertaResolucionEn: gt('2026-11-13', '15:24'),
       alertaResolucionEnviadaEn: null,
+      minutosResolucion: null,
     });
     expect(cambios).not.toHaveProperty('primeraRespuestaEn');
     expect(cambios).not.toHaveProperty('venceRespuesta');

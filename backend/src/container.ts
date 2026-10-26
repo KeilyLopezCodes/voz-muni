@@ -7,6 +7,7 @@ import { AuthService } from './application/services/auth.service';
 import { AutorizacionService } from './application/services/autorizacion.service';
 import { AvisosComentariosService } from './application/services/avisos-comentarios.service';
 import { BitacoraService } from './application/services/bitacora.service';
+import { ReportesService } from './application/services/reportes.service';
 import { CatalogosAdminService } from './application/services/catalogos-admin.service';
 import { CamposExtraService } from './application/services/campos-extra.service';
 import { CatalogosService } from './application/services/catalogos.service';
@@ -88,6 +89,7 @@ export interface Container {
   catalogosAdminService: CatalogosAdminService; // SPEC 40
   contextoSolicitud: ContextoSolicitud; // SPEC 41
   bitacoraService: BitacoraService;
+  reportesService: ReportesService; // SPEC 43
   healthService: HealthService;
   authService: AuthService;
   autorizacionService: AutorizacionService;
@@ -234,6 +236,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     catalogosAdminService: new CatalogosAdminService(transaccion),
     contextoSolicitud,
     bitacoraService: new BitacoraService(new KnexBitacoraLecturaRepository(db), clock),
+    reportesService: new ReportesService(new KnexReporteLecturaRepository(db), clock),
     encuestasService: new EncuestasService(transaccion, new KnexParametroRepository(db), clock, notificacionesInternas),
     healthService: new HealthService(clock, new KnexDatabaseHealthCheck(db)),
     authService: new AuthService(usuarios, sesiones, hasher, tokens, clock, transaccion, auditoria),

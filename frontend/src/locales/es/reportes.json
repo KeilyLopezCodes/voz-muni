@@ -136,5 +136,73 @@
       "cuenta_bloqueada": "Cuenta bloqueada",
       "cuenta_inactiva": "Cuenta inactiva o sin contraseña"
     }
+  },
+  "descripcion": "Quejas registradas entre dos fechas, con sus tiempos y el cumplimiento de SLA en horas hábiles.",
+  "filtros": {
+    "titulo": "Filtros del tablero",
+    "desde": "Desde",
+    "hasta": "Hasta",
+    "dependencia": "Dependencia",
+    "categoria": "Categoría",
+    "zona": "Zona",
+    "prioridad": "Prioridad",
+    "todas": "Todas",
+    "aplicar": "Aplicar",
+    "limpiar": "Limpiar"
+  },
+  "rangoInvalido": "Revisa las fechas: el rango no puede ser invertido ni pasar de 366 días.",
+  "cargando": "Cargando el tablero",
+  "errorCarga": "No se pudo cargar el tablero.",
+  "reintentar": "Reintentar",
+  "vacio": "No hay quejas registradas entre el {{desde}} y el {{hasta}}.",
+  "generadoEn": "Datos calculados el {{fecha}}.",
+  "sinDato": "—",
+  "porcentaje": "{{valor}} %",
+  "horas": "{{valor}} h",
+  "tarjetas": {
+    "titulo": "Indicadores",
+    "total": "Quejas registradas",
+    "horasRespuesta": "Horas promedio de respuesta",
+    "horasResolucion": "Horas promedio de resolución",
+    "cumplimientoRespuesta": "Cumplimiento de respuesta",
+    "cumplimientoResolucion": "Cumplimiento de resolución",
+    "detalleCumplimiento": "Cumple {{cumple}} · Incumple {{incumple}} · Pendiente {{pendiente}}",
+    "escaladas": "Escaladas abiertas",
+    "horasHabiles": "En horas hábiles"
+  },
+  "graficas": {
+    "porEstado": "Quejas por estado",
+    "porCategoria": "Quejas por categoría",
+    "porDependencia": "Quejas por dependencia",
+    "porZona": "Quejas por zona",
+    "descripcion": "Gráfica de barras con la cantidad de quejas de cada {{grupo}}. La misma información está en la tabla.",
+    "grupos": {
+      "estado": "estado",
+      "categoria": "categoría",
+      "dependencia": "dependencia",
+      "zona": "zona"
+    },
+    "verTabla": "Ver como tabla",
+    "verGrafica": "Ver como gráfica",
+    "columnaNombre": "Nombre",
+    "columnaCantidad": "Quejas",
+    "sinDependencia": "Sin dependencia",
+    "otras": "Otras",
+    "cargando": "Cargando la gráfica"
+  },
+  "tablas": {
+    "porDependencia": "Indicadores por dependencia",
+    "porCategoria": "Indicadores por categoría",
+    "columnas": {
+      "nombre": "Nombre",
+      "cantidad": "Quejas",
+      "horasRespuesta": "Horas de respuesta",
+      "horasResolucion": "Horas de resolución",
+      "cumplimientoRespuesta": "% cumplimiento de respuesta",
+      "cumplimientoResolucion": "% cumplimiento de resolución",
+      "escaladas": "Escaladas abiertas"
+    },
+    "ordenarPor": "Ordenar por {{columna}}",
+    "vacia": "Sin datos en este rango"
   }
 }
