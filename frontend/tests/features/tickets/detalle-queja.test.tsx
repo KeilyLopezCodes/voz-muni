@@ -34,6 +34,7 @@ function queja(cambios: Partial<TicketDetalle> = {}): TicketDetalle {
     esSolicitante: true,
     resolucion: null,
     confirmacion: null,
+    sla: null,
     ...cambios,
   }
 }

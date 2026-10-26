@@ -18,7 +18,8 @@ import type {
 } from '../../../src/domain/repositories/ticket-escritura-repository';
 import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { Ticket } from '../../../src/domain/ticket/ticket';
-import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { SLA_VACIO } from '../sla/dobles-sla';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
 const OBRAS = 4;
@@ -76,6 +77,7 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
       titulo: 'Bache',
       categoria: { id: 1, nombre: 'Baches' },
       solicitante: { id: 7, nombre: 'Ana', email: null },
+      sla: SLA_VACIO,
     };
   }
 
@@ -132,6 +134,7 @@ class BandejaFalsa implements PorAsignarLecturaRepository {
       zona: { id: 1, nombre: 'Zona 1', tipo: 'zona' },
       tecnico: null,
       creadoEn: AHORA,
+      sla: { venceRespuesta: AHORA, primeraRespuestaEn: null, venceResolucion: null, restanteMinutosEnPausa: null },
     };
     return { datos: [ticket], pagina, tamano, total: 1 };
   }

@@ -159,6 +159,21 @@ describe('PanelTriage', () => {
     expect(await screen.findByText(triage.errores.CATEGORIA_INVALIDA)).toBeInTheDocument()
     expect(onTerminar).not.toHaveBeenCalled()
   })
+
+  it.each([
+    ['SLA_NO_CONFIGURADO', triage.errores.SLA_NO_CONFIGURADO],
+    ['CALENDARIO_INCOMPLETO', triage.errores.SLA_SIN_CALCULO],
+    ['PARAMETRO_INVALIDO', triage.errores.SLA_SIN_CALCULO],
+  ])('un 409 %s avisa en el panel, sin cerrarlo (SPEC 30)', async (codigo, texto) => {
+    const { onTerminar } = montar(queja({ estado: 'en_revision' }), () => respuesta(409, { codigo, mensaje: 'x' }))
+    await screen.findByText('Se enviará a: Servicios Públicos')
+
+    elegir(triage.acciones.prioridad, triage.prioridades.baja)
+    fireEvent.click(screen.getByRole('button', { name: triage.acciones.aceptar }))
+
+    expect(await screen.findByText(texto)).toBeInTheDocument()
+    expect(onTerminar).not.toHaveBeenCalled()
+  })
 })
 
 describe('PanelTriage: traslado reciente (SPEC 21)', () => {

@@ -1,3 +1,4 @@
+import type { SlaLectura } from '../sla/vencimientos';
 import type { FiltroTickets, TicketAlcance } from '../autorizacion/alcance-tickets';
 import type { EstadoTicket } from '../ticket/estado-ticket';
 
@@ -45,6 +46,7 @@ export interface TicketDetalleLectura {
   confirmacionVenceEn: Date | null; // fin del plazo para confirmar o reabrir (SPEC 27)
   reaperturas: number;
   solicitanteId: number;
+  sla: SlaLectura; // vencimientos (SPEC 30)
 }
 
 export interface Pagina<T> {

@@ -8,6 +8,7 @@ import type {
 } from '../../domain/repositories/atencion-lectura-repository';
 import type { Pagina } from '../../domain/repositories/ticket-lectura-repository';
 import type { Prioridad } from '../../domain/ticket/prioridad';
+import { COLUMNAS_SLA_LECTURA, type FilaSlaLectura, slaDeFila } from './knex-sla';
 import { aplicarFiltro, COLUMNAS_TICKET } from './knex-filtro';
 
 // pg devuelve los bigint y los numeric como string.
@@ -35,6 +36,8 @@ interface FilaAtencion {
   traslado_pendiente: boolean;
   creado_en: Date;
 }
+
+type FilaConSla = FilaAtencion & FilaSlaLectura;
 
 // Del solicitante no se lee nada: ni correo, ni teléfono, ni DPI (RNF-12).
 const COLUMNAS = [
@@ -67,12 +70,13 @@ const COLUMNAS = [
      SELECT 1 FROM solicitudes_traslado st WHERE st.ticket_id = t.id AND st.estado = 'pendiente'
    ) as traslado_pendiente`,
   't.creado_en',
+  ...COLUMNAS_SLA_LECTURA,
 ];
 
 // Urgente primero; una prioridad nula (no debería existir después del triage) queda al final.
 const ORDEN_PRIORIDAD = `CASE t.prioridad WHEN 'urgente' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baja' THEN 3 ELSE 4 END`;
 
-function aTicketAtencion(fila: FilaAtencion): TicketAtencion {
+function aTicketAtencion(fila: FilaConSla): TicketAtencion {
   return {
     id: Number(fila.id),
     numero: fila.numero,
@@ -90,6 +94,7 @@ function aTicketAtencion(fila: FilaAtencion): TicketAtencion {
     motivoEspera: fila.motivo_espera,
     trasladoPendiente: fila.traslado_pendiente,
     creadoEn: fila.creado_en,
+    sla: slaDeFila(fila),
   };
 }
 
@@ -112,7 +117,7 @@ export class KnexAtencionLecturaRepository implements AtencionLecturaRepository 
       't',
     );
     const [{ total }] = await consulta.clone().count({ total: '*' });
-    const filas: FilaAtencion[] = await consulta
+    const filas: FilaConSla[] = await consulta
       .join('categorias as c', 'c.id', 't.categoria_id')
       .join('dependencias as d', 'd.id', 't.dependencia_id')
       .join('zonas as z', 'z.id', 't.zona_id')

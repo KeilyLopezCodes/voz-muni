@@ -25,6 +25,7 @@ import {
   RelojFalso,
   TransaccionEnMemoria,
 } from '../auth/dobles';
+import { SLA_VACIO, SlaNulo } from '../sla/dobles-sla';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
 
@@ -68,6 +69,7 @@ class TicketsEnMemoria implements TicketEscrituraRepository {
       titulo: 'Bache frente a la escuela',
       categoria: { id: 1, nombre: 'Baches' },
       solicitante: { id: 7, nombre: 'Ana López', email },
+      sla: SLA_VACIO,
     });
   }
 
@@ -126,6 +128,7 @@ function armar() {
     correo,
     new RelojFalso(AHORA),
     'http://localhost:5173',
+    new SlaNulo(),
   );
   return { tickets, bandeja, enviador, errores, servicio };
 }
@@ -166,6 +169,8 @@ describe('TriageService', () => {
       prioridad: null,
       categoriaId: 1,
       dependenciaId: null,
+      venceRespuesta: null,
+      venceResolucion: null,
     });
     expect(tickets.guardadas[0].resultado.historial).toMatchObject({
       estadoAnterior: 'nueva',

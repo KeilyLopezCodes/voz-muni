@@ -10,6 +10,7 @@ import type { Pagina } from '../../domain/repositories/ticket-lectura-repository
 import type { Transaccion } from '../../domain/repositories/transaccion';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { AsignacionHechaDto, DatosAsignacion, TicketPorAsignarDto } from '../dto/asignacion.dto';
+import { aSlaDto } from '../dto/sla.dto';
 import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 
 // Asignación y reasignación de técnico (RF-14, SPEC 20). El coordinador actúa en su dependencia y el supervisor
@@ -65,7 +66,10 @@ export class AsignacionService {
   ): Promise<Pagina<TicketPorAsignarDto>> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.asignar');
     const resultado = await this.bandeja.listar(filtro, vista, pagina, tamano);
-    return { ...resultado, datos: resultado.datos.map((t) => ({ ...t, creadoEn: t.creadoEn.toISOString() })) };
+    return {
+      ...resultado,
+      datos: resultado.datos.map((t) => ({ ...t, creadoEn: t.creadoEn.toISOString(), sla: aSlaDto(t.sla, t.estado) })),
+    };
   }
 
   // El coordinador solo ve su dependencia: otra responde lo mismo que una inexistente.

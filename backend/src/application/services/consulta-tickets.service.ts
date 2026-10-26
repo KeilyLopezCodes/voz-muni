@@ -10,6 +10,7 @@ import type {
 } from '../../domain/repositories/ticket-lectura-repository';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type { ConfirmacionDetalleDto, TicketDetalleDto, TicketListadoDto } from '../dto/consulta-tickets.dto';
+import { aSlaDto } from '../dto/sla.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 import type { PlazosConfirmacionService } from './plazos-confirmacion.service';
 
@@ -65,7 +66,7 @@ export class ConsultaTicketsService {
     if (!ticket) {
       throw new ErrorDeAplicacion('NO_ENCONTRADO', `No existe el ticket ${id}`);
     }
-    const { solicitanteId, creadoEn, resueltoEn, cerradoEn, resolucion, confirmacionVenceEn, reaperturas, ...resto } =
+    const { solicitanteId, creadoEn, resueltoEn, cerradoEn, resolucion, confirmacionVenceEn, reaperturas, sla, ...resto } =
       ticket;
     // Con el alcance propia (el vecino) no se expone quién resolvió, como el técnico en SPEC 25. Depende del
     // alcance, no del nombre del rol (SPEC 26).
@@ -85,6 +86,8 @@ export class ConsultaTicketsService {
               resueltaPor: verQuienResolvio ? resolucion.resueltaPor : null,
             },
       confirmacion: await this.confirmacion(usuario, ticket),
+      // Los vencimientos son para los internos: con el alcance propia (el vecino) no se envían (SPEC 30).
+      sla: verQuienResolvio ? aSlaDto(sla, ticket.estado) : null,
     };
   }
 

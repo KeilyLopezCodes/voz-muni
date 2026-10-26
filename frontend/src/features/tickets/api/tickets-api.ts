@@ -52,6 +52,15 @@ export interface ConfirmacionDetalle {
   exigeMotivoAlConfirmar: boolean
 }
 
+// Vencimientos del SLA para los internos (SPEC 30). "Vencido" se calcula aquí con la hora actual.
+export interface SlaDto {
+  venceRespuesta: string | null // ISO 8601 en UTC
+  primeraRespuestaEn: string | null
+  venceResolucion: string | null // null mientras está en pausa
+  pausado: boolean // estado === 'en_espera'
+  restanteMinutosEnPausa: number | null // minutos hábiles que faltaban al entrar en espera
+}
+
 // Sin datos del solicitante, prioridad, técnico, coordenadas ni datos adicionales.
 export interface TicketDetalle {
   id: number
@@ -70,6 +79,7 @@ export interface TicketDetalle {
   esSolicitante: boolean
   resolucion: ResolucionDetalle | null
   confirmacion: ConfirmacionDetalle | null
+  sla: SlaDto | null // null para el vecino (SPEC 30)
 }
 
 export const TAMANO_PAGINA = 20

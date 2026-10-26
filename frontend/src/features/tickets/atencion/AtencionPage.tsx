@@ -1,5 +1,6 @@
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
+import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import CardActionArea from '@mui/material/CardActionArea'
 import CardContent from '@mui/material/CardContent'
@@ -25,6 +26,7 @@ import {
   type TicketAtencion,
 } from '../api/atencion-api'
 import type { Prioridad } from '../api/triage-api'
+import { IndicadorSla } from '../sla/IndicadorSla'
 import { PanelAtencion } from './PanelAtencion'
 
 const FILTROS: readonly FiltroAtencion[] = ['todas', ...ESTADOS_ATENCION]
@@ -131,6 +133,9 @@ export function AtencionPage() {
                     {ticket.tecnico ? t('atencion.tecnico', { nombre: ticket.tecnico.nombre }) : t('atencion.sinTecnico')}
                   </Typography>
                 )}
+                <Box sx={{ mt: 1 }}>
+                  <IndicadorSla sla={ticket.sla} estado={ticket.estado} ahora={ahora} />
+                </Box>
                 {ticket.trasladoPendiente && (
                   <Chip size="small" color="warning" variant="outlined" label={t('atencion.trasladoPendiente')} sx={{ mt: 1 }} />
                 )}

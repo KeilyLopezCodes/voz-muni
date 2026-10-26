@@ -93,6 +93,15 @@ function ContenidoPanel({ ticket, onTerminar }: { ticket: TicketTriage; onTermin
       onTerminar(aviso)
     },
     onError: (fallo) => {
+      // Sin SLA no se puede aceptar (SPEC 30): el panel sigue abierto con el aviso.
+      if (fallo instanceof ApiError && fallo.codigo === 'SLA_NO_CONFIGURADO') {
+        setError(t('triage.errores.SLA_NO_CONFIGURADO'))
+        return
+      }
+      if (fallo instanceof ApiError && (fallo.codigo === 'CALENDARIO_INCOMPLETO' || fallo.codigo === 'PARAMETRO_INVALIDO')) {
+        setError(t('triage.errores.SLA_SIN_CALCULO'))
+        return
+      }
       // Otra persona ya actuó (409) o la queja salió de la bandeja (404): se recarga y se cierra.
       if (fallo instanceof ApiError && (fallo.status === 409 || fallo.status === 404)) {
         void queryClient.invalidateQueries({ queryKey: CLAVES_TRIAGE.bandeja })

@@ -11,6 +11,7 @@ import { ConfirmacionService } from './application/services/confirmacion.service
 import { ParametrosService } from './application/services/parametros.service';
 import { PlazosConfirmacionService } from './application/services/plazos-confirmacion.service';
 import { PoliticasSlaService } from './application/services/politicas-sla.service';
+import { SlaService } from './application/services/sla.service';
 import { ConsultaTicketsService } from './application/services/consulta-tickets.service';
 import { EnvioCorreo } from './application/services/envio-correo';
 import { HealthService } from './application/services/health.service';
@@ -121,6 +122,12 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     new KnexParametroRepository(db),
     new KnexCalendarioRepository(db),
   );
+  // Único lugar donde se calculan los vencimientos (SPEC 30).
+  const sla = new SlaService(
+    new KnexParametroRepository(db),
+    new KnexCalendarioRepository(db),
+    new KnexPoliticaSlaRepository(db),
+  );
   const almacen = new DiscoAlmacenArchivos(env.ADJUNTOS_DIR);
   const consultaTickets = new ConsultaTicketsService(new KnexTicketLecturaRepository(db), plazosConfirmacion, clock);
   const correo = new EnvioCorreo(new KnexPlantillaRepository(db), enviadorCorreo, (mensaje) => console.error(mensaje));
@@ -159,14 +166,18 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     catalogosService: new CatalogosService(catalogo),
     camposExtraService: new CamposExtraService(transaccion),
     parametrosService: parametros,
-    triageService: new TriageService(transaccion, new KnexTriageLecturaRepository(db), correo, clock, env.APP_URL),
+    triageService: new TriageService(transaccion, new KnexTriageLecturaRepository(db), correo, clock, env.APP_URL, sla),
     asignacionService: new AsignacionService(transaccion, new KnexPorAsignarLecturaRepository(db), clock),
     trasladosService: new TrasladosService(transaccion, catalogo, clock),
-    atencionService: new AtencionService(transaccion, new KnexAtencionLecturaRepository(db), clock, (ahora) =>
-      plazosConfirmacion.vencimientoConfirmacion(ahora),
+    atencionService: new AtencionService(
+      transaccion,
+      new KnexAtencionLecturaRepository(db),
+      clock,
+      (ahora) => plazosConfirmacion.vencimientoConfirmacion(ahora),
+      sla,
     ),
-    confirmacionService: new ConfirmacionService(transaccion, plazosConfirmacion, correo, clock, env.APP_URL),
-    comentariosService: new ComentariosService(transaccion, new KnexTicketLecturaRepository(db), clock),
+    confirmacionService: new ConfirmacionService(transaccion, plazosConfirmacion, correo, clock, env.APP_URL, sla),
+    comentariosService: new ComentariosService(transaccion, new KnexTicketLecturaRepository(db), clock, sla),
     adjuntosService: new AdjuntosService(
       transaccion,
       new KnexTicketLecturaRepository(db),

@@ -1,4 +1,5 @@
 import type { FiltroTickets } from '../autorizacion/alcance-tickets';
+import type { SlaLectura } from '../sla/vencimientos';
 import type { Prioridad } from '../ticket/prioridad';
 import type { ESTADOS_ABIERTOS } from './asignacion-repository';
 import type { Pagina } from './ticket-lectura-repository';
@@ -20,6 +21,7 @@ export interface TicketPorAsignar {
   zona: { id: number; nombre: string; tipo: string };
   tecnico: { id: number; nombre: string } | null;
   creadoEn: Date;
+  sla: SlaLectura; // vencimientos (SPEC 30)
 }
 
 // Bandeja de asignación (SPEC 20), siempre filtrada por alcance (SPEC 11). Un filtro null no consulta la base.

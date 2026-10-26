@@ -15,6 +15,8 @@ export interface TransicionDto {
   prioridad: Prioridad | null;
   categoriaId: number;
   dependenciaId: number | null;
+  venceRespuesta: string | null; // ISO 8601 en UTC; lo calcula aceptar (SPEC 30)
+  venceResolucion: string | null;
 }
 
 export interface TicketTriageDto extends Omit<TicketTriage, 'creadoEn'> {

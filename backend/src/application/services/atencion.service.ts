@@ -3,11 +3,14 @@ import type { Clock } from '../../domain/health/clock';
 import type { AtencionLecturaRepository, EstadoAtencion } from '../../domain/repositories/atencion-lectura-repository';
 import type { Pagina } from '../../domain/repositories/ticket-lectura-repository';
 import type { Transaccion } from '../../domain/repositories/transaccion';
+import type { CambiosSla, EstadoSla } from '../../domain/sla/vencimientos';
 import type { ResultadoTransicion, Ticket } from '../../domain/ticket/ticket';
 import type { ContextoTransicion } from '../../domain/ticket/contexto-transicion';
 import type { AtencionHechaDto, ComandoAtencion, TicketAtencionDto } from '../dto/atencion.dto';
 import type { UsuarioAutenticado } from '../dto/auth.dto';
+import { aSlaDto } from '../dto/sla.dto';
 import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import type { SlaService } from './sla.service';
 
 // Fin del plazo para confirmar o reabrir una queja resuelta en `ahora` (SPEC 27). Lanza CALENDARIO_INCOMPLETO o
 // PARAMETRO_INVALIDO si no se puede calcular: nunca se inventa un plazo.
@@ -42,6 +45,7 @@ export class AtencionService {
     private readonly bandeja: AtencionLecturaRepository,
     private readonly clock: Clock,
     private readonly vencimientoConfirmacion: CalcularVencimientoConfirmacion,
+    private readonly sla: Pick<SlaService, 'alIniciar' | 'alPonerEnEspera' | 'alReanudar'>,
   ) {}
 
   transicionar(usuario: UsuarioAutenticado, id: number, comando: ComandoAtencion): Promise<AtencionHechaDto> {
@@ -56,7 +60,9 @@ export class AtencionService {
       // Solo resolver necesita el plazo de confirmación (SPEC 27). Si no se puede calcular, la queja no cambia.
       const confirmacionVenceEn = comando.accion === 'resolver' ? await this.vencimientoConfirmacion(ahora) : null;
       const resultado = aplicar(actual.ticket, { actorId: usuario.id, ahora }, comando, confirmacionVenceEn);
-      await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id);
+      // Después del método de dominio (SPEC 30): si la transición no es válida, no se calcula nada.
+      const cambiosSla = await this.cambiosSla(comando, actual.sla, ahora);
+      await ticketsEscritura.guardarTransicion(resultado, actual.categoria.id, cambiosSla);
       const { ticket } = resultado;
       return {
         id: ticket.id,
@@ -68,6 +74,20 @@ export class AtencionService {
     });
   }
 
+  // Resolver no mueve los vencimientos.
+  private async cambiosSla(comando: ComandoAtencion, sla: EstadoSla, ahora: Date): Promise<CambiosSla> {
+    switch (comando.accion) {
+      case 'iniciar':
+        return this.sla.alIniciar(sla, ahora);
+      case 'poner_en_espera':
+        return this.sla.alPonerEnEspera(sla, ahora);
+      case 'reanudar':
+        return this.sla.alReanudar(sla, ahora);
+      case 'resolver':
+        return {};
+    }
+  }
+
   async listar(
     usuario: UsuarioAutenticado,
     estados: readonly EstadoAtencion[],
@@ -76,6 +96,9 @@ export class AtencionService {
   ): Promise<Pagina<TicketAtencionDto>> {
     const filtro = filtroTicketsParaAccion(usuario, 'tickets.cambiar_estado');
     const resultado = await this.bandeja.listar(filtro, estados, pagina, tamano);
-    return { ...resultado, datos: resultado.datos.map((t) => ({ ...t, creadoEn: t.creadoEn.toISOString() })) };
+    return {
+      ...resultado,
+      datos: resultado.datos.map((t) => ({ ...t, creadoEn: t.creadoEn.toISOString(), sla: aSlaDto(t.sla, t.estado) })),
+    };
   }
 }

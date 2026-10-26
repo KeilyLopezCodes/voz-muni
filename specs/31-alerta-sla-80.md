@@ -1,6 +1,6 @@
 # SPEC 31 — Alerta al 80 % del plazo
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 03, SPEC 06, SPEC 08, SPEC 15, SPEC 17, SPEC 30
 > **Fecha:** 2026-10-23
 > **Objetivo:** Avisar dentro de la aplicación al técnico asignado y a los coordinadores de la dependencia cuando una queja llega al porcentaje configurado (80 %) de su plazo de respuesta o de resolución, mediante un job de node-cron que lee instantes precalculados por `SlaService`, y mostrar esos avisos en una campana de notificaciones.

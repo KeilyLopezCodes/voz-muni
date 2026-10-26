@@ -8,6 +8,7 @@ import type {
 } from '../../domain/repositories/por-asignar-lectura-repository';
 import type { Pagina } from '../../domain/repositories/ticket-lectura-repository';
 import type { Prioridad } from '../../domain/ticket/prioridad';
+import { COLUMNAS_SLA_LECTURA, type FilaSlaLectura, slaDeFila } from './knex-sla';
 import { aplicarFiltro, COLUMNAS_TICKET } from './knex-filtro';
 
 // pg devuelve los bigint como string.
@@ -29,6 +30,8 @@ interface FilaPorAsignar {
   creado_en: Date;
 }
 
+type FilaConSla = FilaPorAsignar & FilaSlaLectura;
+
 const COLUMNAS = [
   't.id',
   't.numero',
@@ -45,12 +48,13 @@ const COLUMNAS = [
   'tec.id as tecnico_id',
   'tec.nombre as tecnico_nombre',
   't.creado_en',
+  ...COLUMNAS_SLA_LECTURA,
 ];
 
 // Urgente primero; una prioridad nula (no debería existir después del triage) queda al final.
 const ORDEN_PRIORIDAD = `CASE t.prioridad WHEN 'urgente' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baja' THEN 3 ELSE 4 END`;
 
-function aTicketPorAsignar(fila: FilaPorAsignar): TicketPorAsignar {
+function aTicketPorAsignar(fila: FilaConSla): TicketPorAsignar {
   return {
     id: Number(fila.id),
     numero: fila.numero,
@@ -62,6 +66,7 @@ function aTicketPorAsignar(fila: FilaPorAsignar): TicketPorAsignar {
     zona: { id: Number(fila.zona_id), nombre: fila.zona_nombre, tipo: fila.zona_tipo },
     tecnico: fila.tecnico_id === null ? null : { id: Number(fila.tecnico_id), nombre: fila.tecnico_nombre ?? '' },
     creadoEn: fila.creado_en,
+    sla: slaDeFila(fila),
   };
 }
 
@@ -85,7 +90,7 @@ export class KnexPorAsignarLecturaRepository implements PorAsignarLecturaReposit
     }
     const consulta = aplicarFiltro(base, filtro, COLUMNAS_TICKET, 't');
     const [{ total }] = await consulta.clone().count({ total: '*' });
-    const filas: FilaPorAsignar[] = await consulta
+    const filas: FilaConSla[] = await consulta
       .join('categorias as c', 'c.id', 't.categoria_id')
       .join('dependencias as d', 'd.id', 't.dependencia_id')
       .join('zonas as z', 'z.id', 't.zona_id')

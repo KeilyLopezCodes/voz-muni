@@ -14,7 +14,8 @@ import type {
 import type { TicketLecturaRepository } from '../../../src/domain/repositories/ticket-lectura-repository';
 import type { EstadoTicket } from '../../../src/domain/ticket/estado-ticket';
 import { type ResultadoTransicion, Ticket } from '../../../src/domain/ticket/ticket';
-import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { RelojFalso, TransaccionEnMemoria } from '../auth/dobles';
+import { SLA_VACIO, SlaNulo } from '../sla/dobles-sla';
 
 const AHORA = new Date('2026-10-23T15:00:00.000Z');
 const VECINO_ID = 7;
@@ -76,6 +77,7 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
       titulo: 'Bache',
       categoria: { id: 1, nombre: 'Baches' },
       solicitante: { id: VECINO_ID, nombre: 'Ana López', email: null },
+      sla: SLA_VACIO,
     };
   }
 
@@ -137,6 +139,7 @@ function armar() {
     new TransaccionEnMemoria({ ticketsEscritura: tickets as unknown as TicketEscrituraRepository, comentarios }),
     lectura as unknown as TicketLecturaRepository,
     reloj,
+    new SlaNulo(),
   );
   return { tickets, comentarios, reloj, servicio };
 }
