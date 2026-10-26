@@ -571,7 +571,23 @@
     "registrar": "Registrar una queja",
     "abrir": "Ver la queja {{numero}}",
     "necesitaRespuesta": "Necesita tu respuesta",
-    "paginacion": "Páginas de mis quejas"
+    "paginacion": "Páginas de mis quejas",
+    "confirmaAntes": "Confirma la solución antes del {{fecha}}",
+    "grupos": {
+      "etiqueta": "Filtrar mis quejas",
+      "todas": "Todas",
+      "respuesta": "Necesitan tu respuesta",
+      "en_curso": "En curso",
+      "por_confirmar": "Por confirmar",
+      "finalizadas": "Finalizadas",
+      "conContador": "{{grupo}} ({{cantidad}})"
+    },
+    "busqueda": {
+      "etiqueta": "Buscar por número o título",
+      "limpiar": "Limpiar búsqueda"
+    },
+    "vacioGrupo": "No tienes quejas en este grupo.",
+    "vacioBusqueda": "No encontramos quejas con «{{q}}»."
   },
   "detalle": {
     "volver": "Mis quejas",

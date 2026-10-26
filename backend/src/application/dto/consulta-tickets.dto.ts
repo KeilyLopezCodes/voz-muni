@@ -1,4 +1,5 @@
 import type { TicketDetalleLectura, TicketListado } from '../../domain/repositories/ticket-lectura-repository';
+import type { EstadoTicket } from '../../domain/ticket/estado-ticket';
 import type { SlaDto } from './sla.dto';
 
 // Resolución vigente en el detalle (SPEC 26). resueltaPor es null para el alcance propia de tickets.ver (el vecino).
@@ -9,8 +10,21 @@ export interface ResolucionDetalleDto {
 }
 
 // Fila de GET /api/v1/tickets (SPEC 25).
-export interface TicketListadoDto extends Omit<TicketListado, 'creadoEn'> {
+export interface TicketListadoDto extends Omit<TicketListado, 'creadoEn' | 'confirmacionVenceEn'> {
   creadoEn: string; // ISO 8601 en UTC
+  confirmacionVenceEn: string | null; // ISO 8601 en UTC, solo en resuelta (SPEC 38)
+}
+
+// Filtros de GET /api/v1/tickets (SPEC 38), ya validados: estados sin repetir y `q` recortado de 2 a 100 caracteres.
+export interface FiltrosListadoDto {
+  estados: readonly EstadoTicket[];
+  q?: string;
+}
+
+// GET /api/v1/tickets/resumen (SPEC 38).
+export interface ResumenTicketsDto {
+  porEstado: Record<EstadoTicket, number>;
+  total: number;
 }
 
 // Plazo y acciones de confirmación en el detalle (SPEC 27). Los permisos los calcula el backend con el alcance de

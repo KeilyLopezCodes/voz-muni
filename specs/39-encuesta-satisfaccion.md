@@ -1,6 +1,6 @@
 # SPEC 39 — Encuesta de satisfacción al cerrar
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 03, SPEC 11, SPEC 15, SPEC 25, SPEC 27, SPEC 33, SPEC 36, SPEC 38
 > **Fecha:** 2026-10-23
 > **Objetivo:** Permitir que el vecino solicitante califique de 1 a 5, con un comentario opcional, la atención de su queja cerrada, una sola vez y dentro de un plazo configurable de 30 días, mediante `POST /api/v1/tickets/:id/encuesta`, con el formulario en el detalle, la marca en "Mis quejas" y un aviso a los coordinadores ante una calificación baja.

@@ -13,6 +13,8 @@ export function ticketsRoutes(
   const router = Router();
   router.post('/', autenticar, requierePermiso('tickets.crear'), controller.crear);
   router.get('/', autenticar, requierePermiso('tickets.ver'), controller.listar);
+  // Antes de /:id, para que "resumen" no se lea como un id (SPEC 38).
+  router.get('/resumen', autenticar, requierePermiso('tickets.ver'), controller.resumen);
   router.get('/:id', autenticar, requierePermiso('tickets.ver'), controller.detalle);
   router.get('/:id/linea-tiempo', autenticar, requierePermiso('tickets.ver'), lineaTiempo.listar);
   return router;

@@ -89,6 +89,7 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
   });
 
   interface OpcionesTicket {
+    titulo?: string;
     estado?: EstadoTicket;
     solicitante?: number;
     asignadoA?: number | null;
@@ -101,6 +102,7 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
 
   // Una queja en Obras, registrada por el receptor, con coordenadas y prioridad para comprobar que no se exponen.
   async function ticket({
+    titulo = 'Bache frente a la escuela',
     estado = 'en_proceso',
     solicitante = ids.vecino,
     asignadoA = ids.tecnico,
@@ -119,7 +121,7 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
         dependencia_id: ids.obras,
         zona_id: ids.zona,
         canal: 'telefono',
-        titulo: 'Bache frente a la escuela',
+        titulo,
         descripcion: 'Hay un bache profundo que daña los vehículos',
         direccion: '5a avenida 3-20, zona 1',
         estado,
@@ -173,8 +175,106 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
       estado: 'en_espera',
       creadoEn: '2026-09-01T15:00:00.000Z',
       esperaRespuesta: true,
+      confirmacionVenceEn: null, // SPEC 38
     });
     expect(res.body.datos[1].esperaRespuesta).toBe(false);
+  });
+
+  describe('filtros, orden y resumen (SPEC 38)', () => {
+    const DIA = 24 * 60 * 60 * 1000;
+    const idsDe = (res: { body: { datos: { id: number }[] } }) => res.body.datos.map((t) => t.id);
+    const numeroDe = async (id: number) => (await db('tickets').where({ id }).first('numero')).numero as string;
+
+    it('estado filtra por uno o varios estados', async () => {
+      const espera = await ticket({ estado: 'en_espera' });
+      const proceso = await ticket({ estado: 'en_proceso' });
+      await ticket({ estado: 'cerrada' });
+
+      expect(idsDe(await listar('vecino', '?estado=en_espera'))).toEqual([espera]);
+      expect(idsDe(await listar('vecino', '?estado=en_espera&estado=en_proceso')).sort()).toEqual([espera, proceso].sort());
+    });
+
+    it.each([
+      ['un estado desconocido', '?estado=perdida'],
+      ['un estado repetido', '?estado=nueva&estado=nueva'],
+      ['un q de 1 carácter', '?q=a'],
+      ['un q de 101 caracteres', `?q=${'a'.repeat(101)}`],
+    ])('%s → 400 VALIDACION', async (_caso, query) => {
+      const res = await listar('vecino', query);
+      expect(res.status).toBe(400);
+      expect(res.body.codigo).toBe('VALIDACION');
+    });
+
+    it('q con un número completo lo busca exacto, sin distinguir mayúsculas', async () => {
+      const buscada = await ticket();
+      await ticket();
+      const numero = await numeroDe(buscada);
+
+      expect(idsDe(await listar('vecino', `?q=${numero.toLowerCase()}`))).toEqual([buscada]);
+    });
+
+    it('q busca en el título sin distinguir mayúsculas, y % y _ no son comodines', async () => {
+      const bache = await ticket({ titulo: 'Bache en la 5a avenida' });
+      const porcentaje = await ticket({ titulo: 'Subió el 50% la fuga' });
+      await ticket({ titulo: 'Lámpara apagada' });
+
+      expect(idsDe(await listar('vecino', '?q=BACHE'))).toEqual([bache]);
+      expect(idsDe(await listar('vecino', `?q=${encodeURIComponent('50%')}`))).toEqual([porcentaje]);
+      expect(idsDe(await listar('vecino', '?q=l_mpara'))).toEqual([]);
+    });
+
+    it('ordena: en espera, después resueltas con plazo vigente, después el resto por fecha', async () => {
+      const ahora = Date.now();
+      const vieja = await ticket({ creadoEn: '2026-01-01T15:00:00Z' });
+      const vencida = await ticket({ estado: 'resuelta', creadoEn: '2026-10-25T15:00:00Z', venceEn: new Date(ahora - DIA) });
+      const vigente = await ticket({ estado: 'resuelta', creadoEn: '2026-02-01T15:00:00Z', venceEn: new Date(ahora + DIA) });
+      const espera = await ticket({ estado: 'en_espera', creadoEn: '2025-12-01T15:00:00Z' });
+
+      const res = await listar('vecino');
+
+      expect(idsDe(res)).toEqual([espera, vigente, vencida, vieja]);
+      const porId = Object.fromEntries(res.body.datos.map((t: { id: number; confirmacionVenceEn: string | null }) => [t.id, t.confirmacionVenceEn]));
+      expect(porId[vigente]).toEqual(expect.any(String));
+      expect(porId[vencida]).toEqual(expect.any(String));
+      expect(porId[espera]).toBeNull();
+    });
+
+    it('confirmacionVenceEn solo viene en resuelta', async () => {
+      const cerrada = await ticket({ estado: 'cerrada', venceEn: new Date(Date.now() + DIA) });
+      expect((await listar('vecino')).body.datos.find((t: { id: number }) => t.id === cerrada).confirmacionVenceEn).toBeNull();
+    });
+
+    it('el vecino nunca ve quejas de otro vecino, aunque busque su número', async () => {
+      const ajena = await ticket({ solicitante: ids.otroVecino });
+
+      expect((await listar('vecino', `?q=${await numeroDe(ajena)}`)).body).toMatchObject({ datos: [], total: 0 });
+    });
+
+    const resumen = (quien: string, query = '') => request(app).get(`/api/v1/tickets/resumen${query}`).set(auth(quien));
+
+    it('el resumen trae los 8 estados con 0 donde no hay, y el total; con q cuenta solo las coincidencias', async () => {
+      await ticket({ estado: 'en_espera', titulo: 'Bache grande' });
+      await ticket({ estado: 'en_espera', titulo: 'Fuga de agua' });
+      await ticket({ estado: 'cerrada', titulo: 'Bache chico' });
+      await ticket({ estado: 'cerrada', solicitante: ids.otroVecino });
+
+      const todo = await resumen('vecino');
+      expect(todo.status).toBe(200);
+      expect(todo.body).toEqual({
+        porEstado: { nueva: 0, en_revision: 0, asignada: 0, en_proceso: 0, en_espera: 2, resuelta: 0, cerrada: 1, rechazada: 0 },
+        total: 3,
+      });
+      expect((await resumen('vecino', '?q=bache')).body).toMatchObject({ porEstado: { en_espera: 1, cerrada: 1 }, total: 2 });
+      expect((await resumen('vecino', '?estado=cerrada')).status).toBe(400);
+    });
+
+    it('un técnico cuenta solo sus asignadas; sin sesión → 401', async () => {
+      await ticket({ asignadoA: ids.tecnico });
+      await ticket({ asignadoA: null });
+
+      expect((await resumen('tecnico')).body.total).toBe(1);
+      expect((await request(app).get('/api/v1/tickets/resumen')).status).toBe(401);
+    });
   });
 
   it('pagina el listado y rechaza un tamano mayor que 50 o un parámetro desconocido', async () => {
@@ -188,7 +288,8 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
     expect(segunda.body.datos).toHaveLength(1);
 
     expect((await listar('vecino', '?tamano=51')).status).toBe(400);
-    expect((await listar('vecino', '?estado=en_espera')).status).toBe(400);
+    // Desde SPEC 38, estado y q son filtros; cualquier otro parámetro sigue siendo 400.
+    expect((await listar('vecino', '?prioridad=alta')).status).toBe(400);
   });
 
   it('el vecino abre una queja ajena → 404, igual que una inexistente', async () => {
