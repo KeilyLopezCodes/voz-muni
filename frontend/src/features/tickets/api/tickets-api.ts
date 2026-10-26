@@ -52,6 +52,9 @@ export interface ConfirmacionDetalle {
   exigeMotivoAlConfirmar: boolean
 }
 
+// Los dos plazos del SLA (SPEC 30).
+export type TipoPlazo = 'respuesta' | 'resolucion'
+
 // Vencimientos del SLA para los internos (SPEC 30). "Vencido" se calcula aquí con la hora actual.
 export interface SlaDto {
   venceRespuesta: string | null // ISO 8601 en UTC
@@ -59,6 +62,9 @@ export interface SlaDto {
   venceResolucion: string | null // null mientras está en pausa
   pausado: boolean // estado === 'en_espera'
   restanteMinutosEnPausa: number | null // minutos hábiles que faltaban al entrar en espera
+  escalado: boolean // venció un plazo (SPEC 32)
+  escaladoEn: string | null
+  escaladoPor: TipoPlazo | null
 }
 
 // Sin datos del solicitante, prioridad, técnico, coordenadas ni datos adicionales.

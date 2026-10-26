@@ -26,6 +26,9 @@ function sla(cambios: Partial<SlaDto> = {}): SlaDto {
     venceResolucion: DESPUES,
     pausado: false,
     restanteMinutosEnPausa: null,
+    escalado: false,
+    escaladoEn: null,
+    escaladoPor: null,
     ...cambios,
   }
 }
@@ -76,6 +79,19 @@ describe('IndicadorSla', () => {
     montar(sla({ primeraRespuestaEn: ANTES, venceResolucion: ANTES }), estado)
     expect(screen.queryByText(textos.resolucionVencida)).not.toBeInTheDocument()
     expect(screen.getByText(textos.respondida)).toBeInTheDocument()
+  })
+
+  it('escalada muestra la marca textual "Escalada" con ícono, con el plazo y la fecha en el título (SPEC 32)', () => {
+    montar(sla({ escalado: true, escaladoEn: ANTES, escaladoPor: 'respuesta' }))
+    const marca = screen.getByText(textos.escalada)
+    expect(marca).toBeVisible()
+    expect(marca.querySelector('svg')).not.toBeNull()
+    expect(marca).toHaveAttribute('title', expect.stringMatching(/^Escalada por respuesta el .*9:00/))
+  })
+
+  it('sin escalar no muestra la marca', () => {
+    montar(sla())
+    expect(screen.queryByText(textos.escalada)).not.toBeInTheDocument()
   })
 
   it('sin datos (sin aceptar o anterior a SPEC 30) no muestra nada', () => {

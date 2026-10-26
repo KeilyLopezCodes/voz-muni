@@ -511,6 +511,25 @@ describe('Línea de tiempo de la queja (SPEC 28)', () => {
       expect(res.status).toBe(401);
     });
 
+    it('el escalamiento (SPEC 32) aparece en la vista interna con actor sistema, y no en la del vecino', async () => {
+      const id = await ticket(null, 'en_revision');
+      await historial(id, null, 'nueva', ids.vecino, T(0));
+      await db('tickets').where({ id }).update({ escalado: true, escalado_en: T(20, '123456'), escalado_por: 'resolucion' });
+
+      const interna = await get(id, 'coordinador');
+      expect(interna.status).toBe(200);
+      expect(interna.body.datos[0]).toEqual({
+        id: `escalamiento:${id}`,
+        ocurridoEn: '2026-10-20T15:20:00.123Z',
+        actor: { tipo: 'sistema' },
+        detalle: { tipo: 'escalamiento', plazo: 'resolucion' },
+      });
+
+      const publica = await get(id, 'vecino');
+      expect(publica.status).toBe(200);
+      expect(publica.body.datos.map((e: EventoLineaTiempo) => e.detalle.tipo)).toEqual(['estado']);
+    });
+
     it('no incluye el texto de los comentarios ni los datos de contacto del solicitante', async () => {
       for (const usuario of ['vecino', 'supervisor']) {
         const cuerpo = JSON.stringify((await get(ids.principal, usuario)).body);

@@ -20,8 +20,8 @@ export interface Env extends DatabaseEnv {
   APP_URL: string;
   RECUPERACION_LIMITE_POR_VENTANA: number;
   ADJUNTOS_DIR: string;
-  SLA_ALERTAS_ACTIVO: boolean;
-  SLA_ALERTAS_CRON: string;
+  SLA_JOB_ACTIVO: boolean;
+  SLA_JOB_CRON: string;
 }
 
 const OBLIGATORIA = { error: 'es obligatoria' };
@@ -31,6 +31,16 @@ function esRemitente(valor: string): boolean {
   const conNombre = /^[^<>]+<([^<>]+)>$/.exec(valor.trim());
   return z.email().safeParse(conNombre ? conNombre[1] : valor.trim()).success;
 }
+
+const activoOpcional = z
+  .enum(['true', 'false'], { error: 'debe ser true o false' })
+  .optional()
+  .transform((valor) => (valor === undefined ? undefined : valor === 'true'));
+
+const cronOpcional = z
+  .string()
+  .refine((expresion) => esCronValido(expresion), { error: 'debe ser una expresión válida de node-cron' })
+  .optional();
 
 const databaseEnvSchema = z.object({
   DATABASE_URL: z.url({ protocol: /^postgres$/, error: 'debe ser una URL postgres://' }),
@@ -57,21 +67,28 @@ const envSchema = databaseEnvSchema.extend({
   RECUPERACION_LIMITE_POR_VENTANA: z.coerce.number().int().positive().default(5),
   // Carpeta de los adjuntos (SPEC 24). El backend la crea al arrancar si no existe.
   ADJUNTOS_DIR: z.string(OBLIGATORIA).min(1, OBLIGATORIA),
-  // Job de alertas al umbral del SLA (SPEC 31). Sin valor, corre salvo en NODE_ENV=test.
-  SLA_ALERTAS_ACTIVO: z
-    .enum(['true', 'false'], { error: 'debe ser true o false' })
-    .optional()
-    .transform((valor) => (valor === undefined ? undefined : valor === 'true')),
-  SLA_ALERTAS_CRON: z
-    .string()
-    .default('*/5 * * * *')
-    .refine((expresion) => esCronValido(expresion), { error: 'debe ser una expresión válida de node-cron' }),
+  // Job de SLA: alertas y escalamiento (SPEC 31 y 32). Sin valor, corre salvo en NODE_ENV=test.
+  SLA_JOB_ACTIVO: activoOpcional,
+  SLA_JOB_CRON: cronOpcional,
+  // Nombres de SPEC 31, aceptados por un tiempo con un aviso en el log (SPEC 32).
+  SLA_ALERTAS_ACTIVO: activoOpcional,
+  SLA_ALERTAS_CRON: cronOpcional,
 });
 
+const CRON_POR_DEFECTO = '*/5 * * * *';
+
 // Lo que depende de otras variables se resuelve después de validarlas.
-const envCompletoSchema = envSchema.transform(
-  (env): Env => ({ ...env, SLA_ALERTAS_ACTIVO: env.SLA_ALERTAS_ACTIVO ?? env.NODE_ENV !== 'test' }),
-);
+const envCompletoSchema = envSchema.transform((env): Env => {
+  const { SLA_ALERTAS_ACTIVO, SLA_ALERTAS_CRON, SLA_JOB_ACTIVO, SLA_JOB_CRON, ...resto } = env;
+  if (SLA_ALERTAS_ACTIVO !== undefined || SLA_ALERTAS_CRON !== undefined) {
+    console.warn('SLA_ALERTAS_ACTIVO y SLA_ALERTAS_CRON están obsoletas: usa SLA_JOB_ACTIVO y SLA_JOB_CRON (SPEC 32)');
+  }
+  return {
+    ...resto,
+    SLA_JOB_ACTIVO: SLA_JOB_ACTIVO ?? SLA_ALERTAS_ACTIVO ?? env.NODE_ENV !== 'test',
+    SLA_JOB_CRON: SLA_JOB_CRON ?? SLA_ALERTAS_CRON ?? CRON_POR_DEFECTO,
+  };
+});
 
 function parse<T>(schema: z.ZodType<T>, source: NodeJS.ProcessEnv): T {
   const result = schema.safeParse(source);

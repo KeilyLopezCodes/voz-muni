@@ -8,7 +8,7 @@ import type {
 import type { EstadoTicket } from '../../domain/ticket/estado-ticket';
 import type { CambiosSla } from '../../domain/sla/vencimientos';
 import type { Prioridad } from '../../domain/ticket/prioridad';
-import { Ticket, type ResultadoTransicion } from '../../domain/ticket/ticket';
+import { Ticket, type ResultadoTransicion, type TipoPlazo } from '../../domain/ticket/ticket';
 import { aplicarFiltro, COLUMNAS_TICKET } from './knex-filtro';
 
 // pg devuelve los bigint como string.
@@ -20,6 +20,8 @@ interface FilaTicket {
   asignado_a: string | null;
   prioridad: Prioridad | null;
   escalado: boolean;
+  escalado_en: Date | null;
+  escalado_por: TipoPlazo | null;
   resuelto_en: Date | null;
   cerrado_en: Date | null;
   resolucion: string | null;
@@ -97,6 +99,8 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
         't.asignado_a',
         't.prioridad',
         't.escalado',
+        't.escalado_en',
+        't.escalado_por',
         't.resuelto_en',
         't.cerrado_en',
         't.resolucion',
@@ -134,6 +138,8 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
         asignadoA: numeroONull(fila.asignado_a),
         prioridad: fila.prioridad,
         escalado: fila.escalado,
+        escaladoEn: fila.escalado_en,
+        escaladoPor: fila.escalado_por,
         resueltoEn: fila.resuelto_en,
         cerradoEn: fila.cerrado_en,
         resolucion: fila.resolucion,
@@ -188,6 +194,12 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
     await this.db('tickets').where({ id: ticket.id }).update({ asignado_a: ticket.asignadoA });
   }
 
+  async guardarEscalado(ticket: Ticket): Promise<void> {
+    await this.db('tickets')
+      .where({ id: ticket.id })
+      .update({ escalado: ticket.escalado, escalado_en: ticket.escaladoEn, escalado_por: ticket.escaladoPor });
+  }
+
   async guardarTransicion({ ticket, historial }: ResultadoTransicion, categoriaId: number, sla: CambiosSla = {}): Promise<void> {
     const columnasSla = Object.fromEntries(
       Object.entries(sla).map(([campo, valor]) => [COLUMNAS_SLA[campo as keyof CambiosSla], valor]),
@@ -198,6 +210,8 @@ export class KnexTicketEscrituraRepository implements TicketEscrituraRepository 
       dependencia_id: ticket.dependenciaId,
       asignado_a: ticket.asignadoA,
       escalado: ticket.escalado,
+      escalado_en: ticket.escaladoEn,
+      escalado_por: ticket.escaladoPor,
       resuelto_en: ticket.resueltoEn,
       cerrado_en: ticket.cerradoEn,
       // Resolución vigente (SPEC 26): sale del mismo resultado del dominio que el motivo del historial.

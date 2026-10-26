@@ -1,6 +1,6 @@
 import { apiClient } from '../../../shared/api/http-client'
 import type { Rol } from '../../../shared/auth/roles'
-import type { EstadoTicket } from './tickets-api'
+import type { EstadoTicket, TipoPlazo } from './tickets-api'
 
 // Contratos de SPEC 28: GET /tickets/:id/linea-tiempo, de la más reciente a la más antigua, paginada por cursor.
 // Qué eventos y qué motivos llegan lo decide el backend con el alcance del usuario.
@@ -29,6 +29,7 @@ export type DetalleEvento =
   | { tipo: 'traslado_rechazado' | 'traslado_retirado' | 'traslado_sin_efecto'; solicitudId: number; motivo: string | null }
   | { tipo: 'comentario'; comentarioId: number; interno: boolean }
   | { tipo: 'adjunto'; adjuntoId: number; nombre: string; interno: boolean }
+  | { tipo: 'escalamiento'; plazo: TipoPlazo } // SPEC 32, solo en la vista interna
 
 export interface EventoLineaTiempo {
   id: string // `${tipo}:${idDeOrigen}`

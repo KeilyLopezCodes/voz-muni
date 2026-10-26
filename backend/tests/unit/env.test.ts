@@ -20,8 +20,8 @@ describe('loadEnv', () => {
     SMTP_PORT: 587,
     SMTP_SECURE: false,
     RECUPERACION_LIMITE_POR_VENTANA: 5,
-    SLA_ALERTAS_ACTIVO: true,
-    SLA_ALERTAS_CRON: '*/5 * * * *',
+    SLA_JOB_ACTIVO: true,
+    SLA_JOB_CRON: '*/5 * * * *',
   };
 
   it('devuelve la configuración con una entrada válida', () => {
@@ -34,8 +34,8 @@ describe('loadEnv', () => {
         SMTP_PORT: '465',
         SMTP_SECURE: 'true',
         RECUPERACION_LIMITE_POR_VENTANA: '3',
-        SLA_ALERTAS_ACTIVO: 'false',
-        SLA_ALERTAS_CRON: '* * * * *',
+        SLA_JOB_ACTIVO: 'false',
+        SLA_JOB_CRON: '* * * * *',
       }),
     ).toEqual({
       ...minimo,
@@ -45,23 +45,48 @@ describe('loadEnv', () => {
       SMTP_PORT: 465,
       SMTP_SECURE: true,
       RECUPERACION_LIMITE_POR_VENTANA: 3,
-      SLA_ALERTAS_ACTIVO: false,
-      SLA_ALERTAS_CRON: '* * * * *',
+      SLA_JOB_ACTIVO: false,
+      SLA_JOB_CRON: '* * * * *',
     });
   });
 
-  it('rechaza una SLA_ALERTAS_CRON inválida (SPEC 31)', () => {
-    expect(() => loadEnv({ ...minimo, SLA_ALERTAS_CRON: 'cada 5 minutos' })).toThrow(/SLA_ALERTAS_CRON/);
+  it('rechaza una SLA_JOB_CRON inválida (SPEC 31 y 32)', () => {
+    expect(() => loadEnv({ ...minimo, SLA_JOB_CRON: 'cada 5 minutos' })).toThrow(/SLA_JOB_CRON/);
   });
 
-  it('rechaza un SLA_ALERTAS_ACTIVO que no es true ni false', () => {
-    expect(() => loadEnv({ ...minimo, SLA_ALERTAS_ACTIVO: 'si' })).toThrow(/SLA_ALERTAS_ACTIVO/);
+  it('rechaza un SLA_JOB_ACTIVO que no es true ni false', () => {
+    expect(() => loadEnv({ ...minimo, SLA_JOB_ACTIVO: 'si' })).toThrow(/SLA_JOB_ACTIVO/);
   });
 
-  it('en NODE_ENV=test el job de alertas queda desactivado por defecto, y se puede activar', () => {
-    expect(loadEnv({ ...minimo, NODE_ENV: 'test' }).SLA_ALERTAS_ACTIVO).toBe(false);
-    expect(loadEnv({ ...minimo, NODE_ENV: 'test', SLA_ALERTAS_ACTIVO: 'true' }).SLA_ALERTAS_ACTIVO).toBe(true);
-    expect(loadEnv({ ...minimo, NODE_ENV: 'production' }).SLA_ALERTAS_ACTIVO).toBe(true);
+  it('en NODE_ENV=test el job de SLA queda desactivado por defecto, y se puede activar', () => {
+    expect(loadEnv({ ...minimo, NODE_ENV: 'test' }).SLA_JOB_ACTIVO).toBe(false);
+    expect(loadEnv({ ...minimo, NODE_ENV: 'test', SLA_JOB_ACTIVO: 'true' }).SLA_JOB_ACTIVO).toBe(true);
+    expect(loadEnv({ ...minimo, NODE_ENV: 'production' }).SLA_JOB_ACTIVO).toBe(true);
+  });
+
+  describe('nombres de SPEC 31 (obsoletos)', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('SLA_ALERTAS_ACTIVO y SLA_ALERTAS_CRON se aceptan con un aviso en el log', () => {
+      const aviso = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const env = loadEnv({ ...minimo, SLA_ALERTAS_ACTIVO: 'false', SLA_ALERTAS_CRON: '* * * * *' });
+      expect(env).toMatchObject({ SLA_JOB_ACTIVO: false, SLA_JOB_CRON: '* * * * *' });
+      expect(env).not.toHaveProperty('SLA_ALERTAS_ACTIVO');
+      expect(aviso).toHaveBeenCalledWith(expect.stringContaining('SLA_JOB_ACTIVO'));
+    });
+
+    it('los nombres nuevos ganan sobre los viejos', () => {
+      jest.spyOn(console, 'warn').mockImplementation(() => {});
+      expect(loadEnv({ ...minimo, SLA_JOB_CRON: '*/2 * * * *', SLA_ALERTAS_CRON: '* * * * *' }).SLA_JOB_CRON).toBe('*/2 * * * *');
+    });
+
+    it('sin nombres viejos no avisa', () => {
+      const aviso = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      loadEnv(minimo);
+      expect(aviso).not.toHaveBeenCalled();
+    });
   });
 
   it('lanza un error que nombra DATABASE_URL cuando falta', () => {

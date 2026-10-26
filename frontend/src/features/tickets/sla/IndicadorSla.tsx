@@ -1,5 +1,6 @@
 import CheckCircleOutlineRounded from '@mui/icons-material/CheckCircleOutlineRounded'
 import ErrorOutlineRounded from '@mui/icons-material/ErrorOutlineRounded'
+import NotificationImportantRounded from '@mui/icons-material/NotificationImportantRounded'
 import PauseCircleOutlineRounded from '@mui/icons-material/PauseCircleOutlineRounded'
 import ScheduleRounded from '@mui/icons-material/ScheduleRounded'
 import Box from '@mui/material/Box'
@@ -32,12 +33,26 @@ interface Linea {
 // lleva texto e ícono, no solo color (WCAG).
 export function IndicadorSla({ sla, estado, ahora = new Date() }: IndicadorSlaProps) {
   const { t, i18n } = useTranslation('tickets')
-  if (!sla || (sla.venceRespuesta === null && sla.venceResolucion === null && !sla.pausado)) {
+  if (!sla || (sla.venceRespuesta === null && sla.venceResolucion === null && !sla.pausado && !sla.escalado)) {
     return null
   }
   const fecha = (iso: string) => fechaGuatemala(iso, i18n.language)
   const paso = (iso: string) => ahora.getTime() > new Date(iso).getTime()
   const lineas: Linea[] = []
+
+  // La marca de escalada (SPEC 32): texto e ícono, no solo color.
+  if (sla.escalado) {
+    lineas.push({
+      clave: 'escalada',
+      texto: t('sla.escalada'),
+      titulo:
+        sla.escaladoEn && sla.escaladoPor
+          ? t('escaladas.escaladaPor', { plazo: t(`plazos.${sla.escaladoPor}`), fecha: fecha(sla.escaladoEn) })
+          : undefined,
+      vencida: true,
+      icono: <NotificationImportantRounded fontSize="inherit" />,
+    })
+  }
 
   if (sla.primeraRespuestaEn !== null) {
     const tarde = sla.venceRespuesta !== null && new Date(sla.primeraRespuestaEn).getTime() > new Date(sla.venceRespuesta).getTime()

@@ -20,7 +20,7 @@ export function enAtencion(cambios: Partial<TicketAtencion> = {}): TicketAtencio
     motivoEspera: null,
     trasladoPendiente: false,
     creadoEn: new Date(Date.now() - 5 * 3600_000).toISOString(),
-    sla: { venceRespuesta: null, primeraRespuestaEn: null, venceResolucion: null, pausado: false, restanteMinutosEnPausa: null },
+    sla: { venceRespuesta: null, primeraRespuestaEn: null, venceResolucion: null, pausado: false, restanteMinutosEnPausa: null, escalado: false, escaladoEn: null, escaladoPor: null },
     ...cambios,
   }
 }

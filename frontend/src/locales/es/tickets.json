@@ -615,7 +615,8 @@
       "comentario_tu": "Tú comentaste",
       "notaInterna": "{{actor}} agregó una nota interna",
       "adjunto": "{{actor}} adjuntó {{nombre}}",
-      "adjunto_tu": "Tú adjuntaste {{nombre}}"
+      "adjunto_tu": "Tú adjuntaste {{nombre}}",
+      "escalamiento": "VozMuni escaló la queja por vencer el plazo de {{plazo}}"
     },
     "detalleCompleto": "Ver detalle completo"
   },
@@ -628,6 +629,28 @@
     "resolverAntes": "Resolver antes de {{fecha}}",
     "resolucionVencida": "Resolución vencida",
     "enPausa": "En pausa: quedan {{horas}} h {{minutos}} min hábiles",
-    "venceEl": "Vencía el {{fecha}}"
+    "venceEl": "Vencía el {{fecha}}",
+    "escalada": "Escalada"
+  },
+  "plazos": {
+    "respuesta": "respuesta",
+    "resolucion": "resolución"
+  },
+  "escaladas": {
+    "titulo": "Quejas escaladas",
+    "descripcion": "Quejas activas cuyo plazo de primera respuesta o de resolución venció, de la escalada más antigua a la más reciente.",
+    "filtro": "Dependencia",
+    "todas": "Todas las dependencias",
+    "cargando": "Cargando las quejas escaladas…",
+    "errorCarga": "No pudimos cargar las quejas escaladas.",
+    "reintentar": "Reintentar",
+    "vacia": "No hay quejas escaladas",
+    "sinDependencia": "Sin dependencia",
+    "sinTecnico": "Sin técnico asignado",
+    "tecnico": "Técnico: {{nombre}}",
+    "escaladaPor": "Escalada por {{plazo}} el {{fecha}}",
+    "verDetalle": "Ver detalle",
+    "verDetalleDe": "Ver el detalle de la queja {{numero}}",
+    "paginacion": "Páginas de quejas escaladas"
   }
 }

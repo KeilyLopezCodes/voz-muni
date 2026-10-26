@@ -92,7 +92,7 @@ class TicketsEnMemoria implements TicketLecturaRepository {
       confirmacionVenceEn: this.plazos[id]?.venceEn ?? null,
       reaperturas: this.plazos[id]?.reaperturas ?? 0,
       solicitanteId: t.solicitanteId,
-      sla: { venceRespuesta: null, primeraRespuestaEn: null, venceResolucion: null, restanteMinutosEnPausa: null },
+      sla: { venceRespuesta: null, primeraRespuestaEn: null, venceResolucion: null, restanteMinutosEnPausa: null, escalado: false, escaladoEn: null, escaladoPor: null },
     };
   }
 }

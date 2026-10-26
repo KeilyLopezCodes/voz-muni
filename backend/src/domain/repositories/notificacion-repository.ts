@@ -2,7 +2,7 @@
 // `datos` y los archivos de traducción.
 
 // Tipos conocidos hoy. notificaciones.tipo no tiene CHECK (SPEC 03): RF-32 agregará más.
-export const TIPOS_NOTIFICACION = ['sla_alerta_respuesta', 'sla_alerta_resolucion'] as const;
+export const TIPOS_NOTIFICACION = ['sla_alerta_respuesta', 'sla_alerta_resolucion', 'sla_escalamiento'] as const;
 
 export type TipoNotificacion = (typeof TIPOS_NOTIFICACION)[number];
 

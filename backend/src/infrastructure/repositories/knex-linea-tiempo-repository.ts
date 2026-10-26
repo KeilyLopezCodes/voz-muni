@@ -9,6 +9,7 @@ import type {
   TipoEvento,
 } from '../../domain/repositories/linea-tiempo-repository';
 import type { EstadoTicket } from '../../domain/ticket/estado-ticket';
+import type { TipoPlazo } from '../../domain/ticket/ticket';
 
 // pg devuelve los bigint como string.
 interface FilaEvento {
@@ -67,6 +68,13 @@ const RAMA_TRASLADO_RESUELTO = `
   FROM solicitudes_traslado s
   WHERE s.ticket_id = :ticketId AND s.estado IN ('rechazada', 'retirada', 'sin_efecto')`;
 
+// El escalamiento vigente (SPEC 32): reabrir limpia escalado_en, así que uno anterior no aparece. El plazo viaja en
+// la columna motivo; el actor es el sistema.
+const RAMA_ESCALAMIENTO = `
+  SELECT 'escalamiento', t.id, date_trunc('milliseconds', t.escalado_en), NULL::bigint, t.escalado_por,
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+  FROM tickets t WHERE t.id = :ticketId AND t.escalado_en IS NOT NULL`;
+
 const RAMA_COMENTARIO = (soloPublicos: boolean) => `
   SELECT 'comentario', cm.id, date_trunc('milliseconds', cm.creado_en), cm.autor_id, NULL,
     NULL, NULL, NULL, NULL, NULL, NULL, cm.es_interno, NULL
@@ -121,6 +129,8 @@ function aDetalle(fila: FilaEvento): DetalleEvento {
       return { tipo: 'comentario', comentarioId: origenId, interno: fila.interno === true };
     case 'adjunto':
       return { tipo: 'adjunto', adjuntoId: origenId, nombre: fila.nombre_adjunto!, interno: fila.interno === true };
+    case 'escalamiento':
+      return { tipo: 'escalamiento', plazo: fila.motivo as TipoPlazo };
   }
 }
 
@@ -132,7 +142,7 @@ export class KnexLineaTiempoRepository implements LineaTiempoRepository {
     const soloPublicos = filtro.vistaPublica || !filtro.incluirInternos;
     const ramas = [RAMA_ESTADO];
     if (!filtro.vistaPublica) {
-      ramas.push(RAMA_ASIGNACION, RAMA_TRASLADO_SOLICITADO, RAMA_TRASLADO_RESUELTO);
+      ramas.push(RAMA_ASIGNACION, RAMA_TRASLADO_SOLICITADO, RAMA_TRASLADO_RESUELTO, RAMA_ESCALAMIENTO);
     }
     ramas.push(RAMA_COMENTARIO(soloPublicos), RAMA_ADJUNTO(soloPublicos));
 

@@ -15,6 +15,8 @@ import { PoliticasSlaService } from './application/services/politicas-sla.servic
 import { SlaService } from './application/services/sla.service';
 import { ConsultaTicketsService } from './application/services/consulta-tickets.service';
 import { EnvioCorreo } from './application/services/envio-correo';
+import { EscaladasService } from './application/services/escaladas.service';
+import { EscalamientoService } from './application/services/escalamiento.service';
 import { HealthService } from './application/services/health.service';
 import { LineaTiempoService } from './application/services/linea-tiempo.service';
 import { NotificacionesService } from './application/services/notificaciones.service';
@@ -35,11 +37,12 @@ import { SystemClock } from './infrastructure/clock/system-clock';
 import { type Env, loadEnv } from './infrastructure/config/env';
 import { buildKnexConfig } from './infrastructure/database/knex-config';
 import { KnexDatabaseHealthCheck } from './infrastructure/database/knex-database-health-check';
-import { iniciarJobAlertasSla } from './infrastructure/jobs/alertas-sla.job';
+import { iniciarJobSla } from './infrastructure/jobs/sla.job';
 import { NodemailerEnviadorCorreo } from './infrastructure/mail/nodemailer-enviador-correo';
 import { KnexAtencionLecturaRepository } from './infrastructure/repositories/knex-atencion-lectura-repository';
 import { KnexBitacoraLecturaRepository } from './infrastructure/repositories/knex-bitacora-lectura-repository';
 import { KnexCatalogoLecturaRepository } from './infrastructure/repositories/knex-catalogo-lectura-repository';
+import { KnexEscaladasLecturaRepository } from './infrastructure/repositories/knex-escaladas-lectura-repository';
 import { KnexLineaTiempoRepository } from './infrastructure/repositories/knex-linea-tiempo-repository';
 import { KnexNotificacionRepository } from './infrastructure/repositories/knex-notificacion-repository';
 import { KnexParametroRepository } from './infrastructure/repositories/knex-parametro-repository';
@@ -91,9 +94,12 @@ export interface Container {
   // Lo llama el job de alertas (SPEC 31); server.ts lo programa, app.ts no.
   alertasSlaService: AlertasSlaService;
   notificacionesService: NotificacionesService;
-  // SLA_ALERTAS_ACTIVO. server.ts programa el job después de listen; devuelve la función que lo detiene.
-  alertasSlaActivo: boolean;
-  iniciarAlertasSla(): () => void;
+  // Segundo paso del job de SLA (SPEC 32).
+  escalamientoService: EscalamientoService;
+  escaladasService: EscaladasService;
+  // SLA_JOB_ACTIVO. server.ts programa el job de SLA después de listen; devuelve la función que lo detiene.
+  slaJobActivo: boolean;
+  iniciarJobSla(): () => void;
   // Crea ADJUNTOS_DIR si no existe; server.ts lo llama antes de escuchar.
   prepararAlmacen(): Promise<void>;
   dispose(): Promise<void>;
@@ -139,6 +145,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     new KnexPoliticaSlaRepository(db),
   );
   const alertasSla = new AlertasSlaService(transaccion, new KnexParametroRepository(db), (mensaje) => console.error(mensaje));
+  const escalamiento = new EscalamientoService(transaccion, (mensaje) => console.error(mensaje));
   const almacen = new DiscoAlmacenArchivos(env.ADJUNTOS_DIR);
   const consultaTickets = new ConsultaTicketsService(new KnexTicketLecturaRepository(db), plazosConfirmacion, clock);
   const correo = new EnvioCorreo(new KnexPlantillaRepository(db), enviadorCorreo, (mensaje) => console.error(mensaje));
@@ -201,8 +208,10 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     politicasSlaService: new PoliticasSlaService(new KnexPoliticaSlaRepository(db), transaccion, clock),
     alertasSlaService: alertasSla,
     notificacionesService: new NotificacionesService(new KnexNotificacionRepository(db)),
-    alertasSlaActivo: env.SLA_ALERTAS_ACTIVO,
-    iniciarAlertasSla: () => iniciarJobAlertasSla(alertasSla, { cron: env.SLA_ALERTAS_CRON }, clock),
+    escalamientoService: escalamiento,
+    escaladasService: new EscaladasService(new KnexEscaladasLecturaRepository(db)),
+    slaJobActivo: env.SLA_JOB_ACTIVO,
+    iniciarJobSla: () => iniciarJobSla({ alertas: alertasSla, escalamiento }, { cron: env.SLA_JOB_CRON }, clock),
     prepararAlmacen: () => almacen.preparar(),
     dispose: () => db.destroy(),
   };

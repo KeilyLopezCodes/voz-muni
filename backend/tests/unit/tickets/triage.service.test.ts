@@ -59,6 +59,8 @@ class TicketsEnMemoria implements TicketEscrituraRepository {
         asignadoA: null,
         prioridad: null,
         escalado: false,
+        escaladoEn: null,
+        escaladoPor: null,
         resueltoEn: null,
         cerradoEn: null,
         resolucion: null,
@@ -84,6 +86,10 @@ class TicketsEnMemoria implements TicketEscrituraRepository {
 
   async guardarTecnico(): Promise<void> {
     throw new Error('el triage no asigna técnico');
+  }
+
+  async guardarEscalado(): Promise<void> {
+    throw new Error('el triage no escala');
   }
 
   async guardarTransicion(resultado: ResultadoTransicion, categoriaId: number): Promise<void> {

@@ -100,6 +100,8 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['alerta_resolucion_en', 'timestamp with time zone'],
     ['alerta_respuesta_enviada_en', 'timestamp with time zone'],
     ['alerta_resolucion_enviada_en', 'timestamp with time zone'],
+    ['escalado_en', 'timestamp with time zone'],
+    ['escalado_por', 'text'],
   ],
   ticket_historial: [
     ['id', 'bigint'],
@@ -939,6 +941,57 @@ describe('Esquema de base de datos', () => {
     });
   });
 
+  describe('escalamiento (0027)', () => {
+    it('crea los 3 índices parciales', async () => {
+      const indices: { indexname: string; indexdef: string }[] = await db('pg_indexes')
+        .where({ schemaname: 'public', tablename: 'tickets' })
+        .select('indexname', 'indexdef');
+      const definicion = (nombre: string) => indices.find((i) => i.indexname === nombre)?.indexdef;
+      expect(definicion('tickets_escalar_respuesta_idx')).toContain('(vence_respuesta) WHERE ((NOT escalado) AND (primera_respuesta_en IS NULL))');
+      expect(definicion('tickets_escalar_resolucion_idx')).toContain('(vence_resolucion) WHERE (NOT escalado)');
+      expect(definicion('tickets_escaladas_idx')).toContain('(escalado_en) WHERE escalado');
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+      ['escalado sin escalado_en', { escalado: true }],
+      ['escalado_en sin escalado', { escalado_en: new Date(), escalado_por: 'respuesta' }],
+      ['escalado_en sin escalado_por', { escalado: true, escalado_en: new Date() }],
+      ['escalado_por = otro', { escalado: true, escalado_en: new Date(), escalado_por: 'otro' }],
+    ])('rechaza %s', (_caso, cambios) =>
+      withRollback(async (trx) => {
+        const ticketId = await insertTicket(trx);
+        await expect(trx('tickets').where({ id: ticketId }).update(cambios)).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }),
+    );
+
+    it('acepta una queja escalada completa', () =>
+      withRollback(async (trx) => {
+        const ticketId = await insertTicket(trx);
+        await trx('tickets').where({ id: ticketId }).update({ escalado: true, escalado_en: new Date(), escalado_por: 'resolucion' });
+      }));
+
+    it('revertir 0027 quita las columnas, el CHECK y los índices', async () => {
+      await db.migrate.down({ name: '0027_escalamiento.js' });
+      try {
+        expect(
+          await db('information_schema.columns')
+            .where({ table_name: 'tickets' })
+            .whereIn('column_name', ['escalado_en', 'escalado_por'])
+            .select('column_name'),
+        ).toEqual([]);
+        expect(await db('pg_constraint').where({ conname: 'tickets_escalado_consistente' }).select('conname')).toEqual([]);
+        const nombres = (await db('pg_indexes').where({ schemaname: 'public', tablename: 'tickets' }).select('indexname')).map(
+          (i: { indexname: string }) => i.indexname,
+        );
+        expect(nombres).not.toContain('tickets_escalar_respuesta_idx');
+        expect(nombres).not.toContain('tickets_escalar_resolucion_idx');
+        expect(nombres).not.toContain('tickets_escaladas_idx');
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
   describe('alertas del SLA (0026)', () => {
     async function indices(tabla: string): Promise<{ indexname: string; indexdef: string }[]> {
       return db('pg_indexes').where({ schemaname: 'public', tablename: tabla }).select('indexname', 'indexdef');
@@ -1027,6 +1080,8 @@ describe('Esquema de base de datos', () => {
     });
 
     it('revertir 0025 quita las 5 columnas, el CHECK y el parámetro', async () => {
+      // 0027 tiene un índice parcial sobre primera_respuesta_en: Postgres lo borraría con la columna.
+      await db.migrate.down({ name: '0027_escalamiento.js' });
       await db.migrate.down({ name: '0025_sla.js' });
       try {
         expect(

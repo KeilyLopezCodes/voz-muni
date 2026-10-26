@@ -6,6 +6,7 @@ import HandymanRounded from '@mui/icons-material/HandymanRounded'
 import InsertChartRounded from '@mui/icons-material/InsertChartRounded'
 import ListAltRounded from '@mui/icons-material/ListAltRounded'
 import MenuRounded from '@mui/icons-material/MenuRounded'
+import NotificationImportantRounded from '@mui/icons-material/NotificationImportantRounded'
 import SwapHorizRounded from '@mui/icons-material/SwapHorizRounded'
 import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
@@ -36,6 +37,7 @@ export const ICONO_POR_RUTA: Record<string, ComponentType> = {
   '/asignacion': AssignmentIndRounded,
   '/atencion': HandymanRounded,
   '/traslados': SwapHorizRounded,
+  '/escaladas': NotificationImportantRounded,
   '/reportes': InsertChartRounded,
   '/admin': AdminPanelSettingsRounded,
 }

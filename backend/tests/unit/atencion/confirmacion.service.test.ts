@@ -55,6 +55,8 @@ class TicketsEnMemoria implements Pick<TicketEscrituraRepository, 'obtenerParaAc
         asignadoA: 30,
         prioridad: 'media',
         escalado: false,
+        escaladoEn: null,
+        escaladoPor: null,
         resueltoEn: estado === 'resuelta' ? new Date('2026-11-02T15:00:00.000Z') : null,
         cerradoEn: null,
         resolucion: estado === 'resuelta' ? 'Se rellenó el bache' : null,

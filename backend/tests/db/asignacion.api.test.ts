@@ -169,7 +169,7 @@ describe('Asignación de técnico (SPEC 20)', () => {
         tecnico: null,
         creadoEn: expect.stringMatching(/Z$/),
         // Insertada sin aceptar por el triage: sin vencimientos (SPEC 30).
-        sla: { venceRespuesta: null, primeraRespuestaEn: null, venceResolucion: null, pausado: false, restanteMinutosEnPausa: null },
+        sla: { venceRespuesta: null, primeraRespuestaEn: null, venceResolucion: null, pausado: false, restanteMinutosEnPausa: null, escalado: false, escaladoEn: null, escaladoPor: null },
       });
       const texto = JSON.stringify(res.body);
       expect(texto).not.toContain('vecino@asignacion.test');
@@ -398,6 +398,8 @@ describe('Asignación de técnico (SPEC 20)', () => {
       asignadoA: fila.asignado_a === null ? null : Number(fila.asignado_a),
       prioridad: fila.prioridad,
       escalado: fila.escalado,
+      escaladoEn: null,
+      escaladoPor: null,
       resueltoEn: fila.resuelto_en,
       cerradoEn: fila.cerrado_en,
       resolucion: null,

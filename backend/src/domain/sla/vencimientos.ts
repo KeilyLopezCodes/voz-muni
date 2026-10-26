@@ -1,4 +1,5 @@
 import { ReglaDeNegocioError } from '../errors/regla-de-negocio-error';
+import type { TipoPlazo } from '../ticket/ticket';
 
 // Reglas de vencimiento del SLA (RF-27, sección 3, SPEC 30). La primera respuesta corre desde el registro hasta
 // en_proceso; la resolución, desde el registro (o la última reapertura) hasta resuelta, sin contar en_espera.
@@ -30,6 +31,9 @@ export interface SlaLectura {
   primeraRespuestaEn: Date | null;
   venceResolucion: Date | null;
   restanteMinutosEnPausa: number | null;
+  escalado: boolean; // SPEC 32
+  escaladoEn: Date | null;
+  escaladoPor: TipoPlazo | null;
 }
 
 // Plazos de la política vigente de la categoría y la prioridad (SPEC 29), en horas hábiles, y el umbral de la

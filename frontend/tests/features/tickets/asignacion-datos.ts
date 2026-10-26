@@ -14,7 +14,7 @@ export function porAsignar(cambios: Partial<TicketPorAsignar> = {}): TicketPorAs
     zona: { id: 10, nombre: 'Zona 1', tipo: 'zona' },
     tecnico: null,
     creadoEn: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    sla: { venceRespuesta: null, primeraRespuestaEn: null, venceResolucion: null, pausado: false, restanteMinutosEnPausa: null },
+    sla: { venceRespuesta: null, primeraRespuestaEn: null, venceResolucion: null, pausado: false, restanteMinutosEnPausa: null, escalado: false, escaladoEn: null, escaladoPor: null },
     ...cambios,
   }
 }

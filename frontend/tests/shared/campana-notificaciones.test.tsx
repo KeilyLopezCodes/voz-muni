@@ -97,6 +97,13 @@ describe('CampanaNotificaciones', () => {
     expect(within(items[1]).queryByText(textos.nueva)).not.toBeInTheDocument()
   })
 
+  it('sla_escalamiento muestra el plazo que venció y la fecha en Guatemala (SPEC 32)', async () => {
+    simularBackend([notificacion(1, { tipo: 'sla_escalamiento', datos: { plazo: 'respuesta', vence: '2026-11-03T15:00:00.000Z' } })])
+    montar()
+    fireEvent.click(await screen.findByRole('button', { name: 'Notificaciones, 1 sin leer' }))
+    expect(screen.getByRole('menuitem')).toHaveTextContent(/La queja Q-2026-000001 se escaló por vencer el plazo de respuesta el .*9:00/)
+  })
+
   it('un tipo desconocido muestra el texto genérico', async () => {
     simularBackend([notificacion(1, { tipo: 'algo_nuevo' })])
     montar()

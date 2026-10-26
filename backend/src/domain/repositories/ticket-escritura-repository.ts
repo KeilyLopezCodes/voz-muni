@@ -28,6 +28,8 @@ export interface TicketEscrituraRepository {
   obtenerCategoria(categoriaId: number): Promise<CategoriaDestino | null>;
   // Solo cambia asignado_a: asignar un técnico no cambia el estado ni escribe historial (SPEC 20).
   guardarTecnico(ticket: Ticket): Promise<void>;
+  // Solo la marca de escalada con su fecha y su plazo: no es un cambio de estado, no escribe historial (SPEC 32).
+  guardarEscalado(ticket: Ticket): Promise<void>;
   // Actualiza el ticket (estado, prioridad, dependencia, técnico, marcas y categoría) e inserta su historial.
   // `sla` son los cambios que calculó SlaService para esta transición (SPEC 30); lo que no trae no se toca.
   guardarTransicion(resultado: ResultadoTransicion, categoriaId: number, sla?: CambiosSla): Promise<void>;
