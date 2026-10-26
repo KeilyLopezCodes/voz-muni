@@ -15,7 +15,10 @@
     "admin": "Administración",
     "cerrarSesion": "Cerrar sesión",
     "adminSla": "Políticas de SLA",
-    "escaladas": "Escaladas"
+    "escaladas": "Escaladas",
+    "adminDependencias": "Dependencias",
+    "adminCategorias": "Categorías",
+    "adminZonas": "Zonas"
   },
   "errores": {
     "noAutorizado": {
@@ -97,5 +100,10 @@
       "respuesta": "respuesta",
       "resolucion": "resolución"
     }
+  },
+  "tiposZona": {
+    "zona": "Zona",
+    "colonia": "Colonia",
+    "aldea": "Aldea"
   }
 }

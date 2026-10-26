@@ -2,7 +2,7 @@ import { expect, type Locator, type Page, type Route } from '@playwright/test'
 
 // API, sesión y teselas simuladas para las pruebas e2e del formulario de queja (SPEC 18).
 
-export type Rol = 'vecino' | 'receptor' | 'supervisor'
+export type Rol = 'vecino' | 'receptor' | 'supervisor' | 'administrador'
 type Manejador = (route: Route, url: URL) => Promise<void>
 
 export const CATEGORIAS = [

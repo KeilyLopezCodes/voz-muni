@@ -18,4 +18,19 @@ describe('AdminPage', () => {
     expect(within(tarjeta).getByRole('link', { name: admin.indice.sla.titulo })).toHaveAttribute('href', '/admin/sla')
     expect(screen.queryByText(/próximamente/i)).not.toBeInTheDocument()
   })
+
+  it.each([
+    ['dependencias', '/admin/dependencias'],
+    ['categorias', '/admin/categorias'],
+    ['zonas', '/admin/zonas'],
+  ] as const)('tiene la tarjeta de %s con su descripción y su enlace (SPEC 40)', (clave, ruta) => {
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    )
+    const tarjeta = screen.getByRole('region', { name: admin.indice[clave].titulo })
+    expect(within(tarjeta).getByText(admin.indice[clave].descripcion)).toBeInTheDocument()
+    expect(within(tarjeta).getByRole('link', { name: admin.indice[clave].titulo })).toHaveAttribute('href', ruta)
+  })
 })

@@ -6,6 +6,7 @@ import { AtencionService } from './application/services/atencion.service';
 import { AuthService } from './application/services/auth.service';
 import { AutorizacionService } from './application/services/autorizacion.service';
 import { AvisosComentariosService } from './application/services/avisos-comentarios.service';
+import { CatalogosAdminService } from './application/services/catalogos-admin.service';
 import { CamposExtraService } from './application/services/campos-extra.service';
 import { CatalogosService } from './application/services/catalogos.service';
 import { CierreAutomaticoService } from './application/services/cierre-automatico.service';
@@ -80,6 +81,7 @@ export interface Container {
   consultaLimitePorVentana: number; // SPEC 37
   consultaPublicaService: ConsultaPublicaService;
   encuestasService: EncuestasService; // SPEC 39
+  catalogosAdminService: CatalogosAdminService; // SPEC 40
   healthService: HealthService;
   authService: AuthService;
   autorizacionService: AutorizacionService;
@@ -219,6 +221,7 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     recuperacionLimitePorVentana: env.RECUPERACION_LIMITE_POR_VENTANA,
     consultaLimitePorVentana: env.CONSULTA_LIMITE_POR_VENTANA,
     consultaPublicaService: new ConsultaPublicaService(new KnexConsultaPublicaRepository(db), clock),
+    catalogosAdminService: new CatalogosAdminService(transaccion),
     encuestasService: new EncuestasService(transaccion, new KnexParametroRepository(db), clock, notificacionesInternas),
     healthService: new HealthService(clock, new KnexDatabaseHealthCheck(db)),
     authService: new AuthService(usuarios, sesiones, hasher, tokens, clock),

@@ -1,6 +1,6 @@
 # SPEC 41 — Bitácora de auditoría: base, quejas y administración
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** SPEC 03, SPEC 08, SPEC 10, SPEC 13, SPEC 14, SPEC 15, SPEC 19, SPEC 20, SPEC 21, SPEC 22, SPEC 27, SPEC 29, SPEC 32, SPEC 33, SPEC 39, SPEC 40
 > **Fecha:** 2026-10-23
 > **Objetivo:** Registrar en la tabla inmutable `bitacora`, desde cada caso de uso y en su misma transacción, quién hizo qué acción sobre qué registro y cuándo, con los cambios saneados y la dependencia, para todas las acciones sobre quejas y de administración, y consultarla según `bitacora.ver` en `GET /api/v1/bitacora` y en la pantalla `/bitacora`.

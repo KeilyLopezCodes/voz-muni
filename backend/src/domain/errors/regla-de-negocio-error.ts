@@ -14,7 +14,13 @@ export interface DetalleDeFila {
   problema: string;
 }
 
-export type Detalle = DetalleProblema | DetalleDeFila;
+// Un registro que impide la operación (SPEC 40): por ejemplo, las categorías activas de una dependencia.
+export interface DetalleRegistro {
+  id: number;
+  nombre: string;
+}
+
+export type Detalle = DetalleProblema | DetalleDeFila | DetalleRegistro;
 
 // Falta un dato o no se cumple una condición; el `codigo` identifica cuál (SPEC 04).
 // `detalles` lista todos los problemas cuando la regla revisa varios campos juntos.

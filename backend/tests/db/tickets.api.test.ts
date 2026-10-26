@@ -63,6 +63,8 @@ describe('API de registro de quejas /api/v1/tickets y /api/v1/vecinos', () => {
     [ids.categoria, ids.categoriaInactiva, ids.categoriaDependenciaInactiva] = categorias.map((f) => Number(f.id));
     const [zona] = await db('zonas').insert({ nombre: 'Zona 1', tipo: 'zona' }).returning('id');
     ids.zona = Number(zona.id);
+    const [zonaInactiva] = await db('zonas').insert({ nombre: 'Zona 2', tipo: 'zona', activa: false }).returning('id');
+    ids.zonaInactiva = Number(zonaInactiva.id);
 
     const hash = await bcrypt.hash(PASSWORD, 4);
     const usuarios: [string, string, Record<string, unknown>][] = [
@@ -197,6 +199,7 @@ describe('API de registro de quejas /api/v1/tickets y /api/v1/vecinos', () => {
       ['categoría inactiva', () => ({ categoriaId: ids.categoriaInactiva }), 'CATEGORIA_INVALIDA'],
       ['categoría de dependencia inactiva', () => ({ categoriaId: ids.categoriaDependenciaInactiva }), 'CATEGORIA_INVALIDA'],
       ['zona inexistente', () => ({ zonaId: 999999 }), 'ZONA_INVALIDA'],
+      ['zona inactiva, igual que una inexistente (SPEC 40)', () => ({ zonaId: ids.zonaInactiva }), 'ZONA_INVALIDA'],
     ])('%s → 400 %s', async (_caso, extra, codigo) => {
       const res = await registrar('vecino', { ...cuerpo(), ...extra() });
 

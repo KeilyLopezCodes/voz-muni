@@ -19,7 +19,8 @@ export class KnexCatalogoLecturaRepository implements CatalogoLecturaRepository 
   }
 
   async zonaExiste(zonaId: number): Promise<boolean> {
-    return (await this.db('zonas').where({ id: zonaId }).first('id')) !== undefined;
+    // Una zona inactiva se rechaza igual que una inexistente (SPEC 40).
+    return (await this.db('zonas').where({ id: zonaId, activa: true }).first('id')) !== undefined;
   }
 
   async listarCategoriasActivas(): Promise<CategoriaConDependencia[]> {
@@ -52,6 +53,7 @@ export class KnexCatalogoLecturaRepository implements CatalogoLecturaRepository 
 
   async listarZonas(): Promise<Zona[]> {
     const filas: { id: string; nombre: string; tipo: string }[] = await this.db('zonas')
+      .where({ activa: true }) // SPEC 40
       .select('id', 'nombre', 'tipo')
       .orderBy([{ column: 'tipo' }, { column: 'nombre' }]);
     return filas.map((fila) => ({ ...fila, id: Number(fila.id) }));

@@ -54,6 +54,10 @@ export type CodigoError =
   | 'ENCUESTA_NO_DISPONIBLE'
   | 'ENCUESTA_VENCIDA'
   | 'ENCUESTA_EXISTENTE'
+  | 'NOMBRE_DUPLICADO' // SPEC 40
+  | 'DEPENDENCIA_EN_USO'
+  | 'DEPENDENCIA_INACTIVA'
+  | 'SLA_INCOMPLETO'
   | 'PLAZO_NO_DEFINIDO'
   | 'PLAZO_CONFIRMACION_VENCIDO'
   | 'LIMITE_REAPERTURAS'
@@ -115,6 +119,10 @@ const CODIGOS_DE_REGLA: readonly CodigoError[] = [
   'ENCUESTA_NO_DISPONIBLE',
   'ENCUESTA_VENCIDA',
   'ENCUESTA_EXISTENTE',
+  'NOMBRE_DUPLICADO',
+  'DEPENDENCIA_EN_USO',
+  'DEPENDENCIA_INACTIVA',
+  'SLA_INCOMPLETO',
 ];
 
 // Error esperado de un caso de uso. El mensaje es para desarrolladores, no para la UI.

@@ -2,6 +2,7 @@ import type { AdjuntoRepository } from './adjunto-repository';
 import type { AlertasSlaRepository } from './alertas-sla-repository';
 import type { AsignacionRepository } from './asignacion-repository';
 import type { AvisosComentariosRepository } from './avisos-comentarios-repository';
+import type { CatalogosAdminRepository } from './catalogos-admin-repository';
 import type { CategoriaAdminRepository } from './categoria-admin-repository';
 import type { CierreAutomaticoRepository } from './cierre-automatico-repository';
 import type { ComentarioRepository } from './comentario-repository';
@@ -43,6 +44,7 @@ export interface ReposTransaccionales {
   avisosComentarios: AvisosComentariosRepository; // SPEC 35
   destinatarios: DestinatariosRepository; // SPEC 36
   encuestas: EncuestaRepository; // SPEC 39
+  catalogosAdmin: CatalogosAdminRepository; // SPEC 40
 }
 
 // Puerto: ejecuta `trabajo` en una transacción; si lanza, no queda nada escrito.

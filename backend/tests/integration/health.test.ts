@@ -9,6 +9,7 @@ import type { RegistroTicketsService } from '../../src/application/services/regi
 import type { VecinosService } from '../../src/application/services/vecinos.service';
 import type { CatalogosService } from '../../src/application/services/catalogos.service';
 import type { CamposExtraService } from '../../src/application/services/campos-extra.service';
+import type { CatalogosAdminService } from '../../src/application/services/catalogos-admin.service';
 import type { ParametrosService } from '../../src/application/services/parametros.service';
 import type { TriageService } from '../../src/application/services/triage.service';
 import type { AsignacionService } from '../../src/application/services/asignacion.service';
@@ -50,6 +51,7 @@ function buildTestContainer(databaseUp: boolean): Container {
     consultaLimitePorVentana: 10,
     consultaPublicaService: {} as ConsultaPublicaService,
     encuestasService: {} as EncuestasService,
+    catalogosAdminService: {} as CatalogosAdminService,
     healthService: new HealthService(clock, databaseHealthCheck),
     // /health no los usa.
     authService: {} as AuthService,

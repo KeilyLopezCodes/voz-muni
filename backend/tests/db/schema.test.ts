@@ -34,6 +34,7 @@ const expectedColumns: Record<string, [string, string][]> = {
     ['id', 'bigint'],
     ['nombre', 'text'],
     ['tipo', 'text'],
+    ['activa', 'boolean'],
   ],
   calendario_laboral: [
     ['fecha', 'date'],
@@ -958,6 +959,76 @@ describe('Esquema de base de datos', () => {
         expect(nombres).not.toContain('comentarios_ticket_creado_idx');
         expect(
           await db('information_schema.columns').where({ table_name: 'comentarios', column_name: 'editado_en' }).select('column_name'),
+        ).toEqual([]);
+      } finally {
+        await db.migrate.latest();
+      }
+    });
+  });
+
+  describe('catálogos administrables (0033)', () => {
+    it('zonas.activa vale true por defecto', () =>
+      withRollback(async (trx) => {
+        const [zona] = await trx('zonas').insert({ nombre: 'Zona 0033', tipo: 'zona' }).returning('activa');
+        expect(zona.activa).toBe(true);
+      }));
+
+    it.each(['dependencias', 'categorias', 'zonas'])('%s rechaza un nombre vacío o de 121 caracteres', (tabla) =>
+      withRollback(async (trx) => {
+        const [dependencia] = await trx('dependencias').insert({ nombre: 'Dependencia 0033' }).returning('id');
+        const fila = (nombre: string) =>
+          tabla === 'categorias'
+            ? { nombre, dependencia_id: dependencia.id }
+            : tabla === 'zonas'
+              ? { nombre, tipo: 'zona' }
+              : { nombre };
+        await trx.raw('SAVEPOINT vacio');
+        await expect(trx(tabla).insert(fila(''))).rejects.toMatchObject({ code: CHECK_VIOLATION });
+        await trx.raw('ROLLBACK TO SAVEPOINT vacio');
+        await expect(trx(tabla).insert(fila('a'.repeat(121)))).rejects.toMatchObject({ code: CHECK_VIOLATION });
+      }),
+    );
+
+    it('"agua potable" choca con "Agua potable", y en las zonas solo dentro del mismo tipo', () =>
+      withRollback(async (trx) => {
+        const [dependencia] = await trx('dependencias').insert({ nombre: 'Agua potable' }).returning('id');
+        await trx.raw('SAVEPOINT dependencia');
+        await expect(trx('dependencias').insert({ nombre: 'agua potable' })).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
+        await trx.raw('ROLLBACK TO SAVEPOINT dependencia');
+        await trx('categorias').insert({ nombre: 'Fugas', dependencia_id: dependencia.id });
+        await trx.raw('SAVEPOINT categoria');
+        await expect(trx('categorias').insert({ nombre: 'FUGAS', dependencia_id: dependencia.id })).rejects.toMatchObject({
+          code: UNIQUE_VIOLATION,
+        });
+        await trx.raw('ROLLBACK TO SAVEPOINT categoria');
+        await trx('zonas').insert({ nombre: 'El Mirador', tipo: 'colonia' });
+        await trx('zonas').insert({ nombre: 'el mirador', tipo: 'aldea' });
+        await expect(trx('zonas').insert({ nombre: 'EL MIRADOR', tipo: 'colonia' })).rejects.toMatchObject({ code: UNIQUE_VIOLATION });
+      }));
+
+    it('marca dependencias.coordinador_id como obsoleto, y revertir 0033 lo deshace todo', async () => {
+      const comentario = async () =>
+        (
+          await db.raw(
+            `SELECT col_description('dependencias'::regclass, a.attnum) AS comentario
+             FROM pg_attribute a WHERE a.attrelid = 'dependencias'::regclass AND a.attname = 'coordinador_id'`,
+          )
+        ).rows[0].comentario as string | null;
+      expect(await comentario()).toMatch(/^Obsoleto/);
+
+      await db.migrate.down({ name: '0033_catalogos_admin.js' });
+      try {
+        expect(await db.schema.hasColumn('zonas', 'activa')).toBe(false);
+        expect(await comentario()).toBeNull();
+        expect(
+          await db('pg_indexes')
+            .whereIn('indexname', ['dependencias_nombre_ci_uq', 'categorias_nombre_ci_uq', 'zonas_nombre_tipo_ci_uq'])
+            .select('indexname'),
+        ).toEqual([]);
+        expect(
+          await db('information_schema.table_constraints')
+            .whereIn('constraint_name', ['dependencias_nombre_largo', 'categorias_nombre_largo', 'zonas_nombre_largo'])
+            .select('constraint_name'),
         ).toEqual([]);
       } finally {
         await db.migrate.latest();

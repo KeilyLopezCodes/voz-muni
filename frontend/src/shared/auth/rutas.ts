@@ -78,4 +78,23 @@ export const RUTAS_PROTEGIDAS: readonly RutaProtegida[] = [
     etiqueta: 'comun:menu.adminSla',
     enMenu: false,
   },
+  // Catálogos de la organización (SPEC 40): se llega desde el índice de /admin.
+  {
+    path: '/admin/dependencias',
+    roles: ['administrador'],
+    etiqueta: 'comun:menu.adminDependencias',
+    enMenu: false,
+  },
+  {
+    path: '/admin/categorias',
+    roles: ['administrador'],
+    etiqueta: 'comun:menu.adminCategorias',
+    enMenu: false,
+  },
+  {
+    path: '/admin/zonas',
+    roles: ['administrador'],
+    etiqueta: 'comun:menu.adminZonas',
+    enMenu: false,
+  },
 ]

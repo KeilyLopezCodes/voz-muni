@@ -70,6 +70,7 @@ describe('Campos adicionales por categoría (SPEC 14)', () => {
       .returning('id');
     [ids.agua, ids.alumbrado, ids.vieja, ids.cerrada] = categorias.map((f) => Number(f.id));
     await db('zonas').insert([
+      { nombre: 'Zona cerrada', tipo: 'zona', activa: false }, // no aparece en GET /zonas (SPEC 40)
       { nombre: 'Zona 2', tipo: 'zona' },
       { nombre: 'Aldea Norte', tipo: 'aldea' },
       { nombre: 'Zona 1', tipo: 'zona' },
@@ -179,7 +180,7 @@ describe('Campos adicionales por categoría (SPEC 14)', () => {
       ]);
     });
 
-    it('devuelve todas las zonas ordenadas por tipo y nombre', async () => {
+    it('devuelve las zonas activas ordenadas por tipo y nombre (SPEC 40: sin las inactivas)', async () => {
       const res = await request(app).get('/api/v1/zonas').set('Authorization', `Bearer ${tokens.supervisor}`);
 
       expect(res.status).toBe(200);
