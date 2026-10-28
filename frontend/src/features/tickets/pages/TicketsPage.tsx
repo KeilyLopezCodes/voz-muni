@@ -1,9 +1,22 @@
+import Typography from '@mui/material/Typography'
+import { useTranslation } from 'react-i18next'
 import { useSession } from '../../../shared/auth/session'
-import { ListadoGestion } from '../gestion/ListadoGestion'
 import { MisQuejas } from '../mis-quejas/MisQuejas'
 
-// El vecino ve "Mis quejas" (SPEC 25). Los internos, el listado de las quejas de su alcance (SPEC 45).
+// El vecino ve "Mis quejas" (SPEC 25). Los internos trabajan en /triage, /asignacion y /atencion: su listado
+// llega con RF-36.
 export function TicketsPage() {
+  const { t } = useTranslation(['tickets', 'comun'])
   const session = useSession()
-  return session?.rol === 'vecino' ? <MisQuejas /> : <ListadoGestion />
+  if (session?.rol === 'vecino') {
+    return <MisQuejas />
+  }
+  return (
+    <>
+      <Typography variant="h4" component="h1" gutterBottom>
+        {t('tickets:listado.titulo')}
+      </Typography>
+      <Typography>{t('comun:placeholder.proximamente')}</Typography>
+    </>
+  )
 }

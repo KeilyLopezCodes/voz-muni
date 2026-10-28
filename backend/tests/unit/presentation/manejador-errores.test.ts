@@ -28,7 +28,6 @@ import type { CierreAutomaticoService } from '../../../src/application/services/
 import type { DespachoCorreosService } from '../../../src/application/services/despacho-correos.service';
 import type { EncuestasService } from '../../../src/application/services/encuestas.service';
 import type { EscaladasService } from '../../../src/application/services/escaladas.service';
-import type { GestionTicketsService } from '../../../src/application/services/gestion-tickets.service';
 import type { EscalamientoService } from '../../../src/application/services/escalamiento.service';
 import type { LineaTiempoService } from '../../../src/application/services/linea-tiempo.service';
 import type { NotificadorCorreo } from '../../../src/application/services/notificador-correo.service';
@@ -85,7 +84,6 @@ function buildTestContainer(): Container {
     notificacionesService: {} as NotificacionesService,
     escalamientoService: {} as EscalamientoService,
     escaladasService: {} as EscaladasService,
-    gestionTicketsService: {} as GestionTicketsService,
     cierreAutomaticoService: {} as CierreAutomaticoService,
     notificadorCorreo: {} as NotificadorCorreo,
     despachoCorreosService: {} as DespachoCorreosService,

@@ -24,13 +24,13 @@ export const registroTicketSchema = z
   .strict();
 
 // `estado` repetible (?estado=a&estado=b): uno o varios de los 8 estados, sin repetir (SPEC 38).
-export const estadosSchema = z
+const estadosSchema = z
   .union([z.enum(ESTADOS_TICKET), z.array(z.enum(ESTADOS_TICKET)).max(ESTADOS_TICKET.length)])
   .transform((valor) => (Array.isArray(valor) ? valor : [valor]))
   .refine((estados) => new Set(estados).size === estados.length, { error: 'un estado repetido' });
 
-// `q` recortado, de 2 a 100 caracteres (SPEC 38). También los usa el listado de gestión (SPEC 45).
-export const busquedaSchema = z
+// `q` recortado, de 2 a 100 caracteres (SPEC 38).
+const busquedaSchema = z
   .string()
   .transform((valor) => valor.trim())
   .refine((valor) => [...valor].length >= BUSQUEDA_MIN && [...valor].length <= BUSQUEDA_MAX, {

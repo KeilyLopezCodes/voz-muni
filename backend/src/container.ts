@@ -24,7 +24,6 @@ import { DespachoCorreosService } from './application/services/despacho-correos.
 import { NotificacionesInternasService } from './application/services/notificaciones-internas.service';
 import { NotificadorCorreo } from './application/services/notificador-correo.service';
 import { EscaladasService } from './application/services/escaladas.service';
-import { GestionTicketsService } from './application/services/gestion-tickets.service';
 import { EncuestasService } from './application/services/encuestas.service';
 import { EscalamientoService } from './application/services/escalamiento.service';
 import { HealthService } from './application/services/health.service';
@@ -60,7 +59,6 @@ import { KnexConsultaPublicaRepository } from './infrastructure/repositories/kne
 import { KnexCorreoSalienteRepository } from './infrastructure/repositories/knex-correo-saliente-repository';
 import { KnexCierreAutomaticoRepository } from './infrastructure/repositories/knex-cierre-automatico-repository';
 import { KnexEscaladasLecturaRepository } from './infrastructure/repositories/knex-escaladas-lectura-repository';
-import { KnexGestionLecturaRepository } from './infrastructure/repositories/knex-gestion-lectura-repository';
 import { KnexLineaTiempoRepository } from './infrastructure/repositories/knex-linea-tiempo-repository';
 import { KnexNotificacionRepository } from './infrastructure/repositories/knex-notificacion-repository';
 import { KnexParametroRepository } from './infrastructure/repositories/knex-parametro-repository';
@@ -122,7 +120,6 @@ export interface Container {
   // Segundo paso del job de SLA (SPEC 32).
   escalamientoService: EscalamientoService;
   escaladasService: EscaladasService;
-  gestionTicketsService: GestionTicketsService; // SPEC 45
   // Tercer paso del job de SLA (SPEC 33).
   cierreAutomaticoService: CierreAutomaticoService;
   // Bandeja de salida (SPEC 34): el job de correos llama al despacho; las pruebas usan los dos.
@@ -323,7 +320,6 @@ export function buildContainer(env: Env = loadEnv(), opciones: OpcionesContainer
     notificacionesService,
     escalamientoService: escalamiento,
     escaladasService: new EscaladasService(new KnexEscaladasLecturaRepository(db)),
-    gestionTicketsService: new GestionTicketsService(new KnexGestionLecturaRepository(db)),
     cierreAutomaticoService: cierre,
     notificadorCorreo: correo,
     despachoCorreosService: despachoCorreos,
