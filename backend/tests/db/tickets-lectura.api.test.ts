@@ -37,6 +37,11 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
     ids.obras = Number(obras.id);
     const [baches] = await db('categorias').insert({ nombre: 'Baches', dependencia_id: ids.obras }).returning('id');
     ids.baches = Number(baches.id);
+    // Otra dependencia y otra categoría para los filtros del listado interno (SPEC 45).
+    const [agua] = await db('dependencias').insert({ nombre: 'Agua Potable' }).returning('id');
+    ids.agua = Number(agua.id);
+    const [fugas] = await db('categorias').insert({ nombre: 'Fugas', dependencia_id: ids.agua }).returning('id');
+    ids.fugas = Number(fugas.id);
     const [zona] = await db('zonas').insert({ nombre: 'Zona 1', tipo: 'zona' }).returning('id');
     ids.zona = Number(zona.id);
 
@@ -99,6 +104,10 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
     resueltoPor?: number | null;
     venceEn?: Date | null;
     reaperturas?: number;
+    categoria?: number; // SPEC 45
+    dependencia?: number | null;
+    prioridad?: string | null;
+    escalado?: boolean;
   }
 
   // Una queja en Obras, registrada por el receptor, con coordenadas y prioridad para comprobar que no se exponen.
@@ -112,21 +121,28 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
     resueltoPor = null,
     venceEn = null,
     reaperturas = 0,
+    categoria = ids.baches,
+    dependencia = ids.obras,
+    prioridad = 'urgente',
+    escalado = false,
   }: OpcionesTicket = {}): Promise<number> {
     const [fila] = await db('tickets')
       .insert({
         numero: `Q-2026-${String(correlativo++).padStart(6, '0')}`,
         solicitante_id: solicitante,
         registrado_por: ids.receptor,
-        categoria_id: ids.baches,
-        dependencia_id: ids.obras,
+        categoria_id: categoria,
+        dependencia_id: dependencia,
         zona_id: ids.zona,
         canal: 'telefono',
         titulo,
         descripcion: 'Hay un bache profundo que daña los vehículos',
         direccion: '5a avenida 3-20, zona 1',
         estado,
-        prioridad: 'urgente',
+        prioridad,
+        escalado,
+        escalado_en: escalado ? '2026-10-21T15:00:00Z' : null,
+        escalado_por: escalado ? 'respuesta' : null,
         asignado_a: asignadoA,
         lat: 14.634915,
         lng: -90.506882,
@@ -178,6 +194,7 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
       esperaRespuesta: true,
       confirmacionVenceEn: null, // SPEC 38
       pendienteCalificar: false, // SPEC 39
+      interno: null, // el vecino no ve los datos internos (SPEC 45)
     });
     expect(res.body.datos[1].esperaRespuesta).toBe(false);
   });
@@ -279,6 +296,119 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
     });
   });
 
+  describe('filtros del listado interno (SPEC 45)', () => {
+    const idsDe = (res: { body: { datos: { id: number }[] } }) => res.body.datos.map((t) => t.id).sort((a, b) => a - b);
+    const resumenDe = (quien: string, query = '') => request(app).get(`/api/v1/tickets/resumen${query}`).set(auth(quien));
+
+    it('cada filtro reduce el resultado, y combinados se intersectan', async () => {
+      const urgenteObras = await ticket();
+      const altaObras = await ticket({ prioridad: 'alta' });
+      const fugaAgua = await ticket({ categoria: ids.fugas, dependencia: ids.agua, prioridad: 'alta' });
+      const escalada = await ticket({ escalado: true });
+      const enRevision = await ticket({ estado: 'en_revision', dependencia: null, prioridad: null, asignadoA: null });
+
+      expect(idsDe(await listar('supervisor', `?dependenciaId=${ids.agua}`))).toEqual([fugaAgua]);
+      expect(idsDe(await listar('supervisor', `?categoriaId=${ids.baches}`))).toEqual([urgenteObras, altaObras, escalada, enRevision]);
+      expect(idsDe(await listar('supervisor', '?prioridad=alta'))).toEqual([altaObras, fugaAgua]);
+      expect(idsDe(await listar('supervisor', '?escalado=true'))).toEqual([escalada]);
+      expect(idsDe(await listar('supervisor', `?prioridad=alta&dependenciaId=${ids.obras}`))).toEqual([altaObras]);
+      // Una queja sin dependencia ni prioridad no coincide con esos filtros.
+      expect(idsDe(await listar('supervisor', `?dependenciaId=${ids.obras}&prioridad=urgente`))).toEqual([urgenteObras, escalada]);
+    });
+
+    it('un coordinador que pide otra dependencia recibe una lista vacía, no un error', async () => {
+      await ticket({ categoria: ids.fugas, dependencia: ids.agua });
+      await ticket();
+
+      const res = await listar('coordinador', `?dependenciaId=${ids.agua}`);
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ datos: [], total: 0 });
+      expect((await resumenDe('coordinador', `?dependenciaId=${ids.agua}`)).body.total).toBe(0);
+    });
+
+    it('el rango toma días completos en Guatemala, ambos inclusive', async () => {
+      const ultimaHora = await ticket({ creadoEn: '2026-10-02T05:30:00Z' }); // 1 de octubre, 23:30 en Guatemala
+      await ticket({ creadoEn: '2026-10-02T06:10:00Z' }); // 2 de octubre, 00:10 en Guatemala
+      await ticket({ creadoEn: '2026-09-30T23:00:00Z' }); // 30 de septiembre, 17:00 en Guatemala
+
+      expect(idsDe(await listar('supervisor', '?desde=2026-10-01&hasta=2026-10-01'))).toEqual([ultimaHora]);
+    });
+
+    it('un rango inválido → 400 RANGO_INVALIDO; prioridad desconocida o escalado=false → 400 VALIDACION', async () => {
+      expect((await listar('supervisor', '?desde=2025-01-01&hasta=2026-01-02')).body.codigo).toBe('RANGO_INVALIDO');
+      expect((await listar('supervisor', '?desde=2026-10-05&hasta=2026-10-01')).body.codigo).toBe('RANGO_INVALIDO');
+      expect((await resumenDe('supervisor', '?desde=2026-13-01')).body.codigo).toBe('RANGO_INVALIDO');
+      for (const query of ['?prioridad=maxima', '?escalado=false', '?dependenciaId=0', '?categoriaId=x']) {
+        const res = await listar('supervisor', query);
+        expect(res.status).toBe(400);
+        expect(res.body.codigo).toBe('VALIDACION');
+      }
+    });
+
+    it('el supervisor recibe interno y el orden de las más recientes, sin datos del solicitante', async () => {
+      const vieja = await ticket({ creadoEn: '2026-10-01T15:00:00Z' });
+      const enEspera = await ticket({ estado: 'en_espera', creadoEn: '2026-09-01T15:00:00Z' });
+      const nueva = await ticket({
+        estado: 'nueva',
+        dependencia: null,
+        prioridad: null,
+        asignadoA: null,
+        creadoEn: '2026-10-22T15:00:00Z',
+      });
+      const escalada = await ticket({ escalado: true, creadoEn: '2026-10-21T15:00:00Z' });
+
+      const res = await listar('supervisor');
+
+      expect(res.status).toBe(200);
+      // Sin "en espera primero": solo creado_en DESC (SPEC 45).
+      expect(res.body.datos.map((t: { id: number }) => t.id)).toEqual([nueva, escalada, vieja, enEspera]);
+      const [enNueva, enEscalada, enVieja] = res.body.datos;
+      expect(enVieja.interno).toEqual({
+        prioridad: 'urgente',
+        categoria: { id: ids.baches, nombre: 'Baches' },
+        dependencia: { id: ids.obras, nombre: 'Dirección de Obras' },
+        tecnico: { id: ids.tecnico, nombre: 'Usuario tecnico' },
+        sla: {
+          venceRespuesta: null,
+          primeraRespuestaEn: null,
+          venceResolucion: null,
+          pausado: false,
+          restanteMinutosEnPausa: null,
+          escalado: false,
+          escaladoEn: null,
+          escaladoPor: null,
+        },
+      });
+      expect(enNueva.interno).toMatchObject({ prioridad: null, dependencia: null, tecnico: null });
+      expect(enEscalada.interno.sla).toMatchObject({ escalado: true, escaladoPor: 'respuesta' });
+      const texto = JSON.stringify(res.body);
+      for (const dato of ['Usuario vecino', 'vecino@lectura.test', '55550000', '1000000000000']) {
+        expect(texto).not.toContain(dato);
+      }
+    });
+
+    it('el vecino conserva el orden de SPEC 38 e interno: null', async () => {
+      await ticket({ creadoEn: '2026-10-01T15:00:00Z' });
+      const enEspera = await ticket({ estado: 'en_espera', creadoEn: '2026-09-01T15:00:00Z' });
+
+      const res = await listar('vecino');
+
+      expect(res.body.datos[0].id).toBe(enEspera);
+      expect(res.body.datos.every((t: { interno: unknown }) => t.interno === null)).toBe(true);
+    });
+
+    it('el resumen con categoriaId cuenta solo esa categoría y coincide con el listado', async () => {
+      await ticket({ estado: 'en_proceso' });
+      await ticket({ estado: 'asignada' });
+      await ticket({ estado: 'asignada', categoria: ids.fugas, dependencia: ids.agua });
+
+      const res = await resumenDe('supervisor', `?categoriaId=${ids.baches}`);
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ total: 2, porEstado: { en_proceso: 1, asignada: 1 } });
+      expect((await listar('supervisor', `?categoriaId=${ids.baches}`)).body.total).toBe(2);
+    });
+  });
+
   describe('encuesta (SPEC 39)', () => {
     const DIA = 24 * 60 * 60 * 1000;
     async function cerrada(haceDias = 2): Promise<number> {
@@ -342,8 +472,8 @@ describe('Listado y detalle de quejas (SPEC 25)', () => {
     expect(segunda.body.datos).toHaveLength(1);
 
     expect((await listar('vecino', '?tamano=51')).status).toBe(400);
-    // Desde SPEC 38, estado y q son filtros; cualquier otro parámetro sigue siendo 400.
-    expect((await listar('vecino', '?prioridad=alta')).status).toBe(400);
+    // Desde SPEC 38 y 45, estado, q y los filtros del listado interno son válidos; cualquier otro sigue siendo 400.
+    expect((await listar('vecino', '?zonaId=1')).status).toBe(400);
   });
 
   it('el vecino abre una queja ajena → 404, igual que una inexistente', async () => {

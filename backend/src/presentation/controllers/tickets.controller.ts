@@ -17,15 +17,15 @@ export class TicketsController {
   };
 
   listar = async (req: Request, res: Response): Promise<void> => {
-    const { pagina, tamano, estado, q } = listadoTicketsSchema.parse(req.query);
+    const { pagina, tamano, estado, ...filtros } = listadoTicketsSchema.parse(req.query);
     res
       .status(200)
-      .json(await this.consultaTickets.listarParaUsuario(req.usuario!, { estados: estado ?? [], q }, pagina, tamano));
+      .json(await this.consultaTickets.listarParaUsuario(req.usuario!, { estados: estado ?? [], ...filtros }, pagina, tamano));
   };
 
   resumen = async (req: Request, res: Response): Promise<void> => {
-    const { q } = resumenTicketsSchema.parse(req.query);
-    res.status(200).json(await this.consultaTickets.resumen(req.usuario!, q));
+    const filtros = resumenTicketsSchema.parse(req.query);
+    res.status(200).json(await this.consultaTickets.resumen(req.usuario!, filtros));
   };
 
   detalle = async (req: Request, res: Response): Promise<void> => {

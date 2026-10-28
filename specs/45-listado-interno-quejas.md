@@ -1,6 +1,6 @@
 # SPEC 45 — Listado de quejas para los usuarios internos
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** SPEC 11, SPEC 21, SPEC 25, SPEC 30, SPEC 32, SPEC 38, SPEC 43, SPEC 44
 > **Fecha:** 2026-10-27
 > **Objetivo:** Reemplazar el placeholder de `/tickets` para los roles internos por un listado de consulta de las quejas de su alcance, con filtros por estado, búsqueda, dependencia, categoría, prioridad, rango de fechas de registro y escaladas reflejados en la URL, sobre `GET /api/v1/tickets` ampliado.

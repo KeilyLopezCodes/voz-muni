@@ -247,11 +247,19 @@ describe('Traslados entre dependencias (SPEC 21)', () => {
     }
   });
 
-  it.each(['receptor', 'vecino', 'administrador'])('el %s recibe 403 al solicitar y en GET /dependencias', async (quien) => {
+  it.each(['receptor', 'vecino', 'administrador'])('el %s recibe 403 al solicitar', async (quien) => {
     const id = await ticket();
 
     expect((await solicitar(id, { motivo: 'x' }, quien)).status).toBe(403);
-    expect((await request(app).get('/api/v1/dependencias').set(auth(quien))).status).toBe(403);
+  });
+
+  // GET /dependencias también llena los filtros del listado interno (SPEC 45): tickets.ver sin alcance propia.
+  it.each(['receptor', 'tecnico', 'coordinador', 'supervisor', 'administrador'])('el %s lee GET /dependencias', async (quien) => {
+    expect((await request(app).get('/api/v1/dependencias').set(auth(quien))).status).toBe(200);
+  });
+
+  it('el vecino recibe 403 en GET /dependencias', async () => {
+    expect((await request(app).get('/api/v1/dependencias').set(auth('vecino'))).status).toBe(403);
   });
 
   it('el supervisor traslada directo una en_proceso → 200 con la solicitud aprobada a su nombre', async () => {

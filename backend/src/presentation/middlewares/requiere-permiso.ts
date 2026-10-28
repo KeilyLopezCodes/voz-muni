@@ -16,6 +16,24 @@ export function requierePermiso(accion: Accion, alcances?: readonly Alcance[]): 
   };
 }
 
+// Basta con cumplir uno de los permisos (SPEC 45): deja en req.alcance el alcance del primero que se cumple, o
+// responde PERMISO_DENEGADO si no se cumple ninguno.
+export function requiereAlgunPermiso(permisos: readonly { accion: Accion; alcances?: readonly Alcance[] }[]): RequestHandler {
+  return (req, _res, next) => {
+    let ultimoError: unknown = new ErrorDeAplicacion('PERMISO_DENEGADO', 'Sin permisos que verificar');
+    for (const { accion, alcances } of permisos) {
+      try {
+        verificarPermiso(req, accion, alcances);
+        next();
+        return;
+      } catch (error) {
+        ultimoError = error;
+      }
+    }
+    next(ultimoError);
+  };
+}
+
 // La misma regla para cuando el permiso depende del cuerpo (/transiciones, SPEC 22): deja req.alcance o lanza.
 export function verificarPermiso(req: Request, accion: Accion, alcances?: readonly Alcance[]): Alcance {
   if (!req.usuario) {

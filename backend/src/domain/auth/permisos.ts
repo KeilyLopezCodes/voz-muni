@@ -31,5 +31,8 @@ export const ALCANCES = [
 
 export type Alcance = (typeof ALCANCES)[number];
 
+// Todos menos `propia`: el alcance de quien no es el solicitante (SPEC 45).
+export const ALCANCES_NO_PROPIOS: readonly Alcance[] = ALCANCES.filter((alcance) => alcance !== 'propia');
+
 // Si una acción no aparece, el rol no tiene ese permiso.
 export type Permisos = Partial<Record<Accion, Alcance>>;

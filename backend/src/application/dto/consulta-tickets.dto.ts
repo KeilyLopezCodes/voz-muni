@@ -1,4 +1,5 @@
-import type { TicketDetalleLectura, TicketListado } from '../../domain/repositories/ticket-lectura-repository';
+import type { Prioridad } from '../../domain/ticket/prioridad';
+import type { InternoListado, TicketDetalleLectura, TicketListado } from '../../domain/repositories/ticket-lectura-repository';
 import type { EstadoTicket } from '../../domain/ticket/estado-ticket';
 import type { SlaDto } from './sla.dto';
 
@@ -11,10 +12,16 @@ export interface ResolucionDetalleDto {
 
 // Fila de GET /api/v1/tickets (SPEC 25).
 export interface TicketListadoDto
-  extends Omit<TicketListado, 'creadoEn' | 'confirmacionVenceEn' | 'cerradoEn' | 'tieneEncuesta' | 'solicitanteId'> {
+  extends Omit<TicketListado, 'creadoEn' | 'confirmacionVenceEn' | 'cerradoEn' | 'tieneEncuesta' | 'solicitanteId' | 'interno'> {
   creadoEn: string; // ISO 8601 en UTC
   confirmacionVenceEn: string | null; // ISO 8601 en UTC, solo en resuelta (SPEC 38)
   pendienteCalificar: boolean; // el usuario es el solicitante y puede calificarla (SPEC 39)
+  interno: InternoListadoDto | null; // null con el alcance propia de tickets.ver (SPEC 45)
+}
+
+// Datos del listado interno (SPEC 45): nada del solicitante (RNF-12).
+export interface InternoListadoDto extends Omit<InternoListado, 'sla'> {
+  sla: SlaDto;
 }
 
 // La encuesta de la queja (SPEC 39).
@@ -25,9 +32,19 @@ export interface EncuestaDetalleDto {
 }
 
 // Filtros de GET /api/v1/tickets (SPEC 38), ya validados: estados sin repetir y `q` recortado de 2 a 100 caracteres.
-export interface FiltrosListadoDto {
+export interface FiltrosListadoDto extends FiltrosConteoDto {
   estados: readonly EstadoTicket[];
+}
+
+// Filtros de GET /tickets y de /tickets/resumen (SPEC 38 y 45). El rango lo valida rangoReportes (SPEC 43).
+export interface FiltrosConteoDto {
   q?: string;
+  dependenciaId?: number;
+  categoriaId?: number;
+  prioridad?: Prioridad;
+  desde?: string; // YYYY-MM-DD
+  hasta?: string;
+  escalado?: boolean;
 }
 
 // GET /api/v1/tickets/resumen (SPEC 38).

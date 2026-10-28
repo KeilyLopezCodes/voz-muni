@@ -1,6 +1,7 @@
 import type { Knex } from 'knex';
 import type { FiltroTickets } from '../../domain/autorizacion/alcance-tickets';
 import type {
+  CriteriosConteo,
   CriteriosListado,
   Pagina,
   ResolucionLectura,
@@ -10,6 +11,7 @@ import type {
   TicketResumen,
 } from '../../domain/repositories/ticket-lectura-repository';
 import type { Busqueda } from '../../domain/ticket/busqueda';
+import type { Prioridad } from '../../domain/ticket/prioridad';
 import { ESTADOS_TICKET, type EstadoTicket } from '../../domain/ticket/estado-ticket';
 import { COLUMNAS_SLA_LECTURA, type FilaSlaLectura, slaDeFila } from './knex-sla';
 import { aplicarFiltro, COLUMNAS_TICKET } from './knex-filtro';
@@ -37,7 +39,14 @@ const COLUMNAS = [
   't.dependencia_id',
 ];
 
-interface FilaListado {
+interface FilaListado extends FilaSlaLectura {
+  prioridad: Prioridad | null;
+  categoria_id: string;
+  categoria_nombre: string;
+  dependencia_id: string | null;
+  dependencia_nombre: string | null;
+  tecnico_id: string | null;
+  tecnico_nombre: string | null;
   id: string;
   numero: string;
   titulo: string;
@@ -131,6 +140,27 @@ const CIERRE_AUTOMATICO = `COALESCE(t.estado = 'cerrada' AND (
 const numeroONull = (valor: string | null) => (valor === null ? null : Number(valor));
 
 // Número exacto, o subcadena del título o del número con los comodines ya escapados en el dominio (SPEC 38).
+// Los criterios del listado y del resumen (SPEC 38 y 45), con AND sobre el filtro de alcance.
+function aplicarCriterios(consulta: Knex.QueryBuilder, criterios: CriteriosConteo): Knex.QueryBuilder {
+  aplicarBusqueda(consulta, criterios.busqueda);
+  if (criterios.dependenciaId !== null) {
+    consulta.where('t.dependencia_id', criterios.dependenciaId);
+  }
+  if (criterios.categoriaId !== null) {
+    consulta.where('t.categoria_id', criterios.categoriaId);
+  }
+  if (criterios.prioridad !== null) {
+    consulta.where('t.prioridad', criterios.prioridad);
+  }
+  if (criterios.registro !== null) {
+    consulta.where('t.creado_en', '>=', criterios.registro.inicio).where('t.creado_en', '<', criterios.registro.fin);
+  }
+  if (criterios.soloEscaladas) {
+    consulta.where('t.escalado', true);
+  }
+  return consulta;
+}
+
 function aplicarBusqueda(consulta: Knex.QueryBuilder, busqueda: Busqueda | null): Knex.QueryBuilder {
   if (busqueda?.tipo === 'numero') {
     consulta.where('t.numero', busqueda.numero);
@@ -237,13 +267,34 @@ export class KnexTicketLecturaRepository implements TicketLecturaRepository {
     if (filtro === null) {
       return { datos: [], pagina, tamano, total: 0 };
     }
-    const consulta = aplicarBusqueda(aplicarFiltro(this.db('tickets as t'), filtro, COLUMNAS_TICKET, 't'), criterios.busqueda);
+    const consulta = aplicarCriterios(aplicarFiltro(this.db('tickets as t'), filtro, COLUMNAS_TICKET, 't'), criterios);
     if (criterios.estados.length > 0) {
       consulta.whereIn('t.estado', [...criterios.estados]);
     }
     const [{ total }] = await consulta.clone().count({ total: '*' });
+    // Lo que pide acción primero (SPEC 38), o solo las más recientes (SPEC 45).
+    const orden =
+      criterios.orden === 'accion_pendiente'
+        ? this.db.raw(
+            `(CASE WHEN t.estado = 'en_espera' THEN 0
+                   WHEN t.estado = 'resuelta' AND t.confirmacion_vence_en >= ? THEN 1
+                   ELSE 2 END), t.creado_en DESC, t.id DESC`,
+            [ahora],
+          )
+        : this.db.raw('t.creado_en DESC, t.id DESC');
     const filas: FilaListado[] = await consulta
+      .join('categorias as c', 'c.id', 't.categoria_id')
+      .leftJoin('dependencias as d', 'd.id', 't.dependencia_id')
+      .leftJoin('usuarios as tec', 'tec.id', 't.asignado_a')
       .select([
+        't.prioridad',
+        't.categoria_id',
+        'c.nombre as categoria_nombre',
+        't.dependencia_id',
+        'd.nombre as dependencia_nombre',
+        'tec.id as tecnico_id',
+        'tec.nombre as tecnico_nombre',
+        ...COLUMNAS_SLA_LECTURA,
         't.id',
         't.numero',
         't.titulo',
@@ -254,13 +305,7 @@ export class KnexTicketLecturaRepository implements TicketLecturaRepository {
         't.solicitante_id',
         this.db.raw('EXISTS (SELECT 1 FROM encuestas en WHERE en.ticket_id = t.id) as tiene_encuesta'),
       ])
-      // Lo que pide acción primero (SPEC 38): la respuesta del vecino y la confirmación con plazo vigente.
-      .orderByRaw(
-        `(CASE WHEN t.estado = 'en_espera' THEN 0
-               WHEN t.estado = 'resuelta' AND t.confirmacion_vence_en >= ? THEN 1
-               ELSE 2 END), t.creado_en DESC, t.id DESC`,
-        [ahora],
-      )
+      .orderByRaw(orden)
       .limit(tamano)
       .offset((pagina - 1) * tamano);
     const datos = filas.map((fila) => ({
@@ -274,18 +319,26 @@ export class KnexTicketLecturaRepository implements TicketLecturaRepository {
       cerradoEn: fila.cerrado_en,
       tieneEncuesta: fila.tiene_encuesta,
       solicitanteId: Number(fila.solicitante_id),
+      interno: {
+        prioridad: fila.prioridad,
+        categoria: { id: Number(fila.categoria_id), nombre: fila.categoria_nombre },
+        dependencia:
+          fila.dependencia_id === null ? null : { id: Number(fila.dependencia_id), nombre: fila.dependencia_nombre ?? '' },
+        tecnico: fila.tecnico_id === null ? null : { id: Number(fila.tecnico_id), nombre: fila.tecnico_nombre ?? '' },
+        sla: slaDeFila(fila),
+      },
     }));
     return { datos, pagina, tamano, total: Number(total) };
   }
 
-  async contarPorEstado(filtro: FiltroTickets, busqueda: Busqueda | null): Promise<Record<EstadoTicket, number>> {
+  async contarPorEstado(filtro: FiltroTickets, criterios: CriteriosConteo): Promise<Record<EstadoTicket, number>> {
     const conteo = Object.fromEntries(ESTADOS_TICKET.map((estado) => [estado, 0])) as Record<EstadoTicket, number>;
     if (filtro === null) {
       return conteo;
     }
-    const filas: { estado: EstadoTicket; total: string }[] = await aplicarBusqueda(
+    const filas: { estado: EstadoTicket; total: string }[] = await aplicarCriterios(
       aplicarFiltro(this.db('tickets as t'), filtro, COLUMNAS_TICKET, 't'),
-      busqueda,
+      criterios,
     )
       .groupBy('t.estado')
       .select('t.estado', this.db.raw('count(*) as total'));

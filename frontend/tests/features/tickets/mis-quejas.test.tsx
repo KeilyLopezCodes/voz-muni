@@ -29,6 +29,7 @@ function queja(cambios: Partial<TicketListado> = {}): TicketListado {
     esperaRespuesta: false,
     confirmacionVenceEn: null,
     pendienteCalificar: false,
+    interno: null, // el vecino no recibe datos internos (SPEC 45)
     ...cambios,
   }
 }
@@ -146,16 +147,17 @@ describe('MisQuejas', () => {
     expect(screen.getByRole('button', { name: misQuejas.reintentar })).toBeInTheDocument()
   })
 
+  // Desde SPEC 45 los internos ven el listado interno en lugar del placeholder, nunca "Mis quejas".
   it.each<Rol>(['receptor', 'tecnico', 'coordinador', 'supervisor', 'administrador'])(
-    'el rol %s ve el placeholder y no pide el listado',
+    'el rol %s ve el listado interno, no "Mis quejas"',
     (rol) => {
-      const fetchMock = simularApi({})
+      simularApi({})
 
       montar(rol)
 
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(tickets.listado.titulo)
-      expect(screen.getByText(comun.placeholder.proximamente)).toBeInTheDocument()
-      expect(fetchMock).not.toHaveBeenCalled()
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(tickets.listadoInterno.titulo)
+      expect(screen.queryByText(comun.placeholder.proximamente)).not.toBeInTheDocument()
+      expect(screen.queryByText(misQuejas.titulo)).not.toBeInTheDocument()
     },
   )
 

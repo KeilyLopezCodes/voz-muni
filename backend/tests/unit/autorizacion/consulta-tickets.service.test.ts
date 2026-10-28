@@ -2,6 +2,7 @@ import type { UsuarioAutenticado } from '../../../src/application/dto/auth.dto';
 import { ConsultaTicketsService } from '../../../src/application/services/consulta-tickets.service';
 import { cumpleFiltro, type FiltroTickets } from '../../../src/domain/autorizacion/alcance-tickets';
 import type {
+  CriteriosConteo,
   CriteriosListado,
   Pagina,
   ResolucionLectura,
@@ -39,6 +40,7 @@ class TicketsEnMemoria implements TicketLecturaRepository {
   readonly filtrosRecibidos: FiltroTickets[] = [];
   readonly criteriosRecibidos: { criterios: CriteriosListado; ahora: Date }[] = [];
   readonly busquedasContadas: (Busqueda | null)[] = [];
+  readonly criteriosContados: CriteriosConteo[] = [];
 
   constructor(
     private readonly tickets: TicketResumen[],
@@ -81,13 +83,30 @@ class TicketsEnMemoria implements TicketLecturaRepository {
         cerradoEn: null,
         tieneEncuesta: false,
         solicitanteId: t.solicitanteId,
+        // SPEC 45: el repositorio siempre lo lee; el servicio lo quita con el alcance propia.
+        interno: {
+          prioridad: 'alta' as const,
+          categoria: { id: 1, nombre: 'Baches' },
+          dependencia: t.dependenciaId === null ? null : { id: t.dependenciaId, nombre: 'Obras' },
+          tecnico: t.asignadoA === null ? null : { id: t.asignadoA, nombre: 'Técnico' },
+          sla: {
+            venceRespuesta: new Date('2026-11-06T22:00:00Z'),
+            primeraRespuestaEn: null,
+            venceResolucion: null,
+            restanteMinutosEnPausa: null,
+            escalado: true,
+            escaladoEn: new Date('2026-11-05T14:00:00Z'),
+            escaladoPor: 'respuesta' as const,
+          },
+        },
       }));
     return { datos, pagina, tamano, total: datos.length };
   }
 
-  async contarPorEstado(filtro: FiltroTickets, busqueda: Busqueda | null): Promise<Record<EstadoTicket, number>> {
+  async contarPorEstado(filtro: FiltroTickets, criterios: CriteriosConteo): Promise<Record<EstadoTicket, number>> {
     this.filtrosRecibidos.push(filtro);
-    this.busquedasContadas.push(busqueda);
+    this.busquedasContadas.push(criterios.busqueda);
+    this.criteriosContados.push(criterios);
     const conteo = Object.fromEntries(ESTADOS_TICKET.map((e) => [e, 0])) as Record<EstadoTicket, number>;
     for (const t of this.tickets.filter((x) => cumpleFiltro(x, filtro))) {
       conteo[t.estado] += 1;
@@ -305,19 +324,108 @@ describe('ConsultaTicketsService', () => {
       await servicio.listarParaUsuario(vecino, { estados: ['en_espera'], q: 'q-2026-000001' }, 1, 20);
       await servicio.listarParaUsuario(vecino, { estados: [], q: '50%_bache' }, 1, 20);
 
+      const sinFiltros = {
+        dependenciaId: null,
+        categoriaId: null,
+        prioridad: null,
+        registro: null,
+        soloEscaladas: false,
+        orden: 'accion_pendiente', // el vecino (alcance propia) conserva el orden de SPEC 38
+      };
       expect(repo.criteriosRecibidos).toEqual([
-        { criterios: { estados: ['en_espera'], busqueda: { tipo: 'numero', numero: 'Q-2026-000001' } }, ahora: AHORA },
-        { criterios: { estados: [], busqueda: { tipo: 'texto', patron: '%50\\%\\_bache%' } }, ahora: AHORA },
+        {
+          criterios: { estados: ['en_espera'], busqueda: { tipo: 'numero', numero: 'Q-2026-000001' }, ...sinFiltros },
+          ahora: AHORA,
+        },
+        { criterios: { estados: [], busqueda: { tipo: 'texto', patron: '%50\\%\\_bache%' }, ...sinFiltros }, ahora: AHORA },
       ]);
+    });
+
+    it('pasa los filtros del listado interno, con el rango en días completos de Guatemala (SPEC 45)', async () => {
+      const { repo, servicio } = crearDetalle();
+
+      await servicio.listarParaUsuario(
+        vecino,
+        {
+          estados: [],
+          dependenciaId: 3,
+          categoriaId: 4,
+          prioridad: 'alta',
+          desde: '2026-10-01',
+          hasta: '2026-10-01',
+          escalado: true,
+        },
+        1,
+        20,
+      );
+
+      expect(repo.criteriosRecibidos[0].criterios).toEqual({
+        estados: [],
+        busqueda: null,
+        dependenciaId: 3,
+        categoriaId: 4,
+        prioridad: 'alta',
+        // Guatemala es UTC−6: el 1 de octubre local va de 06:00Z a 06:00Z del día siguiente.
+        registro: { inicio: new Date('2026-10-01T06:00:00Z'), fin: new Date('2026-10-02T06:00:00Z') },
+        soloEscaladas: true,
+        orden: 'accion_pendiente',
+      });
+    });
+
+    it('con el alcance propia, interno es null (SPEC 45)', async () => {
+      const { servicio } = crearDetalle();
+
+      const pagina = await servicio.listarParaUsuario(vecino, { estados: [] }, 1, 20);
+
+      expect(pagina.datos.length).toBeGreaterThan(0);
+      expect(pagina.datos.every((t) => t.interno === null)).toBe(true);
+    });
+
+    it('con otro alcance, trae interno con el SLA en ISO y el orden de las más recientes (SPEC 45)', async () => {
+      const { repo, servicio } = crearDetalle();
+      const coordinador: UsuarioAutenticado = { ...coordinadorA, permisos: { 'tickets.ver': 'dependencia' } };
+
+      const pagina = await servicio.listarParaUsuario(coordinador, { estados: [] }, 1, 20);
+
+      expect(repo.criteriosRecibidos[0].criterios.orden).toBe('recientes');
+      expect(pagina.datos[0].interno).toEqual({
+        prioridad: 'alta',
+        categoria: { id: 1, nombre: 'Baches' },
+        dependencia: { id: DEP_A, nombre: 'Obras' },
+        tecnico: null,
+        sla: {
+          venceRespuesta: '2026-11-06T22:00:00.000Z',
+          primeraRespuestaEn: null,
+          venceResolucion: null,
+          pausado: true, // la queja 1 está en_espera
+          restanteMinutosEnPausa: null,
+          escalado: true,
+          escaladoEn: '2026-11-05T14:00:00.000Z',
+          escaladoPor: 'respuesta',
+        },
+      });
+    });
+
+    it.each([
+      { desde: '2026-10-05', hasta: '2026-10-01' },
+      { desde: '2025-01-01', hasta: '2026-01-02' },
+      { desde: '2026-13-01' },
+    ])('un rango inválido %p → RANGO_INVALIDO (SPEC 45)', async (rango) => {
+      const { servicio } = crearDetalle();
+      await expect(servicio.listarParaUsuario(vecino, { estados: [], ...rango }, 1, 20)).rejects.toMatchObject({
+        codigo: 'RANGO_INVALIDO',
+      });
+      await expect(servicio.resumen(vecino, rango)).rejects.toMatchObject({ codigo: 'RANGO_INVALIDO' });
     });
 
     it('resumen cuenta los 8 estados con el filtro de tickets.ver y suma el total (SPEC 38)', async () => {
       const { repo, servicio } = crearDetalle();
 
-      const resumen = await servicio.resumen(vecino, 'bache');
+      const resumen = await servicio.resumen(vecino, { q: 'bache', categoriaId: 4 });
 
       expect(repo.filtrosRecibidos).toEqual([[{ campo: 'solicitanteId', valor: VECINO }]]);
       expect(repo.busquedasContadas).toEqual([{ tipo: 'texto', patron: '%bache%' }]);
+      expect(repo.criteriosContados[0]).toMatchObject({ categoriaId: 4 }); // SPEC 45
       expect(Object.keys(resumen.porEstado)).toHaveLength(8);
       expect(resumen).toMatchObject({ porEstado: { en_espera: 1, en_proceso: 1, nueva: 0 }, total: 2 });
     });

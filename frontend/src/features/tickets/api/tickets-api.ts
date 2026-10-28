@@ -1,4 +1,5 @@
 import { apiClient } from '../../../shared/api/http-client'
+import type { Prioridad } from './triage-api'
 
 // Contratos de SPEC 25: primeras versiones de GET /tickets y GET /tickets/:id. RF-36 agrega los filtros
 // y RF-25 la línea de tiempo, sin quitar ni renombrar estos campos.
@@ -27,6 +28,16 @@ export interface TicketListado {
   esperaRespuesta: boolean // estado === 'en_espera'
   confirmacionVenceEn: string | null // ISO 8601 en UTC; solo en resuelta (SPEC 38)
   pendienteCalificar: boolean // el vecino puede calificar esta queja cerrada (SPEC 39)
+  interno: InternoListado | null // null para el vecino (SPEC 45)
+}
+
+// Datos del listado interno (SPEC 45). Nunca nada del solicitante (RNF-12).
+export interface InternoListado {
+  prioridad: Prioridad | null
+  categoria: { id: number; nombre: string }
+  dependencia: { id: number; nombre: string } | null
+  tecnico: { id: number; nombre: string } | null
+  sla: SlaDto
 }
 
 // La encuesta de satisfacción de una queja cerrada (SPEC 39).
@@ -46,10 +57,20 @@ export interface ResumenTickets {
 }
 
 // Filtros de GET /tickets (SPEC 38): estados genéricos y una búsqueda de 2 a 100 caracteres.
-export interface FiltrosListado {
+export interface FiltrosListado extends FiltrosConteo {
   estados: readonly EstadoTicket[]
-  q: string | null
   pagina: number
+}
+
+// Filtros comunes del listado y del resumen. Los del listado interno (SPEC 45) son opcionales: "Mis quejas" no los usa.
+export interface FiltrosConteo {
+  q: string | null
+  dependenciaId?: number | null
+  categoriaId?: number | null
+  prioridad?: Prioridad | null
+  desde?: string | null // YYYY-MM-DD; el backend solo filtra por fecha si recibe alguna
+  hasta?: string | null
+  escalado?: boolean
 }
 
 export interface PaginaTickets {
@@ -128,16 +149,35 @@ export const CLAVES_TICKETS = {
   listadoCon: (filtros: FiltrosListado) => ['tickets', 'listado', filtros] as const,
   resumen: ['tickets', 'resumen'] as const,
   resumenCon: (q: string | null) => ['tickets', 'resumen', { q }] as const,
+  resumenConFiltros: (filtros: FiltrosConteo) => ['tickets', 'resumen', filtros] as const, // SPEC 45
   detalle: (id: number) => ['tickets', 'detalle', id] as const,
 }
 
-export function listarTickets({ estados, q, pagina }: FiltrosListado): Promise<PaginaTickets> {
+export function listarTickets({ estados, pagina, ...filtros }: FiltrosListado): Promise<PaginaTickets> {
   const query = new URLSearchParams({ pagina: String(pagina), tamano: String(TAMANO_PAGINA) })
   estados.forEach((estado) => query.append('estado', estado))
-  if (q !== null) {
-    query.set('q', q)
-  }
+  agregarFiltros(query, filtros)
   return apiClient.get<PaginaTickets>(`/tickets?${query}`)
+}
+
+// Solo se envían los filtros con valor; `escalado` solo como `true` (SPEC 45).
+function agregarFiltros(query: URLSearchParams, filtros: FiltrosConteo): void {
+  const { q, dependenciaId, categoriaId, prioridad, desde, hasta, escalado } = filtros
+  if (q != null) query.set('q', q)
+  if (dependenciaId != null) query.set('dependenciaId', String(dependenciaId))
+  if (categoriaId != null) query.set('categoriaId', String(categoriaId))
+  if (prioridad != null) query.set('prioridad', prioridad)
+  if (desde != null) query.set('desde', desde)
+  if (hasta != null) query.set('hasta', hasta)
+  if (escalado === true) query.set('escalado', 'true')
+}
+
+// Resumen con los filtros del listado interno (SPEC 45). Sin `estado`: cuenta por cada uno.
+export function resumenTicketsCon(filtros: FiltrosConteo): Promise<ResumenTickets> {
+  const query = new URLSearchParams()
+  agregarFiltros(query, filtros)
+  const texto = query.toString()
+  return apiClient.get<ResumenTickets>(texto === '' ? '/tickets/resumen' : `/tickets/resumen?${texto}`)
 }
 
 export function resumenTickets(q: string | null): Promise<ResumenTickets> {
