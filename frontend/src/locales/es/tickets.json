@@ -2,6 +2,50 @@
   "listado": {
     "titulo": "Quejas"
   },
+  "gestion": {
+    "descripcion": "Todas las quejas de tu alcance. Las acciones se hacen en las bandejas y en el detalle.",
+    "cargando": "Cargando quejas",
+    "errorCarga": "No se pudieron cargar las quejas.",
+    "reintentar": "Reintentar",
+    "vacioAlcance": "No hay quejas en tu alcance.",
+    "vacioFiltros": "Ninguna queja coincide con los filtros.",
+    "limpiarFiltros": "Limpiar filtros",
+    "paginacion": "Páginas del listado",
+    "total_one": "{{count}} queja",
+    "total_other": "{{count}} quejas",
+    "abrir": "Abrir la queja {{numero}}",
+    "filtros": {
+      "etiqueta": "Filtros del listado",
+      "busqueda": "Buscar por número o título",
+      "limpiarBusqueda": "Limpiar búsqueda",
+      "estados": "Estados",
+      "todos": "Todos",
+      "dependencia": "Dependencia",
+      "categoria": "Categoría",
+      "prioridad": "Prioridad",
+      "tecnico": "Técnico",
+      "todas": "Todas",
+      "todosTecnicos": "Todos",
+      "sinAsignar": "Sin asignar",
+      "desde": "Registrada desde",
+      "hasta": "Registrada hasta",
+      "inactiva": "{{nombre}} (inactiva)",
+      "inactivo": "{{nombre}} (inactivo)"
+    },
+    "columnas": {
+      "numero": "Número",
+      "titulo": "Título",
+      "estado": "Estado",
+      "prioridad": "Prioridad",
+      "dependencia": "Dependencia",
+      "tecnico": "Técnico",
+      "sla": "SLA",
+      "registrada": "Registrada"
+    },
+    "sinPrioridad": "Sin prioridad",
+    "sinDependencia": "Sin dependencia",
+    "sinAsignar": "Sin asignar"
+  },
   "nuevo": {
     "titulo": "Nueva queja",
     "progreso": "Paso {{actual}} de {{total}}",

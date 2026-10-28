@@ -147,15 +147,16 @@ describe('MisQuejas', () => {
   })
 
   it.each<Rol>(['receptor', 'tecnico', 'coordinador', 'supervisor', 'administrador'])(
-    'el rol %s ve el placeholder y no pide el listado',
-    (rol) => {
+    'el rol %s ve el listado de gestión (SPEC 45), no "Mis quejas"',
+    async (rol) => {
       const fetchMock = simularApi({})
 
       montar(rol)
 
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(tickets.listado.titulo)
-      expect(screen.getByText(comun.placeholder.proximamente)).toBeInTheDocument()
-      expect(fetchMock).not.toHaveBeenCalled()
+      expect(screen.queryByText(comun.placeholder.proximamente)).not.toBeInTheDocument()
+      await waitFor(() => expect(consultasA(fetchMock, '/tickets/gestion')).toHaveLength(1))
+      expect(consultasA(fetchMock, '/tickets')).toHaveLength(0)
     },
   )
 
