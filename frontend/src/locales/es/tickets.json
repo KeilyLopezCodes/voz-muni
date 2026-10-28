@@ -733,5 +733,51 @@
     "verDetalle": "Ver detalle",
     "verDetalleDe": "Ver el detalle de la queja {{numero}}",
     "paginacion": "Páginas de quejas escaladas"
+  },
+  "listadoInterno": {
+    "titulo": "Quejas",
+    "descripcion": "Consulta las quejas de tu alcance. Para atenderlas, abre su detalle o usa tus bandejas.",
+    "total_one": "{{count}} queja",
+    "total_other": "{{count}} quejas",
+    "cargando": "Cargando las quejas…",
+    "errorCarga": "No pudimos cargar las quejas.",
+    "reintentar": "Reintentar",
+    "vacioFiltros": "No hay quejas con estos filtros.",
+    "vacioTotal": "Todavía no hay quejas.",
+    "paginacion": "Páginas del listado de quejas",
+    "abrir": "Abrir la queja {{numero}}",
+    "sinDependencia": "Sin dependencia",
+    "sinTecnico": "Sin técnico",
+    "sinPrioridad": "Sin prioridad",
+    "tabla": {
+      "caption": "Quejas que coinciden con los filtros",
+      "numero": "Número",
+      "titulo": "Título",
+      "estado": "Estado",
+      "prioridad": "Prioridad",
+      "categoria": "Categoría",
+      "dependencia": "Dependencia",
+      "tecnico": "Técnico",
+      "registro": "Registro",
+      "sla": "SLA"
+    },
+    "filtros": {
+      "titulo": "Filtros",
+      "tituloActivos_one": "Filtros ({{count}} activo)",
+      "tituloActivos_other": "Filtros ({{count}} activos)",
+      "busqueda": "Buscar por número o título",
+      "limpiarBusqueda": "Limpiar búsqueda",
+      "estados": "Estados",
+      "estadoConContador": "{{estado}} ({{cantidad}})",
+      "dependencia": "Dependencia",
+      "categoria": "Categoría",
+      "prioridad": "Prioridad",
+      "todas": "Todas",
+      "desde": "Desde",
+      "hasta": "Hasta",
+      "rangoInvalido": "Revisa las fechas: «Desde» no puede ser posterior a «Hasta» y el rango admite hasta {{dias}} días.",
+      "soloEscaladas": "Solo escaladas",
+      "limpiar": "Limpiar filtros"
+    }
   }
 }

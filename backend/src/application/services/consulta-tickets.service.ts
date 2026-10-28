@@ -2,9 +2,12 @@ import { exigeMotivoAlConfirmar, puedeConfirmar } from '../../domain/atencion/ac
 import type { Accion } from '../../domain/auth/permisos';
 import { filtroTicketsParaAccion } from '../../domain/autorizacion/alcance-tickets';
 import { CLAVE_PLAZO_ENCUESTA, esCalificable, plazoEncuestaValido, venceEncuesta } from '../../domain/encuestas/encuesta';
+import { fechaLocal } from '../../domain/calendario/plazo-confirmacion';
 import type { Clock } from '../../domain/health/clock';
+import { rangoReportes } from '../../domain/reportes/rango-fechas';
 import { interpretarBusqueda } from '../../domain/ticket/busqueda';
 import type {
+  CriteriosConteo,
   Pagina,
   TicketDetalleLectura,
   TicketLecturaRepository,
@@ -14,13 +17,14 @@ import type { ParametroRepository } from '../../domain/repositories/parametro-re
 import type { UsuarioAutenticado } from '../dto/auth.dto';
 import type {
   ConfirmacionDetalleDto,
+  FiltrosConteoDto,
   FiltrosListadoDto,
   ResumenTicketsDto,
   TicketDetalleDto,
   TicketListadoDto,
 } from '../dto/consulta-tickets.dto';
 import { aSlaDto } from '../dto/sla.dto';
-import { ErrorDeAplicacion } from '../errors/error-de-aplicacion';
+import { conReglasDeNegocio, ErrorDeAplicacion } from '../errors/error-de-aplicacion';
 import type { PlazosConfirmacionService } from './plazos-confirmacion.service';
 
 const TAMANO_MAXIMO = 100;
@@ -68,18 +72,26 @@ export class ConsultaTicketsService {
   ): Promise<Pagina<TicketListadoDto>> {
     validarPaginacion(pagina, tamano, TAMANO_MAXIMO_LISTADO);
     const ahora = this.clock.now();
+    // Depende del alcance de tickets.ver, nunca del nombre del rol (SPEC 45).
+    const vistaDelSolicitante = usuario.permisos['tickets.ver'] === 'propia';
     const plazoEncuesta = await this.plazoEncuesta();
     const resultado = await this.tickets.listarConTitulo(
       filtroTicketsParaAccion(usuario, 'tickets.ver'),
-      { estados: filtros.estados, busqueda: filtros.q === undefined ? null : interpretarBusqueda(filtros.q) },
+      {
+        estados: filtros.estados,
+        ...(await this.criterios(filtros, ahora)),
+        // El vecino ve primero lo que le pide acción (SPEC 38); los internos, lo más reciente (SPEC 45).
+        orden: vistaDelSolicitante ? 'accion_pendiente' : 'recientes',
+      },
       pagina,
       tamano,
       ahora,
     );
     return {
       ...resultado,
-      datos: resultado.datos.map(({ cerradoEn, tieneEncuesta, solicitanteId, ...t }) => ({
+      datos: resultado.datos.map(({ cerradoEn, tieneEncuesta, solicitanteId, interno, ...t }) => ({
         ...t,
+        interno: vistaDelSolicitante ? null : { ...interno, sla: aSlaDto(interno.sla, t.estado) },
         creadoEn: t.creadoEn.toISOString(),
         confirmacionVenceEn: isoONull(t.confirmacionVenceEn),
         pendienteCalificar:
@@ -92,12 +104,29 @@ export class ConsultaTicketsService {
 
   // GET /api/v1/tickets/resumen (SPEC 38): cuántas hay en cada estado con el mismo alcance y la misma búsqueda que el
   // listado. Un rol nunca cuenta quejas que no puede ver.
-  async resumen(usuario: UsuarioAutenticado, q?: string): Promise<ResumenTicketsDto> {
+  async resumen(usuario: UsuarioAutenticado, filtros: FiltrosConteoDto): Promise<ResumenTicketsDto> {
     const porEstado = await this.tickets.contarPorEstado(
       filtroTicketsParaAccion(usuario, 'tickets.ver'),
-      q === undefined ? null : interpretarBusqueda(q),
+      await this.criterios(filtros, this.clock.now()),
     );
     return { porEstado, total: Object.values(porEstado).reduce((suma, n) => suma + n, 0) };
+  }
+
+  // Criterios comunes del listado y del resumen (SPEC 38 y 45). Sin desde ni hasta no se filtra por fecha; con alguno,
+  // el rango sale de rangoReportes (SPEC 43): días completos en Guatemala, de 366 como máximo (RANGO_INVALIDO).
+  private async criterios(filtros: FiltrosConteoDto, ahora: Date): Promise<CriteriosConteo> {
+    const conRango = filtros.desde !== undefined || filtros.hasta !== undefined;
+    const rango = conRango
+      ? await conReglasDeNegocio(async () => rangoReportes(filtros.desde, filtros.hasta, fechaLocal(ahora)))
+      : null;
+    return {
+      busqueda: filtros.q === undefined ? null : interpretarBusqueda(filtros.q),
+      dependenciaId: filtros.dependenciaId ?? null,
+      categoriaId: filtros.categoriaId ?? null,
+      prioridad: filtros.prioridad ?? null,
+      registro: rango === null ? null : { inicio: rango.inicio, fin: rango.fin },
+      soloEscaladas: filtros.escalado === true,
+    };
   }
 
   // GET /api/v1/tickets/:id (SPEC 25). Con el filtro de tickets.ver en el mismo WHERE, igual que obtenerParaAccion:

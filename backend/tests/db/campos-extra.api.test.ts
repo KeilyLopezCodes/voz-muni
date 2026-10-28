@@ -195,6 +195,12 @@ describe('Campos adicionales por categoría (SPEC 14)', () => {
       expect((await request(app).get('/api/v1/categorias')).status).toBe(401);
       expect((await request(app).get('/api/v1/zonas').set('Authorization', `Bearer ${tokens.tecnico}`)).status).toBe(403);
     });
+
+    // Las categorías también llenan los filtros del listado interno (SPEC 45): tickets.ver sin alcance propia.
+    it.each(['tecnico', 'administrador'])('el %s lee GET /categorias', async (quien) => {
+      const res = await request(app).get('/api/v1/categorias').set('Authorization', `Bearer ${tokens[quien]}`);
+      expect(res.status).toBe(200);
+    });
   });
 
   describe('POST /tickets con datosExtra', () => {

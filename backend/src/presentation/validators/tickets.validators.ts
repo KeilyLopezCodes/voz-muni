@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PRIORIDADES } from '../../domain/ticket/prioridad';
 import { BUSQUEDA_MAX, BUSQUEDA_MIN } from '../../domain/ticket/busqueda';
 import { CANALES } from '../../domain/ticket/canal';
 import { ESTADOS_TICKET } from '../../domain/ticket/estado-ticket';
@@ -37,18 +38,34 @@ const busquedaSchema = z
     error: `debe tener de ${BUSQUEDA_MIN} a ${BUSQUEDA_MAX} caracteres`,
   });
 
-// Query de GET /api/v1/tickets (SPEC 25 y 38). Cualquier otro parámetro responde VALIDACION.
+// Filtros del listado interno (SPEC 45), comunes al listado y al resumen. El rango (formato, orden y 366 días) lo
+// valida el dominio con rangoReportes: RANGO_INVALIDO. `escalado` solo admite `true`.
+const id = z.coerce.number().int().positive();
+const filtrosComunes = {
+  q: busquedaSchema.optional(),
+  dependenciaId: id.optional(),
+  categoriaId: id.optional(),
+  prioridad: z.enum(PRIORIDADES).optional(),
+  desde: z.string().max(10).optional(),
+  hasta: z.string().max(10).optional(),
+  escalado: z
+    .literal('true')
+    .transform(() => true as const)
+    .optional(),
+};
+
+// Query de GET /api/v1/tickets (SPEC 25, 38 y 45). Cualquier otro parámetro responde VALIDACION.
 export const listadoTicketsSchema = z
   .object({
     pagina: z.coerce.number().int().min(1).default(1),
     tamano: z.coerce.number().int().min(1).max(50).default(20),
     estado: estadosSchema.optional(),
-    q: busquedaSchema.optional(),
+    ...filtrosComunes,
   })
   .strict();
 
-// Query de GET /api/v1/tickets/resumen (SPEC 38): solo `q`.
-export const resumenTicketsSchema = z.object({ q: busquedaSchema.optional() }).strict();
+// Query de GET /api/v1/tickets/resumen (SPEC 38 y 45): los mismos filtros, salvo `estado`.
+export const resumenTicketsSchema = z.object(filtrosComunes).strict();
 
 export const idTicketSchema = z.object({
   id: z.coerce.number().int().positive(),
