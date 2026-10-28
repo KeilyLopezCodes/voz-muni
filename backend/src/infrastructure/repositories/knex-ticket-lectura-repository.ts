@@ -131,7 +131,8 @@ const CIERRE_AUTOMATICO = `COALESCE(t.estado = 'cerrada' AND (
 const numeroONull = (valor: string | null) => (valor === null ? null : Number(valor));
 
 // Número exacto, o subcadena del título o del número con los comodines ya escapados en el dominio (SPEC 38).
-function aplicarBusqueda(consulta: Knex.QueryBuilder, busqueda: Busqueda | null): Knex.QueryBuilder {
+// También la usa el listado de gestión (SPEC 45).
+export function aplicarBusqueda(consulta: Knex.QueryBuilder, busqueda: Busqueda | null): Knex.QueryBuilder {
   if (busqueda?.tipo === 'numero') {
     consulta.where('t.numero', busqueda.numero);
   } else if (busqueda?.tipo === 'texto') {
